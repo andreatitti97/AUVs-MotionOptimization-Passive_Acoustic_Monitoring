@@ -95,7 +95,7 @@ def minValueNode( node):
     return current 
         
  
-# A utility function to do inorder traversal of BST
+# A utility function to do inorder traversal of TST
 def inorder(root):
     if root is not None:
 
@@ -104,75 +104,114 @@ def inorder(root):
         inorder(root.middle)
         inorder(root.right)
         
-# A utility function to insert a new node with given key in BST
-def insert( node, key, cost, target, tracker1, platform, sensor1):
- 
-    # If the tree is empty, return a new node
-    if node is None:
-        return Node(key, cost, target, tracker1, platform, sensor1)
- 
-    # Otherwise recur down the tree
-    if key == key1:
-        node.compute_cost(cost, key1, target, tracker1, platform, sensor1)
-        node.left = insert(node.left, key1, cost, target, tracker1, platform, sensor1)
-
-        node.compute_cost(cost, key2, target, tracker1, platform, sensor1)
-        node.middle = insert(node.middle, key2, cost, target, tracker1, platform, sensor1)
-
-        node.compute_cost(cost, key3, target, tracker1, platform, sensor1)
-        node.right = insert(node.right, key3, cost, target, tracker1, platform, sensor1)
-      
-        
-    elif key == key2:
-        node.compute_cost(cost, key1, target, tracker1, platform, sensor1)
-        node.left = insert(node.left, key1, cost, target, tracker1, platform, sensor1)
-
-        node.compute_cost(cost, key2, target, tracker1, platform, sensor1)
-        node.middle = insert(node.middle, key2, cost, target, tracker1, platform, sensor1)
-
-        node.compute_cost(cost, key3, target, tracker1, platform, sensor1)
-        node.right = insert(node.right, key3, cost, target, tracker1, platform, sensor1)
- 
-    else:
-        node.compute_cost(cost, key1, target, tracker1, platform, sensor1)
-        node.left = insert(node.left, key1, cost, target, tracker1, platform, sensor1)
-
-        node.compute_cost(cost, key2, target, tracker1, platform, sensor1)
-        node.middle = insert(node.middle, key2, cost, target, tracker1, platform, sensor1)
-
-        node.compute_cost(cost, key3, target, tracker1, platform, sensor1)
-        node.right = insert(node.right, key3, cost, target, tracker1, platform, sensor1)
-    
-    # return the (unchanged) node pointer
-    return node
+# A utility function to insert a new node with given key in TST
 
 def insert1( node, key, cost, target, tracker1, platform, sensor1):
  
     # If the tree is empty, return a new node
     if node is None:
+        print('nonevalue')
         return Node(key, cost, target, tracker1, platform, sensor1)
  
     # Otherwise recur down the tree
-    '''if key == key1:
-        node.compute_cost(cost, key, target, tracker1, platform, sensor1)
-        tmpCost = node.cost
-        node.left = insert(node.left, key, cost, target, tracker1, platform, sensor1)
-    
+    if key == key1:
         
+        node.compute_cost(cost, key1, target, tracker1, platform, sensor1)
+        node.left = insert(node.left, key1, cost, target, tracker1, platform, sensor1)
+        
+        
+        #print('check1',key)
     elif key == key2:
         node.compute_cost(cost, key2, target, tracker1, platform, sensor1)
-        tmpCost = node.cost
-        node.middle = insert(node.middle, key, cost, target, tracker1, platform, sensor1)
+        node.middle = insert(node.middle, key2, cost, target, tracker1, platform, sensor1)
        
-
+        #print('check2',key)
     else:
         node.compute_cost(cost, key3, target, tracker1, platform, sensor1)
-        tmpCost = node.cost
-        node.right = insert(node.right, key, cost, target, tracker1, platform, sensor1)'''
-
-
-    
+        node.right = insert(node.right, key3, cost, target, tracker1, platform, sensor1)
+        #print('check3',key)
     return node
+
+def insert( node, key, cost, target, tracker1, platform, sensor1):
+ 
+    # If the tree is empty, return a new node
+    if node is None:
+      return Node(key, cost, target, tracker1, platform, sensor1)
+ 
+    # Otherwise recur down the tree
+    #if key == key1:
+    node.compute_cost(cost, key, target, tracker1, platform, sensor1)
+    tmpCost = node.cost
+    '''key = key1
+    node.compute_cost(cost, key2, target, tracker1, platform, sensor1)
+    tmpCost2 = node.cost
+    if tmpCost2 < tmpCost:
+        key = key2
+    node.compute_cost(cost, key3, target, tracker1, platform, sensor1)
+    tmpCost3 = node.cost
+    if tmpCost3 < tmpCost:
+        key = key3'''
+
+    if key == key1:
+        node.left = insert(node.left, key1, cost, target, tracker1, platform, sensor1)
+
+    elif key == key2:
+        node.middle = insert(node.middle, key2, cost, target, tracker1, platform, sensor1)
+    else:
+        node.right = insert(node.right, key3, cost, target, tracker1, platform, sensor1)
+    #print('check4',key)
+    #time.sleep(1000)
+        
+    '''elif key == key2:
+        node.compute_cost(cost, key1, target, tracker1, platform, sensor1)
+        tmpCost = node.cost
+        key = key1
+        node.compute_cost(cost, key2, target, tracker1, platform, sensor1)
+        tmpCost2 = node.cost
+        if tmpCost2 < tmpCost:
+            key = key2
+        node.compute_cost(cost, key3, target, tracker1, platform, sensor1)
+        tmpCost3 = node.cost
+        if tmpCost3 < tmpCost:
+            key = key3
+        #node.compute_cost(cost, key1, target, tracker1, platform, sensor1)
+        if key == key1:
+            node.left = insert(node.left, key1, cost, target, tracker1, platform, sensor1)
+
+        elif key == key2:
+            node.middle = insert(node.middle, key2, cost, target, tracker1, platform, sensor1)
+        else:
+            node.right = insert(node.right, key3, cost, target, tracker1, platform, sensor1)
+        #print('check5',key)
+        #time.sleep(1000)
+    else:
+        node.compute_cost(cost, key1, target, tracker1, platform, sensor1)
+        tmpCost = node.cost
+        key = key1
+        node.compute_cost(cost, key2, target, tracker1, platform, sensor1)
+        tmpCost2 = node.cost
+        if tmpCost2 < tmpCost:
+            key = key2
+        node.compute_cost(cost, key3, target, tracker1, platform, sensor1)
+        tmpCost3 = node.cost
+        if tmpCost3 < tmpCost:
+            key = key3
+        #node.compute_cost(cost, key1, target, tracker1, platform, sensor1)
+        if key == key1:
+            node.left = insert(node.left, key1, cost, target, tracker1, platform, sensor1)
+
+        elif key == key2:
+            node.middle = insert(node.middle, key2, cost, target, tracker1, platform, sensor1)
+        else:
+            node.right = insert(node.right, key3, cost, target, tracker1, platform, sensor1)
+        #print('check6',key)'''
+    # return the (unchanged) node pointer
+    return node
+
+def init_tree(node, key, cost, target, tracker1, platform, sensor1):
+    if node is None:
+
+        return Node(key, cost, target, tracker1, platform, sensor1)
 
 def callback1(data):
 
@@ -220,13 +259,9 @@ def main():
     # Define Input for tree generation: tree level, estimated state
 
 
-    T = 2
-    
-    
-    
-    
- 
-    vals = [0,1]
+    T = 3
+
+
     root = None
     cost = 0
     
@@ -242,19 +277,21 @@ def main():
         platform = Platform(platform_state)
         covariance = np.loadtxt('scripts/covariance.txt')
 
-        root = insert1(root, 0.001, cost, target, tracker1, platform, sensor1)
+        root = insert(root, 0.001, cost, target, tracker1, platform, sensor1)
+
         start = time.time()
         for t in range(T):
+            #root = bnb(root, root.cost, target, tracker1, platform, sensor1)
+            
+            root = insert(root, key1, root.cost, target, tracker1, platform, sensor1)
+            #print('provas')
+            root = insert(root, key2, root.cost, target, tracker1, platform, sensor1)
+            root = insert(root, key3, root.cost, target, tracker1, platform, sensor1)
 
-            root = insert1(root, key1, cost, target, tracker1, platform, sensor1)
-
-            root = insert1(root, key2, cost, target, tracker1, platform, sensor1)
-
-            root = insert1(root, key3, cost, target, tracker1, platform, sensor1)
         print("Inorder traversal of the given tree")
-        #inorder(root)
-        node = minValueNode(root)
-        print(node.cost)
+        inorder(root)
+        #node = minValueNode(root)
+        #print(node.cost)
         stop = time.time()
         print('OPTIMIZATION TIME:',stop - start)
         time.sleep(1000) # SHOULD WAIT UNTIL NEXT OPTIMIZATION REQUIRED
@@ -266,20 +303,64 @@ if __name__ == '__main__':
     main()
 
 
-'''node.compute_cost(cost, key1, target, tracker1, platform, sensor1)
-    tmpCost = node.cost
-    key = key1
-    node.compute_cost(cost, key2, target, tracker1, platform, sensor1)
-    tmpCost2 = node.cost
-    if tmpCost2 < tmpCost:
-        key = key2
-    node.compute_cost(cost, key3, target, tracker1, platform, sensor1)
-    tmpCost3 = node.cost
-    if tmpCost3 < tmpCost:
-        key = key3
+
+
+
+''' if key == key1:
+node.compute_cost(cost, key, target, tracker1, platform, sensor1)
+tmpCost = node.cost
+node.left = insert(node.left, key, cost, target, tracker1, platform, sensor1)
+
+
+elif key == key2:
+node.compute_cost(cost, key2, target, tracker1, platform, sensor1)
+tmpCost = node.cost
+node.middle = insert(node.middle, key, cost, target, tracker1, platform, sensor1)
+
+
+else:
+node.compute_cost(cost, key3, target, tracker1, platform, sensor1)
+tmpCost = node.cost
+node.right = insert(node.right, key, cost, target, tracker1, platform, sensor1)'''
+
+
+'''def insert( node, key, cost, target, tracker1, platform, sensor1):
+ 
+    # If the tree is empty, return a new node
+    if node is None:
+        return Node(key, cost, target, tracker1, platform, sensor1)
+ 
+    # Otherwise recur down the tree
     if key == key1:
-        node.left = insert(node.left, key, cost, target, tracker1, platform, sensor1)
-    elif key == key1:
-        node.middle = insert(node.middle, key, cost, target, tracker1, platform, sensor1)
+        node.compute_cost(cost, key1, target, tracker1, platform, sensor1)
+        node.left = insert(node.left, key1, cost, target, tracker1, platform, sensor1)
+
+        node.compute_cost(cost, key2, target, tracker1, platform, sensor1)
+        node.middle = insert(node.middle, key2, cost, target, tracker1, platform, sensor1)
+
+        node.compute_cost(cost, key3, target, tracker1, platform, sensor1)
+        node.right = insert(node.right, key3, cost, target, tracker1, platform, sensor1)
+      
+        
+    elif key == key2:
+        node.compute_cost(cost, key1, target, tracker1, platform, sensor1)
+        node.left = insert(node.left, key1, cost, target, tracker1, platform, sensor1)
+
+        node.compute_cost(cost, key2, target, tracker1, platform, sensor1)
+        node.middle = insert(node.middle, key2, cost, target, tracker1, platform, sensor1)
+
+        node.compute_cost(cost, key3, target, tracker1, platform, sensor1)
+        node.right = insert(node.right, key3, cost, target, tracker1, platform, sensor1)
+ 
     else:
-        node.right = insert(node.right, key, cost, target, tracker1, platform, sensor1)'''
+        node.compute_cost(cost, key1, target, tracker1, platform, sensor1)
+        node.left = insert(node.left, key1, cost, target, tracker1, platform, sensor1)
+
+        node.compute_cost(cost, key2, target, tracker1, platform, sensor1)
+        node.middle = insert(node.middle, key2, cost, target, tracker1, platform, sensor1)
+
+        node.compute_cost(cost, key3, target, tracker1, platform, sensor1)
+        node.right = insert(node.right, key3, cost, target, tracker1, platform, sensor1)
+    
+    # return the (unchanged) node pointer
+    return node'''
