@@ -17,7 +17,7 @@ class Sensor:
         self.f = f
         self.mean = mean
         self.variance = variance
-        d = 10
+        d = 5
         self.baseline = sign*d 
         self.noise = np.random.normal(self.mean, self.variance)
         self.measure = []

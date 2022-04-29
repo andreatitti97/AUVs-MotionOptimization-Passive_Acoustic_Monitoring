@@ -1,4 +1,4 @@
-from Classes.dekf import ExtendedKalmanFilter
+from Classes.ekf import ExtendedKalmanFilter
 import multiprocessing
 import time
 import numpy as np
@@ -10,10 +10,10 @@ class Tracker:
     The Tracker class is created everytime we detect a target.
     It contains the entire state of the tracked object.
     '''
-    def __init__(self, id):
+    def __init__(self, id, init_cov):
 
         self.id  = id
-        self.__ekf = ExtendedKalmanFilter()
+        self.__ekf = ExtendedKalmanFilter(init_cov)
         self.__is_initialized = False
         self.__previous_timestamp = 0.
         # Establish communication queues
@@ -53,5 +53,5 @@ class Tracker:
         
         
         # Solve Optimization problem
-        #print(self.__ekf.__H)
+        print(self.__ekf.__P)
         

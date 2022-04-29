@@ -1,3 +1,4 @@
+from xmlrpc.client import ServerProxy
 import numpy as np
 import numpy.matlib
 from math import atan2
@@ -23,9 +24,9 @@ class ExtendedKalmanFilter:
                               [0,0,1,0],
                               [0,0,0,1]])
 
-        self.__H = np.matlib.zeros((1,4))
+        self.__H = np.matlib.zeros((2,4))
 
-        self.__R = np.matrix([[1]])
+        self.__R = np.matrix([[1,0],[0,1]])
         
         #This is for adding disturbance on the target model
         self.__noise_ax = 0
@@ -70,18 +71,20 @@ class ExtendedKalmanFilter:
                               [e31, 0, e33, 0],
                               [0, e42, 0, e44]])
 
-    def recompute_HR(self, sensor_state):
+    def recompute_HR(self, s1, s2):
 
         
         px,py, vx, vy = state_vector_to_scalars(self.__x)
         #calculate_jacobian of the current state.
-        sensor_state1 = sensor_state
-        
-        
-        rx1 = px - sensor_state1[0]
-        ry1 = py - sensor_state1[1]
+    
+        rx1 = px - s1[0]
+        ry1 = py - s1[1]
+
+        rx2 = px - s2[0]
+        ry2 = py - s2[1]
         #print(rx1,ry1)
-        self.__H = np.matrix([[-ry1/(ry1**2+rx1**2), rx1/(rx1**2+ry1**2) , 0, 0]])
+        self.__H = np.matrix([[-ry1/(ry1**2+rx1**2), rx1/(rx1**2+ry1**2) , 0, 0],
+                                [-ry2/(ry2**2+rx2**2), rx2/(rx2**2+ry2**2) , 0, 0]])
                                 
     def predict(self):
         '''
@@ -91,25 +94,28 @@ class ExtendedKalmanFilter:
         self.__x = self.__F * self.__x
         self.__P = (self.__F * self.__P * self.__F.T) + self.__Q
         
-    def update(self,measure, sensor_state):
+    def update(self,measures, sensor_state1, sensor_state2):
 
+        # Return state estimated
         [xt, yt, dotx, doty] = state_vector_to_scalars(self.__x)
-        s1 = sensor_state
-        if s1 is None:
-            s1 = [0, 0]
-        y_tilde = measure - atan2(yt - s1[1], xt - s1[0]) # rispetto al mondo, non è il bearing ma è la pos ang
-        self.recompute_HR(s1)
+        
+        # Compute the output error for both measuraments.
+        y_tilde1 = measures[0] - atan2(yt - sensor_state1[1],xt - sensor_state1[0])
+        y_tilde2 = measures[1] - atan2(yt - sensor_state2[1],xt - sensor_state2[0])
+        y_tilde = np.array([[y_tilde1], [y_tilde2]])
+        self.recompute_HR(sensor_state1,sensor_state2)
 
-        #pre compute for the kalman gain K
+        # Pre compute for the kalman gain K
         #TODO: this code is not DRY should refactor here.
         S = self.__H * self.__P * self.__H.T + self.__R
 
         K = self.__P*self.__H.T*np.linalg.inv(S)
 
-        #now we update our prediction using the error and kalman gain.
+        #Update our prediction using the error and kalman gain.
         
         self.__x = self.__x + K*y_tilde
         self.__P = self.__P - K*self.__H*self.__P
+        # OPTIONAL: save data ( for plot)
         self.trackingDataState.append(self.__x)
 
         #np.savetxt('trackedState.txt',self.trackingDataState[], fmt='%2f')
