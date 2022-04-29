@@ -53,5 +53,5 @@ class Tracker:
         
         
         # Solve Optimization problem
-        print(self.__ekf.__P)
+        
         

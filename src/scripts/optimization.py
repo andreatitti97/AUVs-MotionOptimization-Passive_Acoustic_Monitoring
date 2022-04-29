@@ -18,12 +18,12 @@ from rospy.numpy_msg import numpy_msg
 from std_msgs.msg import String
 
 count = 0
-key1 = -pi/6
+key1 = -pi/4
 key2 = 0
-key3 = pi/6
+key3 = pi/4
 key_final = None
-tc = 1
-target_theta = pi/4
+tc = 2
+target_theta = pi/2
 # Sensors
 f1 = 1 #Hz
 f2 = 1 #Hz
@@ -83,9 +83,9 @@ class Node:
         self.s_realization = None
 
 
-def compute_cost(input_cost, control_input, target_init, platform_init, init_cov):
+def compute_cost(input_cost, control_input, target_init, platform_init, init_cov, tracker1):
    
-    tracker1 = Tracker('first_observer', init_cov)
+    
     platform = Platform(platform_init)
     target = Target(target_init)
     platform_state = platform.update_state(control_input)  
@@ -126,26 +126,26 @@ def inorder(root):
     if root is not None:
 
         inorder(root.left)
-        #print(root.P_realization)
+        print(root.P_realization)
         inorder(root.middle)
         inorder(root.right)
         
 # A utility function to insert a new node with given key in TST
-def insert1( node,key, cost, target_est, platform_state, covariance):
+def insert1( node,key, cost, target_est, platform_state, covariance, tracker1):
     # If the tree is empty, return a new node
     global key_final
     if node is None:
         return Node(key, cost)
 
-    new_cost1, t1, P1, s1 = compute_cost(node.cost,key1,target_est,platform_state, covariance)
+    new_cost1, t1, P1, s1 = compute_cost(node.cost,key1,target_est,platform_state, covariance, tracker1)
     #print(t1)
     #print(P1)
-    print(s1)
+    #print(s1)
     tmpCost1 = new_cost1
     key_final = key1
-    new_cost2, t2, P2, s2 = compute_cost(node.cost,key2,target_est,platform_state, covariance)
+    new_cost2, t2, P2, s2 = compute_cost(node.cost,key2,target_est,platform_state, covariance, tracker1)
     tmpCost2 = new_cost2
-    new_cost3, t3, P3, s3 = compute_cost(node.cost,key3,target_est,platform_state, covariance)
+    new_cost3, t3, P3, s3 = compute_cost(node.cost,key3,target_est,platform_state, covariance, tracker1)
     tmpCost3 = new_cost3
     if tmpCost2 < tmpCost1:
         key_final = key2
@@ -155,17 +155,17 @@ def insert1( node,key, cost, target_est, platform_state, covariance):
         tmpCost2 = tmpCost3
     
     
-    node.left = insert1(node.left, key1, new_cost1, t1, s1, P1)
+    node.left = insert1(node.left, key1, new_cost1, t1, s1, P1, tracker1)
     node.left.cost = new_cost1
     node.left.t_realization = t1
     node.left.s_realization = s1
     node.left.P_realization = P1
-    node.middle = insert1(node.middle, key2, new_cost2, t2, s2, P2)
+    node.middle = insert1(node.middle, key2, new_cost2, t2, s2, P2, tracker1)
     node.middle.cost = new_cost2
     node.middle.t_realization = t2
     node.middle.s_realization = s2
     node.middle.P_realization = P2
-    node.right = insert1(node.right, key3, new_cost3, t3, s3, P3)
+    node.right = insert1(node.right, key3, new_cost3, t3, s3, P3, tracker1)
     node.right.cost = new_cost3
     node.right.t_realization = t3
     node.right.s_realization = s3
@@ -208,14 +208,15 @@ def main():
     # Define Input for tree generation: tree level, estimated state
 
 
-    T = 2
+    T = 4
 
 
     root = None
     cost = 0
     ctrl_cmd = []
     P_init = np.matlib.zeros((4,4))
-
+    time.sleep(5)
+    print('start optimization')
     while not rospy.is_shutdown():
         # INIT TARGET MODEL AND PLATFORM MODEL WITH THE LATEST ESTIMATION AND SENSOR POSITIONS 
         
@@ -224,17 +225,17 @@ def main():
         platform_state = np.loadtxt('scripts/platform_state.txt')
         platform_state = [platform_state[0],platform_state[1],platform_state[2]] 
         covariance = np.loadtxt('scripts/covariance.txt')
-
+        tracker1 = Tracker('first_observer', P_init)
         for i in range(4):
             for j in range(4):
                 P_init[i,j] = covariance[i+j]
 
-        root = insert1(root, 0.001, cost, target_est, platform_state, P_init)
+        root = insert1(root, 0.001, cost, target_est, platform_state, P_init, tracker1)
         
         start = time.time()
         for t in range(T):
             
-            root = insert1(root, 0, root.cost, target_est, platform_state, P_init)
+            root = insert1(root, 0, root.cost, target_est, platform_state, P_init, tracker1)
             ctrl_cmd.append(key_final)
 
         print("Inorder traversal of the given tree")
@@ -247,7 +248,7 @@ def main():
         pub_ctrl_cmd.publish(np.array(ctrl_cmd,np.float32))
         ctrl_cmd = []
         
-        time.sleep(500) # TIME BETWEEN OPTIMIZATION
+        time.sleep(60) # TIME BETWEEN OPTIMIZATION
         root = None
         
 if __name__ == '__main__':

@@ -31,7 +31,8 @@ PLOT_FONT_SIZE = 8
 t = 0
 simulation_running = True
 all_robots_are_at_target = False
-
+count = 0
+pose_old = 0
 class Pose:
     """2D pose"""
 
@@ -115,34 +116,33 @@ class Robot:
         dt : (float)
             time step
         """
-        global t
+        global t, count, pose_old
         self.x_traj.append(self.pose.x)
         self.y_traj.append(self.pose.y)
         t += 1
-        #print(t)
-        heading_change = 0     #TODO
-        if 100 < t < 200 :
-            print('prova')
-            heading_change = pi/2
+        
+        #heading_change = 0
+        if t==400 or t==600 or t == 800:
+            count = count+1
+
+
+        if 200<t<250 or 400<t<450 or 600<t<650 or 800<t<850:
+
+            heading_change = heading_changes[count]
+            #heading_change = heading_change+self.pose.theta 
             rho, linear_velocity, angular_velocity = \
             self.path_finder_controller.calc_control_command(
                 0,
                 0,
-                self.pose.theta, heading_change)
-        elif 400 < t < 600:
-            heading_change = -pi/2
-        
-            rho, linear_velocity, angular_velocity = \
-                self.path_finder_controller.calc_control_command(
-                    0,
-                    0,
-                    self.pose.theta, heading_change)
-        else: 
+                self.pose.theta, self.pose.theta + heading_change)
+
+        else:
+
             angular_velocity = 0
-            linear_velocity = 1
-        
         linear_velocity = 1
+
         self.pose.theta = (self.pose.theta + angular_velocity * dt)
+        print(self.pose.theta)
         self.pose.x = self.pose.x + linear_velocity * \
             np.cos(self.pose.theta) * dt 
   
@@ -300,7 +300,7 @@ def wTv(x, y, theta):
 def callback(data):
     ctrl_cmd = data.data
     print(ctrl_cmd)
-    np.savetxt(lib_path+'ctrl_cmd.txt',np.array(ctrl_cmd,dtype=np.float32))
+    np.savetxt(lib_path+'/ctrl_cmd.txt',np.array(ctrl_cmd,dtype=np.float32))
 
 def main():
     # ROS INIT
@@ -313,7 +313,7 @@ def main():
     period = rospy.Duration(0.001)
     # Initial Conditions
     pose_target = Pose(0.01, 0.01, pi/2)
-    pose_start_1 = Pose(5, 1, 0)
+    pose_start_1 = Pose(5, 1, pi/4)
     controller= Controller(5, 8, 2)
     robot_1 = Robot("platoform_center", "y", 1, 1, controller)
    
