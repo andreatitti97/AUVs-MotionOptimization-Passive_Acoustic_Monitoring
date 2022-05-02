@@ -32,7 +32,11 @@ t = 0
 simulation_running = True
 all_robots_are_at_target = False
 count = 0
-pose_old = 0
+prev_count = 0
+goal_theta = 0
+old_pose  = 0
+N = 4
+
 class Pose:
     """2D pose"""
 
@@ -116,38 +120,55 @@ class Robot:
         dt : (float)
             time step
         """
-        global t, count, pose_old
+        global t, count, prev_count, goal_theta, old_pose
         self.x_traj.append(self.pose.x)
         self.y_traj.append(self.pose.y)
         t += 1
         
         #heading_change = 0
-        if t==400 or t==600 or t == 800:
+        #if t == 200 or t==400 or t==600 or t == 800:
+        if t%200 == 0:
             count = count+1
 
+        if count == N+1: 
+            count = 1
 
-        if 200<t<250 or 400<t<450 or 600<t<650 or 800<t<850:
+        if prev_count != count:
+        
+            #print('provs')
+            heading_change = heading_changes[count-1]
+            if count > 1:
+                goal_theta = heading_change + old_pose  #heading_changes[count-2]
+            else: 
+                goal_theta = heading_change
 
-            heading_change = heading_changes[count]
             #heading_change = heading_change+self.pose.theta 
             rho, linear_velocity, angular_velocity = \
             self.path_finder_controller.calc_control_command(
                 0,
                 0,
-                self.pose.theta, self.pose.theta + heading_change)
+                self.pose.theta, goal_theta)
 
         else:
-
+        
             angular_velocity = 0
+            old_pose = self.pose.theta
+            
+
         linear_velocity = 1
 
         self.pose.theta = (self.pose.theta + angular_velocity * dt)
-        print(self.pose.theta)
+        
         self.pose.x = self.pose.x + linear_velocity * \
             np.cos(self.pose.theta) * dt 
   
         self.pose.y = self.pose.y + linear_velocity * \
             np.sin(self.pose.theta) * dt
+
+        if np.abs(angular_velocity) < 0.15:
+            prev_count = count
+        
+
 
 def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platform_state, pub_covariance):
     """Simulate the sensor platform and the moving target"""

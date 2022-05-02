@@ -126,7 +126,7 @@ def inorder(root):
     if root is not None:
 
         inorder(root.left)
-        print(root.P_realization)
+        print(root.key)
         inorder(root.middle)
         inorder(root.right)
         
@@ -211,11 +211,12 @@ def main():
     T = 4
 
 
+
     root = None
     cost = 0
     ctrl_cmd = []
     P_init = np.matlib.zeros((4,4))
-    time.sleep(5)
+    input('PRESS INVIO TO START OPTIMIZATION')
     print('start optimization')
     while not rospy.is_shutdown():
         # INIT TARGET MODEL AND PLATFORM MODEL WITH THE LATEST ESTIMATION AND SENSOR POSITIONS 
@@ -248,7 +249,7 @@ def main():
         pub_ctrl_cmd.publish(np.array(ctrl_cmd,np.float32))
         ctrl_cmd = []
         
-        time.sleep(60) # TIME BETWEEN OPTIMIZATION
+        input('PRESS INVIO TO CONTINUE OPTIMIZATION')
         root = None
         
 if __name__ == '__main__':

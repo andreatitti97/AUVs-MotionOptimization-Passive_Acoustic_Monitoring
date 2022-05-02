@@ -69,7 +69,7 @@ class Controller:
         beta = (theta_goal - theta - alpha + np.pi) % (2 * np.pi) - np.pi
         v = self.Kp_rho * rho
         w = self.Kp_alpha * alpha - controller.Kp_beta * beta
-        w = (theta_goal - theta)
+        w = 3*(theta_goal - theta)
         if alpha > np.pi / 2 or alpha < -np.pi / 2:
             v = -v
 
