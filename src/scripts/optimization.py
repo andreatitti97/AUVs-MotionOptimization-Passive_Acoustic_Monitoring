@@ -1,22 +1,23 @@
-from curses.ascii import ctrl
-from platform import platform
-from sys import call_tracing
-import cvxpy as cp
-from matplotlib.colors import to_rgb
-import numpy as np
-import matplotlib.pyplot as plt
-from Classes.sensor import Sensor
-import numpy.matlib
-from Classes.tracker_optimization import Tracker
-from math import sin, cos, pi
+#Import basic system modules
+import sys
+import os
 import time
-import rospkg
+# Import math modules
+import numpy as np
+from math import sin, cos, pi
+import numpy.matlib
+# Import ROS modules
 import rospy
-import roslib
 from rospy_tutorials.msg import Floats
 from rospy.numpy_msg import numpy_msg
-from std_msgs.msg import String
+# Import costum classes
+from Classes.sensor import Sensor
+from Classes.tracker_optimization import Tracker
+# PATH DEFINITION
+lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs')
+sys.path.append(lib_path)
 
+#GLOBAL VARIABLES
 count = 0
 key1 = -pi/4
 key2 = 0

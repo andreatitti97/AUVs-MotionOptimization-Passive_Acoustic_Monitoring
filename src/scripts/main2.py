@@ -1,24 +1,22 @@
+#Import basic system modules
+import os
+import sys
+# Import math modules
 from re import T
-from turtle import heading
 import matplotlib.pyplot as plt
 from math import pi
 import numpy as np
 import copy
-from requests import head
-
+#Import ROS modules
 import rospy
-
 from rospy_tutorials.msg import Floats
 from rospy.numpy_msg import numpy_msg
-
-import os
-import sys
-
+# Import Costum classes
 from Classes.tracker import Tracker
 from Classes.controller import Controller
 from Classes.sensor import Sensor
-
-lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts')
+# PATH DEFINITON
+lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs')
 sys.path.append(lib_path)
 
 # Simulation parameters
@@ -31,11 +29,12 @@ PLOT_FONT_SIZE = 8
 t = 0
 simulation_running = True
 all_robots_are_at_target = False
+#GLOBAL VARIABLES
 count = 0
 prev_count = 0
 goal_theta = 0
 old_pose  = 0
-N = 4
+N = 4 #planning horizon
 
 class Pose:
     """2D pose"""
