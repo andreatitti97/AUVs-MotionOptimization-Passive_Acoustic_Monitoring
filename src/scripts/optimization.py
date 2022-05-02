@@ -180,7 +180,7 @@ def callback1(data):
     
     target_est = [tmp[0], tmp[1], tmp[2], tmp[3]]
     
-    np.savetxt('scripts/target_est.txt',np.array(target_est,dtype=np.float32))
+    np.savetxt(lib_path+'/target_est.txt',np.array(target_est,dtype=np.float32))
 
 
 def callback2(data):
@@ -189,13 +189,13 @@ def callback2(data):
     
     platform_state = [tmp[0], tmp[1], tmp[2]]
     
-    np.savetxt('scripts/platform_state.txt',np.array(platform_state,dtype=np.float32))
+    np.savetxt(lib_path+'/platform_state.txt',np.array(platform_state,dtype=np.float32))
 
     
 def callback3(data):
     P = data.data
     
-    np.savetxt('scripts/covariance.txt',np.array(P,dtype=np.float32))
+    np.savetxt(lib_path+'/covariance.txt',np.array(P,dtype=np.float32))
 
 def main():
     # Sensor Initialization
@@ -222,11 +222,11 @@ def main():
     while not rospy.is_shutdown():
         # INIT TARGET MODEL AND PLATFORM MODEL WITH THE LATEST ESTIMATION AND SENSOR POSITIONS 
         
-        target_est = np.loadtxt('scripts/target_est.txt')
+        target_est = np.loadtxt(lib_path+'/target_est.txt')
         target_est = [target_est[0],target_est[1],target_est[2],target_est[3]]
-        platform_state = np.loadtxt('scripts/platform_state.txt')
+        platform_state = np.loadtxt(lib_path+'/platform_state.txt')
         platform_state = [platform_state[0],platform_state[1],platform_state[2]] 
-        covariance = np.loadtxt('scripts/covariance.txt')
+        covariance = np.loadtxt(lib_path+'/covariance.txt')
         tracker1 = Tracker('first_observer', P_init)
         for i in range(4):
             for j in range(4):
