@@ -22,6 +22,7 @@ count = 0
 key1 = -pi/4
 key2 = 0
 key3 = pi/4
+keys = [key1, key2, key3]
 key_final = None
 tc = 2
 target_theta = pi/2
@@ -69,6 +70,8 @@ class Target():
         self.y = self.x + self.vly*self.dt
         return [self.x, self.y, self.vlx, self.vly]
 
+#class QueuePriority():
+
 class Node:
  
     # Constructor to create a new node
@@ -84,9 +87,7 @@ class Node:
         self.s_realization = None
 
 
-def compute_cost(input_cost, control_input, target_init, platform_init, init_cov, tracker1):
-   
-    
+def simulation(control_input, target_init, platform_init, init_cov, tracker1):
     platform = Platform(platform_init)
     target = Target(target_init)
     platform_state = platform.update_state(control_input)  
@@ -107,10 +108,13 @@ def compute_cost(input_cost, control_input, target_init, platform_init, init_cov
     [state, P] = tracker1.state
     
     state = [state[0,0], state[1,0], state[2,0], state[3,0]]
-    #print(state)
+    return state, P, platform_state
+
+def compute_cost(input_cost, P):
+   
     cost = np.trace(P)
-    cost = input_cost + cost
-    return cost, state, P, platform_state
+    #cost = input_cost + cost
+    return cost
 
 def minValueNode( node):
     current = node
@@ -132,47 +136,26 @@ def inorder(root):
         inorder(root.right)
         
 # A utility function to insert a new node with given key in TST
-def insert1( node,key, cost, target_est, platform_state, covariance, tracker1):
+def insert1( node, key, cost):
     # If the tree is empty, return a new node
     global key_final
     if node is None:
-        return Node(key, cost)
+        return Node(key, cost) #TODO
+    
+    
+    node.left = insert1(node.left, key1, cost)
 
-    new_cost1, t1, P1, s1 = compute_cost(node.cost,key1,target_est,platform_state, covariance, tracker1)
-    #print(t1)
-    #print(P1)
-    #print(s1)
-    tmpCost1 = new_cost1
-    key_final = key1
-    new_cost2, t2, P2, s2 = compute_cost(node.cost,key2,target_est,platform_state, covariance, tracker1)
-    tmpCost2 = new_cost2
-    new_cost3, t3, P3, s3 = compute_cost(node.cost,key3,target_est,platform_state, covariance, tracker1)
-    tmpCost3 = new_cost3
-    if tmpCost2 < tmpCost1:
-        key_final = key2
-        tmpCost1 = tmpCost2
-    if tmpCost3 < tmpCost1:
-        key_final = key3
-        tmpCost2 = tmpCost3
-    
-    
-    node.left = insert1(node.left, key1, new_cost1, t1, s1, P1, tracker1)
-    node.left.cost = new_cost1
-    node.left.t_realization = t1
-    node.left.s_realization = s1
-    node.left.P_realization = P1
-    node.middle = insert1(node.middle, key2, new_cost2, t2, s2, P2, tracker1)
-    node.middle.cost = new_cost2
-    node.middle.t_realization = t2
-    node.middle.s_realization = s2
-    node.middle.P_realization = P2
-    node.right = insert1(node.right, key3, new_cost3, t3, s3, P3, tracker1)
-    node.right.cost = new_cost3
-    node.right.t_realization = t3
-    node.right.s_realization = s3
-    node.right.P_realization = P3
+    node.middle = insert1(node.middle, key2, cost)
+
+    node.right = insert1(node.right, key3, cost)
+
 
     return node
+
+
+def init_tree(node,key,init_cost=0):
+    if node is None:
+        return Node(key, init_cost)
 
 def callback1(data):
 
@@ -209,7 +192,7 @@ def main():
     # Define Input for tree generation: tree level, estimated state
 
 
-    T = 4
+    T = 3
 
 
 
@@ -232,12 +215,70 @@ def main():
             for j in range(4):
                 P_init[i,j] = covariance[i+j]
 
-        root = insert1(root, 0.001, cost, target_est, platform_state, P_init, tracker1)
+        costs1 = []
+        costs2 = []
+        costs3 = []
+        t_est1 = [1, 1, 0, 0]
+        t_est2 = [1, 1, 0, 0]
+        t_est3 = [1, 1, 0, 0]
+        s1 = [5, 5, 0]
+        s2= [5, 5, 0]
+        s3 = [5, 5, 0]
+        P1 = P_init
+        P2 = P_init
+        P3 = P_init
+
+        root = init_tree(root, 0.001)
         
         start = time.time()
         for t in range(T):
+            for k in range(3):
+                
+                
+                
+                if k == 0:
+                    
+                    xl, Pl, sl = simulation(keys[k], t_est1, s1, P1, tracker1)
+                    t_est1 = xl
+                    s1 = sl
+                    print('s1',s1)
+                    P1 = Pl
+                    cost1 = compute_cost(0, Pl)
+                    costs1.append(cost1)
+                    #for j in range(3):
+                        #xm, Pm, sm = simulation(keys[k], t_est1, s1, P1, tracker1)
+                        #print(str(j),sm)
+                if k == 1:
+                    xl, Pl, sl = simulation(keys[k], t_est2, s2, P2, tracker1)
+                    t_est2 = xl
+                    s2 = sl
+                    print('s2',s2)
+                    P2 = Pl
+                    cost2 = compute_cost(0, Pl)
+                    costs2.append(cost2)
+                if k == 2:
+                    xl, Pl, sl = simulation(keys[k], t_est3, s3, P3, tracker1)
+                    t_est3 = xl
+                    s3 = sl
+                    print('s3',s3)
+                    P3 = Pl
+                    cost3 = compute_cost(0, Pl)
+                    costs3.append(cost3)
+                
+            key = key1
+            if cost2 < cost1:
+                key = key2
+                key_final = key2
+                root = insert1(root, key, cost2)
+            elif cost3 < cost1:
+                key = key3
+                key_final = key3
+                root = insert1(root, key, cost3)
+            else:
+                key_final = key1
+                root = insert1(root, key, cost1)
             
-            root = insert1(root, 0, root.cost, target_est, platform_state, P_init, tracker1)
+
             ctrl_cmd.append(key_final)
 
         print("Inorder traversal of the given tree")
@@ -256,35 +297,3 @@ def main():
 if __name__ == '__main__':
     
     main()
-
-
-'''def deleteNode(root, target, tracker1, platform, sensor1, sensor2):
- 
-    # Base Case
-    if root is None:
-        return root 
- 
-    root.compute_cost(root.cost, key1, target, tracker1, platform, sensor1, sensor2)
-    tmpCost = root.cost
-    key_final = key1
-
-    root.compute_cost(root.cost, key2, target, tracker1, platform, sensor1, sensor2) 
-    tmpCost2 = root.cost
-    if tmpCost2 <= tmpCost:
-        root.left = deleteNode(root.left,target, tracker1, platform, sensor1, sensor2)
-    else:
-        root.middle = deleteNode(root.middle,target, tracker1, platform, sensor1, sensor2)
- 
-    root.compute_cost(root.cost, key3, target, tracker1, platform, sensor1, sensor2) 
-    tmpCost3 = root.cost
-
-    if tmpCost3 <= tmpCost:
-        root.middle = deleteNode(root.middle, target, tracker1, platform, sensor1, sensor2)
-    else:
-        root.right = deleteNode(root.right, target, tracker1, platform, sensor1, sensor2)
-    if root.left is None:
-        tmp = root.middle
-        root = None
-        return tmp
-    return root
-'''
