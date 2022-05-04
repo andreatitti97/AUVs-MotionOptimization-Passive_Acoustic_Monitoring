@@ -35,7 +35,7 @@ class Tracker:
             x0, y0 = target_init[0], target_init[1]
             self.__ekf.init_state_vector(x0,y0, vx, vy)
             #self.__previous_timestamp = measurement_packet.timestamp
-
+            print('prova')
             self.__is_initialized = True
             return
 

@@ -19,9 +19,9 @@ sys.path.append(lib_path)
 
 #GLOBAL VARIABLES
 count = 0
-key1 = -pi/4
+key1 = -pi/6
 key2 = 0
-key3 = pi/4
+key3 = pi/6
 keys = [key1, key2, key3]
 key_final = None
 tc = 2
@@ -30,9 +30,9 @@ target_theta = pi/2
 f1 = 1 #Hz
 f2 = 1 #Hz
 mean1 = 0
-variance1 = 0
+variance1 = 0.1
 mean2 = 0
-variance2 = 0
+variance2 = 0.1
 sensor1 = Sensor('first_streamer',f1,mean1,variance1,1)
 sensor2 = Sensor('seconda_streamer',f2,mean2,variance2,-1)
     
@@ -45,7 +45,7 @@ class Platform():
         self.dt = 0
     def update_state(self, delta):
 
-        self.dt += tc
+        self.dt = tc
         self.theta = self.theta + delta
         self.x = self.x + cos(self.theta)*self.vl*self.dt
         self.y = self.x + cos(self.theta)*self.vl*self.dt
@@ -63,14 +63,13 @@ class Target():
 
     def update_state(self):
 
-        self.dt += 1
+        self.dt = tc
         self.vlx = 1*cos(target_theta)#TODO make dynamic
+        print(self.vlx)
         self.vly = 1*sin(target_theta)
         self.x = self.x + self.vlx*self.dt
-        self.y = self.x + self.vly*self.dt
+        self.y = self.y + self.vly*self.dt
         return [self.x, self.y, self.vlx, self.vly]
-
-#class QueuePriority():
 
 class Node:
  
@@ -78,6 +77,8 @@ class Node:
     def __init__(self, key, cost):
 
         self.key = key 
+        self.level = 0
+
         self.left = None
         self.middle = None
         self.right = None
@@ -92,6 +93,7 @@ def simulation(control_input, target_init, platform_init, init_cov, tracker1):
     target = Target(target_init)
     platform_state = platform.update_state(control_input)  
     target_state = target.update_state() 
+    print(target_state)
     #update measurament
     sensor1.vehiclePose(platform_state[0], platform_state[1], platform_state[2])  
     sensor1.targetPoseNoisy(target_state[0], target_state[1], target_theta)
@@ -131,7 +133,7 @@ def inorder(root):
     if root is not None:
 
         inorder(root.left)
-        print(root.key)
+        print(root.cost)
         inorder(root.middle)
         inorder(root.right)
         
@@ -142,14 +144,17 @@ def insert1( node, key, cost):
     if node is None:
         return Node(key, cost) #TODO
     
-    
-    node.left = insert1(node.left, key1, cost)
-
-    node.middle = insert1(node.middle, key2, cost)
-
-    node.right = insert1(node.right, key3, cost)
-
-
+    if key == key1:
+        node.left = insert1(node.left, key1, cost)
+        
+        node.level += 1
+    if key == key2:
+        node.middle = insert1(node.middle, key2, cost)
+        node.level += 1
+    if key == key3:
+        node.right = insert1(node.right, key3, cost)
+        node.level += 1
+    #print(node.right.level)
     return node
 
 
@@ -192,8 +197,7 @@ def main():
     # Define Input for tree generation: tree level, estimated state
 
 
-    T = 3
-
+    T = 4
 
 
     root = None
@@ -211,6 +215,8 @@ def main():
         platform_state = [platform_state[0],platform_state[1],platform_state[2]] 
         covariance = np.loadtxt(lib_path+'/covariance.txt')
         tracker1 = Tracker('first_observer', P_init)
+        tracker2 = Tracker('second', P_init)
+        tracker3 = Tracker('third', P_init)
         for i in range(4):
             for j in range(4):
                 P_init[i,j] = covariance[i+j]
@@ -218,15 +224,12 @@ def main():
         costs1 = []
         costs2 = []
         costs3 = []
-        t_est1 = [1, 1, 0, 0]
-        t_est2 = [1, 1, 0, 0]
-        t_est3 = [1, 1, 0, 0]
-        s1 = [5, 5, 0]
-        s2= [5, 5, 0]
-        s3 = [5, 5, 0]
+        t_est1 = [0.01, 0.01, 0, 0]
+ 
+        s1 = [5, 1, pi/4]
+
         P1 = P_init
-        P2 = P_init
-        P3 = P_init
+
 
         root = init_tree(root, 0.001)
         
@@ -238,53 +241,51 @@ def main():
                 
                 if k == 0:
                     
-                    xl, Pl, sl = simulation(keys[k], t_est1, s1, P1, tracker1)
-                    t_est1 = xl
-                    s1 = sl
-                    print('s1',s1)
-                    P1 = Pl
-                    cost1 = compute_cost(0, Pl)
+                    xl1, Pl1, sl1 = simulation(keys[k], t_est1, s1, P1, tracker1)
+                    cost1 = compute_cost(0, Pl1)
+                    #
+                    # print('s1',xl1)
                     costs1.append(cost1)
-                    #for j in range(3):
-                        #xm, Pm, sm = simulation(keys[k], t_est1, s1, P1, tracker1)
-                        #print(str(j),sm)
+
+                        
                 if k == 1:
-                    xl, Pl, sl = simulation(keys[k], t_est2, s2, P2, tracker1)
-                    t_est2 = xl
-                    s2 = sl
-                    print('s2',s2)
-                    P2 = Pl
-                    cost2 = compute_cost(0, Pl)
+                    xl2, Pl2, sl2 = simulation(keys[k], t_est1, s1, P1, tracker2)
+                    cost2 = compute_cost(0, Pl2)
+                    #print('s2',xl2)
                     costs2.append(cost2)
                 if k == 2:
-                    xl, Pl, sl = simulation(keys[k], t_est3, s3, P3, tracker1)
-                    t_est3 = xl
-                    s3 = sl
-                    print('s3',s3)
-                    P3 = Pl
-                    cost3 = compute_cost(0, Pl)
+                    xl3, Pl3, sl3 = simulation(keys[k], t_est1, s1, P1, tracker3)
+                    cost3 = compute_cost(0, Pl3)
+                    #print('s3',xl3)
                     costs3.append(cost3)
-                
-            key = key1
-            if cost2 < cost1:
-                key = key2
-                key_final = key2
-                root = insert1(root, key, cost2)
-            elif cost3 < cost1:
-                key = key3
-                key_final = key3
-                root = insert1(root, key, cost3)
-            else:
-                key_final = key1
-                root = insert1(root, key, cost1)
             
 
+            cost = cost1
+            t_est1 = xl1
+            s1 = sl1
+                    
+            P1 = Pl1
+            if cost2 < cost:
+
+                key_final = key2
+                cost = cost2
+                t_est1 = xl2
+                s1 = sl2
+                    
+                P1 = Pl2
+            if cost3 < cost:
+
+                key_final = key3
+                t_est1 = xl3
+                s1 = sl3
+                P1 = Pl3
+            else:
+                key_final = key1
+            #root = insert1(root, key, cost)
+            #tracker1 = Tracker('first_observer', P1)
             ctrl_cmd.append(key_final)
 
         print("Inorder traversal of the given tree")
-        inorder(root)
-        #node = minValueNode(root)
-        #print(node.key)
         stop = time.time()
         print('OPTIMIZATION TIME:',stop - start)
         print(ctrl_cmd)
@@ -292,7 +293,7 @@ def main():
         ctrl_cmd = []
         
         input('PRESS INVIO TO CONTINUE OPTIMIZATION')
-        root = None
+        #root = None
         
 if __name__ == '__main__':
     

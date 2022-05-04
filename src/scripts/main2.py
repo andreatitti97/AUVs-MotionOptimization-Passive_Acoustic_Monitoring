@@ -35,7 +35,9 @@ prev_count = 0
 goal_theta = 0
 old_pose  = 0
 N = 4 #planning horizon
-
+target_x_traj = []
+target_y_traj = []
+err_medio = []
 class Pose:
     """2D pose"""
 
@@ -99,9 +101,9 @@ class Robot:
 
     def move_target(self, dt):
         
-
-        self.target_x_traj.append(self.pose_target.x)
-        self.target_y_traj.append(self.pose_target.y)
+        
+        target_x_traj.append(self.pose_target.x)
+        target_y_traj.append(self.pose_target.y)
         linear_velocity = self.vel_lin_target
         angular_velocity = self.vel_ang_target
         self.pose_target.theta = self.pose_target.theta + angular_velocity * dt
@@ -124,8 +126,6 @@ class Robot:
         self.y_traj.append(self.pose.y)
         t += 1
         
-        #heading_change = 0
-        #if t == 200 or t==400 or t==600 or t == 800:
         if t%200 == 0:
             count = count+1
 
@@ -175,9 +175,7 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
     global simulation_running
     rate = rospy.Rate(100) #loop spin at 100 Hz
     # Init Time Variables
-    t = 0
-    x0 = [5, 1, pi/2]
-    
+    t = 0    
     while not rospy.is_shutdown():
         
         t += TIME_STEP
@@ -191,8 +189,8 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
             sensor2.targetPoseNoisy(instance.pose_target.x,instance.pose_target.y,instance.pose_target.theta)
             [measure2, sensor_pose2] = sensor2.measureBearing()   
         measures = [measure1, measure2]
-        target_state = [instance.pose_target.x,instance.pose_target.y, 2*np.cos(instance.pose_target.theta),
-         2*np.sin(instance.pose_target.theta)]
+        target_state = [instance.pose_target.x,instance.pose_target.y, np.cos(instance.pose_target.theta),
+         np.sin(instance.pose_target.theta)]
         
         
         tracker1.processMeasurement(measures,target_state, sensor_pose, sensor_pose2, 0.01)
@@ -208,10 +206,14 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         pub_platform_state.publish(np.array(sensor_pose,dtype=np.float32))
 
         ctrl_cmd = np.loadtxt(lib_path+'/ctrl_cmd.txt')
-        
+        err = np.abs(target_state[1] - curr_est[1,0])
+
         instance.move(TIME_STEP, ctrl_cmd)
         instance.move_target(TIME_STEP)
-        
+        np.savetxt(lib_path+'/target_x_traj.txt',target_x_traj)
+        np.savetxt(lib_path+'/target_y_traj.txt',target_y_traj)
+        err_medio.append(err)
+        np.savetxt(lib_path+'/err_medio.txt',err_medio)
         rate.sleep()
         
         #np.savetxt('measures',measures)
@@ -342,9 +344,9 @@ def main():
     f1 = 1 #Hz
     f2 = 1 #Hz
     mean1 = 0
-    variance1 = 0
+    variance1 = 0.1
     mean2 = 0
-    variance2 = 0
+    variance2 = 0.1
     sensor1 = Sensor('first_streamer',f1,mean1,variance1,1)#
     sensor2 = Sensor('seconda_streamer',f2,mean2,variance2,-1)
     tracker1 = Tracker('first_observer')
@@ -356,7 +358,8 @@ def main():
     # Run The Simulation
     
     run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platform_state, pub_covariance)
-    
+    np.savetxt(lib_path+'target_x_traj',target_x_traj)
+    np.savetxt(lib_path+'target_y_traj',target_x_traj)
 
 if __name__ == '__main__':
     main()

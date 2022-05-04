@@ -2,6 +2,9 @@ from xmlrpc.client import ServerProxy
 import numpy as np
 import numpy.matlib
 from math import atan2
+import os, sys
+lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs')
+sys.path.append(lib_path)
 
 def state_vector_to_scalars(state_vector):
     '''
@@ -112,7 +115,4 @@ class ExtendedKalmanFilter:
         
         self.__x = self.__x + K*y_tilde
         self.__P = self.__P - K*self.__H*self.__P
-        # OPTIONAL: save data ( for plot)
-        self.trackingDataState.append(self.__x)
 
-        #np.savetxt('trackedState.txt',self.trackingDataState[], fmt='%2f')

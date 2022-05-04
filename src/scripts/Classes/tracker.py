@@ -4,6 +4,9 @@ import time
 import numpy as np
 from queue import Queue
 from threading import Thread
+import os, sys
+lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs')
+sys.path.append(lib_path)
 
 class Tracker:
     '''
@@ -16,6 +19,7 @@ class Tracker:
         self.__ekf = ExtendedKalmanFilter()
         self.__is_initialized = False
         self.__previous_timestamp = 0.
+        self.data = []
         # Establish communication queues
         
         
@@ -35,7 +39,7 @@ class Tracker:
             x0, y0 = target_init[0], target_init[1]
             self.__ekf.init_state_vector(x0,y0, vx, vy)
             #self.__previous_timestamp = measurement_packet.timestamp
-
+            
             self.__is_initialized = True
             return
 
@@ -48,10 +52,12 @@ class Tracker:
         #4th Update the observation matrix and the target state
         self.__ekf.update(measures, sensor_state1, sensor_state2)
         
-        #print('trackerID:',self.id, self.__ekf.current_estimate)
+        print('trackerID:',self.id, self.__ekf.current_estimate)
         #5th COMMUNICATION 
+        state = self.__ekf.current_estimate[0]
         
-        
+        self.data.append(state[1,0])
+        np.savetxt(lib_path+'/ekf_out_y.txt',self.data)
         # Solve Optimization problem
         #print(self.__ekf.__H)
         
