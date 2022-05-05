@@ -14,7 +14,7 @@ from rospy.numpy_msg import numpy_msg
 from Classes.sensor import Sensor
 from Classes.tracker_optimization import Tracker
 # PATH DEFINITION
-lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs')
+lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs/utils')
 sys.path.append(lib_path)
 
 #GLOBAL VARIABLES
@@ -167,7 +167,7 @@ def callback1(data):
     tmp = data.data
     
     target_est = [tmp[0], tmp[1], tmp[2], tmp[3]]
-    
+    print(data)
     np.savetxt(lib_path+'/target_est.txt',np.array(target_est,dtype=np.float32))
 
 
@@ -197,7 +197,7 @@ def main():
     # Define Input for tree generation: tree level, estimated state
 
 
-    T = 4
+    T = 4  
 
 
     root = None

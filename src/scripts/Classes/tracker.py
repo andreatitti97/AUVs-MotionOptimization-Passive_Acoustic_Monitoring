@@ -57,7 +57,7 @@ class Tracker:
         state = self.__ekf.current_estimate[0]
         
         self.data.append(state[1,0])
-        np.savetxt(lib_path+'/ekf_out_y.txt',self.data)
+        #np.savetxt(lib_path+'/ekf_out_y.txt',self.data)
         # Solve Optimization problem
         #print(self.__ekf.__H)
         

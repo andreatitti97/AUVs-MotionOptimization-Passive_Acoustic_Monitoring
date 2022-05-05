@@ -16,19 +16,21 @@ from Classes.tracker import Tracker
 from Classes.controller import Controller
 from Classes.sensor import Sensor
 # PATH DEFINITON
-lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs')
-sys.path.append(lib_path)
+utils_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs/utils')
+sys.path.append(utils_path)
+plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs/plot')
+sys.path.append(plot_path)
 
 # Simulation parameters
 TIME_DURATION = 1000
 TIME_STEP = 0.01
-SHOW_ANIMATION = True
+SHOW_ANIMATION = False
 PLOT_WINDOW_SIZE_X = 20
 PLOT_WINDOW_SIZE_Y = 20
 PLOT_FONT_SIZE = 8
 t = 0
 simulation_running = True
-all_robots_are_at_target = False
+
 #GLOBAL VARIABLES
 count = 0
 prev_count = 0
@@ -37,7 +39,10 @@ old_pose  = 0
 N = 4 #planning horizon
 target_x_traj = []
 target_y_traj = []
-err_medio = []
+rmse_x = []
+rmse_y = []
+target_est_x = []
+target_est_y = []
 class Pose:
     """2D pose"""
 
@@ -77,9 +82,10 @@ class Robot:
         self.y_traj = []
         self.target_x_traj = []
         self.target_y_traj = []
-        self.pose = Pose(0, 0, 0)
-        self.pose_start = Pose(0, 0, 0)
-        self.pose_target = Pose(15, 15, 0)
+        self.pose = Pose(5, 1, pi/4)
+        self.pose_start = Pose(5, 1, pi/4)
+        self.pose_target =Pose(0.01, 0.01, pi/4)
+
         self.vel_lin_target = 1
         self.vel_ang_target = 0
         self.is_at_target = False
@@ -100,7 +106,6 @@ class Robot:
         self.pose = pose_start
 
     def move_target(self, dt):
-        
         
         target_x_traj.append(self.pose_target.x)
         target_y_traj.append(self.pose_target.y)
@@ -180,22 +185,23 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         
         t += TIME_STEP
         for instance in robots:
-           
+        # SIMULATE SENSORS MEASURAMENTS
             sensor1.vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta)
             sensor1.targetPoseNoisy(instance.pose_target.x,instance.pose_target.y,instance.pose_target.theta)
             [measure1,sensor_pose] = sensor1.measureBearing()
             
             sensor2.vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta)
             sensor2.targetPoseNoisy(instance.pose_target.x,instance.pose_target.y,instance.pose_target.theta)
-            [measure2, sensor_pose2] = sensor2.measureBearing()   
-        measures = [measure1, measure2]
-        target_state = [instance.pose_target.x,instance.pose_target.y, np.cos(instance.pose_target.theta),
-         np.sin(instance.pose_target.theta)]
-        
-        
+            [measure2, sensor_pose2] = sensor2.measureBearing()  
+            
+            measures = [measure1, measure2]
+            target_state = [instance.pose_target.x,instance.pose_target.y, np.cos(instance.pose_target.theta),
+         np.sin(instance.pose_target.theta)] # add vl for vl diversa da 1
+        # SIMULATE EKF
         tracker1.processMeasurement(measures,target_state, sensor_pose, sensor_pose2, 0.01)
         [curr_est, P] = tracker1.state
         
+        # PUBLISH INFORMATION FOR OPTIMIZATION
         cov = []
         pub_estimation.publish(np.array(curr_est,dtype=np.float32))
         for i in range(4):
@@ -204,21 +210,27 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
 
         pub_covariance.publish(np.array(cov,dtype=np.float32))
         pub_platform_state.publish(np.array(sensor_pose,dtype=np.float32))
-
-        ctrl_cmd = np.loadtxt(lib_path+'/ctrl_cmd.txt')
-        err = np.abs(target_state[1] - curr_est[1,0])
-
+        # LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
+        ctrl_cmd = np.loadtxt(utils_path+'/ctrl_cmd.txt')
+        # SAVE DATA FOR PLOT
+        err_y = np.sqrt((target_state[1] - curr_est[1,0])**2)
+        err_x = np.sqrt((target_state[0] - curr_est[0,0])**2)
+        print(err_x)
+        target_est_y.append(curr_est[1,0])
+        target_est_x.append(curr_est[0,0])
+        rmse_x.append(err_y)
+        rmse_y.append(err_x)
+        
+        
         instance.move(TIME_STEP, ctrl_cmd)
         instance.move_target(TIME_STEP)
-        np.savetxt(lib_path+'/target_x_traj.txt',target_x_traj)
-        np.savetxt(lib_path+'/target_y_traj.txt',target_y_traj)
-        err_medio.append(err)
-        np.savetxt(lib_path+'/err_medio.txt',err_medio)
+        np.savetxt(plot_path+'/target_x_traj.txt',target_x_traj)
+        np.savetxt(plot_path+'/target_y_traj.txt',target_y_traj)
+        np.savetxt(plot_path+'/target_est_x.txt',target_est_x)
+        np.savetxt(plot_path+'/target_est_y.txt',target_est_y)
+        np.savetxt(plot_path+'/rmse_y.txt',rmse_y)
+        np.savetxt(plot_path+'/rmse_x.txt',rmse_x)
         rate.sleep()
-        
-        #np.savetxt('measures',measures)
-        #print(tracker1.state)
-        
         if SHOW_ANIMATION:
             plt.cla()
             plt.xlim(-5, PLOT_WINDOW_SIZE_X)
@@ -322,7 +334,7 @@ def wTv(x, y, theta):
 def callback(data):
     ctrl_cmd = data.data
     print(ctrl_cmd)
-    np.savetxt(lib_path+'/ctrl_cmd.txt',np.array(ctrl_cmd,dtype=np.float32))
+    np.savetxt(utils_path+'/ctrl_cmd.txt',np.array(ctrl_cmd,dtype=np.float32))
 
 def main():
     # ROS INIT
@@ -331,10 +343,9 @@ def main():
     pub_covariance = rospy.Publisher('covariance', numpy_msg(Floats), queue_size=1000)
     pub_platform_state = rospy.Publisher('platform_state', numpy_msg(Floats), queue_size=100)
     rospy.Subscriber('ctrl_cmd',numpy_msg(Floats), callback)
-    elapsed_time_ = rospy.Duration(0.0)
-    period = rospy.Duration(0.001)
+    
     # Initial Conditions
-    pose_target = Pose(0.01, 0.01, pi/2)
+    pose_target = Pose(0.01, 0.01, pi/4)
     pose_start_1 = Pose(5, 1, pi/4)
     controller= Controller(5, 8, 2)
     robot_1 = Robot("platoform_center", "y", 1, 1, controller)
@@ -344,9 +355,9 @@ def main():
     f1 = 1 #Hz
     f2 = 1 #Hz
     mean1 = 0
-    variance1 = 0.1
+    variance1 = 0.02
     mean2 = 0
-    variance2 = 0.1
+    variance2 = 0.02
     sensor1 = Sensor('first_streamer',f1,mean1,variance1,1)#
     sensor2 = Sensor('seconda_streamer',f2,mean2,variance2,-1)
     tracker1 = Tracker('first_observer')
@@ -358,8 +369,6 @@ def main():
     # Run The Simulation
     
     run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platform_state, pub_covariance)
-    np.savetxt(lib_path+'target_x_traj',target_x_traj)
-    np.savetxt(lib_path+'target_y_traj',target_x_traj)
 
 if __name__ == '__main__':
     main()
