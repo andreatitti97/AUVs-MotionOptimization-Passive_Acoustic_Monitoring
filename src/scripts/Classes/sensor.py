@@ -17,7 +17,7 @@ class Sensor:
         self.f = f
         self.mean = mean
         self.variance = variance
-        d = 5
+        d = 100
         self.baseline = sign*d 
         self.noise = np.random.normal(self.mean, self.variance)
         self.measure = []
@@ -36,7 +36,8 @@ class Sensor:
         #to do target pose only linear positions and vel
 
     def targetPoseNoisy(self, x_t, y_t, theta_t):
-        self.w_poseNoisy_t = np.transpose([x_t, y_t, theta_t])+self.noise
+        #print(self.noise)
+        self.w_poseNoisy_t = np.transpose([x_t+self.noise, y_t+self.noise, theta_t])
         self.wTt = transformation_matrix(self.w_poseNoisy_t[0], self.w_poseNoisy_t[1], self.w_poseNoisy_t[2])
         self.vTt = np.linalg.inv(self.wTv)*self.wTt
         self.v_poseNoisy_t = np.dot(self.vTt,self.w_poseNoisy_t)

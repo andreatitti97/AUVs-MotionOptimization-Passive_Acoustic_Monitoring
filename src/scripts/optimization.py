@@ -25,14 +25,15 @@ key3 = pi/6
 keys = [key1, key2, key3]
 key_final = None
 tc = 2
-target_theta = pi/2
+target_theta = pi/3
+velTarget = 5
 # Sensors
 f1 = 1 #Hz
 f2 = 1 #Hz
 mean1 = 0
-variance1 = 0.1
+variance1 = 20
 mean2 = 0
-variance2 = 0.1
+variance2 = 20
 sensor1 = Sensor('first_streamer',f1,mean1,variance1,1)
 sensor2 = Sensor('seconda_streamer',f2,mean2,variance2,-1)
     
@@ -64,9 +65,8 @@ class Target():
     def update_state(self):
 
         self.dt = tc
-        self.vlx = 1*cos(target_theta)#TODO make dynamic
-        print(self.vlx)
-        self.vly = 1*sin(target_theta)
+        self.vlx = velTarget*cos(target_theta)#TODO make dynamic
+        self.vly = velTarget*sin(target_theta)
         self.x = self.x + self.vlx*self.dt
         self.y = self.y + self.vly*self.dt
         return [self.x, self.y, self.vlx, self.vly]
@@ -93,7 +93,7 @@ def simulation(control_input, target_init, platform_init, init_cov, tracker1):
     target = Target(target_init)
     platform_state = platform.update_state(control_input)  
     target_state = target.update_state() 
-    print(target_state)
+
     #update measurament
     sensor1.vehiclePose(platform_state[0], platform_state[1], platform_state[2])  
     sensor1.targetPoseNoisy(target_state[0], target_state[1], target_theta)
@@ -167,7 +167,6 @@ def callback1(data):
     tmp = data.data
     
     target_est = [tmp[0], tmp[1], tmp[2], tmp[3]]
-    print(data)
     np.savetxt(lib_path+'/target_est.txt',np.array(target_est,dtype=np.float32))
 
 
@@ -224,10 +223,9 @@ def main():
         costs1 = []
         costs2 = []
         costs3 = []
-        t_est1 = [0.01, 0.01, 0, 0]
+        t_est1 = [30, 100, 0, 0]
  
-        s1 = [5, 1, pi/4]
-
+        s1 = [800, 450, pi]  
         P1 = P_init
 
 
@@ -263,7 +261,6 @@ def main():
             cost = cost1
             t_est1 = xl1
             s1 = sl1
-                    
             P1 = Pl1
             if cost2 < cost:
 
@@ -271,7 +268,6 @@ def main():
                 cost = cost2
                 t_est1 = xl2
                 s1 = sl2
-                    
                 P1 = Pl2
             if cost3 < cost:
 
@@ -291,9 +287,9 @@ def main():
         print(ctrl_cmd)
         pub_ctrl_cmd.publish(np.array(ctrl_cmd,np.float32))
         ctrl_cmd = []
+        rate.sleep()
+        time.sleep(8)
         
-        input('PRESS INVIO TO CONTINUE OPTIMIZATION')
-        #root = None
         
 if __name__ == '__main__':
     

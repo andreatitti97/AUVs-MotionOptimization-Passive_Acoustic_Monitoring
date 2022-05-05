@@ -22,16 +22,19 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs/plo
 sys.path.append(plot_path)
 
 # Simulation parameters
-TIME_DURATION = 1000
+TIME_DURATION = 61
 TIME_STEP = 0.01
 SHOW_ANIMATION = False
-PLOT_WINDOW_SIZE_X = 20
-PLOT_WINDOW_SIZE_Y = 20
-PLOT_FONT_SIZE = 8
+PLOT_WINDOW_SIZE_X = 900
+PLOT_WINDOW_SIZE_Y = 900
+PLOT_FONT_SIZE = 10
 t = 0
 simulation_running = True
 
 #GLOBAL VARIABLES
+x0 = [30, 100, pi/3]
+x0_dot = [5, 0]
+s0 = [800, 450, pi]
 count = 0
 prev_count = 0
 goal_theta = 0
@@ -43,6 +46,7 @@ rmse_x = []
 rmse_y = []
 target_est_x = []
 target_est_y = []
+
 class Pose:
     """2D pose"""
 
@@ -82,11 +86,11 @@ class Robot:
         self.y_traj = []
         self.target_x_traj = []
         self.target_y_traj = []
-        self.pose = Pose(5, 1, pi/4)
-        self.pose_start = Pose(5, 1, pi/4)
-        self.pose_target =Pose(0.01, 0.01, pi/4)
+        self.pose = Pose(0,0,0)
+        self.pose_start = Pose(0,0,0)
+        self.pose_target =Pose(0,0,0)
 
-        self.vel_lin_target = 1
+        self.vel_lin_target = x0_dot[0]
         self.vel_ang_target = 0
         self.is_at_target = False
 
@@ -181,7 +185,7 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
     rate = rospy.Rate(100) #loop spin at 100 Hz
     # Init Time Variables
     t = 0    
-    while not rospy.is_shutdown():
+    while simulation_running is True and t <= TIME_DURATION:
         
         t += TIME_STEP
         for instance in robots:
@@ -195,10 +199,11 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
             [measure2, sensor_pose2] = sensor2.measureBearing()  
             
             measures = [measure1, measure2]
-            target_state = [instance.pose_target.x,instance.pose_target.y, np.cos(instance.pose_target.theta),
-         np.sin(instance.pose_target.theta)] # add vl for vl diversa da 1
+            target_state = [instance.pose_target.x,instance.pose_target.y, x0_dot[0]*np.cos(instance.pose_target.theta),
+         x0_dot[0]*np.sin(instance.pose_target.theta)]
+
         # SIMULATE EKF
-        tracker1.processMeasurement(measures,target_state, sensor_pose, sensor_pose2, 0.01)
+        tracker1.processMeasurement(measures,target_state, sensor_pose, sensor_pose2, TIME_STEP)
         [curr_est, P] = tracker1.state
         
         # PUBLISH INFORMATION FOR OPTIMIZATION
@@ -212,10 +217,11 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         pub_platform_state.publish(np.array(sensor_pose,dtype=np.float32))
         # LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
         ctrl_cmd = np.loadtxt(utils_path+'/ctrl_cmd.txt')
+        print(ctrl_cmd)
         # SAVE DATA FOR PLOT
-        err_y = np.sqrt((target_state[1] - curr_est[1,0])**2)
-        err_x = np.sqrt((target_state[0] - curr_est[0,0])**2)
-        print(err_x)
+        err_y = np.sqrt(((target_state[1] - curr_est[1,0])**2))
+        err_x = np.sqrt(((target_state[0] - curr_est[0,0])**2))
+
         target_est_y.append(curr_est[1,0])
         target_est_x.append(curr_est[0,0])
         rmse_x.append(err_y)
@@ -224,17 +230,21 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         
         instance.move(TIME_STEP, ctrl_cmd)
         instance.move_target(TIME_STEP)
-        np.savetxt(plot_path+'/target_x_traj.txt',target_x_traj)
-        np.savetxt(plot_path+'/target_y_traj.txt',target_y_traj)
-        np.savetxt(plot_path+'/target_est_x.txt',target_est_x)
-        np.savetxt(plot_path+'/target_est_y.txt',target_est_y)
-        np.savetxt(plot_path+'/rmse_y.txt',rmse_y)
-        np.savetxt(plot_path+'/rmse_x.txt',rmse_x)
+        if t > 60:
+            print('saving data for plot')
+            np.savetxt(plot_path+'/target_x_traj.txt',target_x_traj)
+            np.savetxt(plot_path+'/target_y_traj.txt',target_y_traj)
+            np.savetxt(plot_path+'/target_est_x.txt',target_est_x)
+            np.savetxt(plot_path+'/target_est_y.txt',target_est_y)
+            np.savetxt(plot_path+'/rmse_y.txt',rmse_y)
+            np.savetxt(plot_path+'/rmse_x.txt',rmse_x)
         rate.sleep()
+
+
         if SHOW_ANIMATION:
             plt.cla()
-            plt.xlim(-5, PLOT_WINDOW_SIZE_X)
-            plt.ylim(-5, PLOT_WINDOW_SIZE_Y)
+            plt.xlim(0, PLOT_WINDOW_SIZE_X)
+            plt.ylim(0, PLOT_WINDOW_SIZE_Y)
 
             # For stopping simulation with the esc key.
             plt.gcf().canvas.mpl_connect(
@@ -251,13 +261,13 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
                             np.cos(instance.pose_start.theta),
                             np.sin(instance.pose_start.theta),
                             color='r',
-                            width=0.1)
+                            width=1)
                 plt.arrow(instance.pose.x,
                             instance.pose.y,
                             np.cos(instance.pose.theta),
                             np.sin(instance.pose.theta),
                             color='g',
-                            width=0.1)
+                            width=1)
 
                 plot_vehicle(sensor_pose[0],
                                 sensor_pose[1],
@@ -285,13 +295,13 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
                             np.cos(instance.pose_target.theta),
                             np.sin(instance.pose_target.theta),
                             color='r',
-                            width=0.1)
+                            width=1)
                 plt.arrow(instance.pose_target.x,
                             instance.pose_target.y,
                             np.cos(instance.pose_target.theta),
                             np.sin(instance.pose_target.theta),
                             color='g',
-                            width=0.1)
+                            width=1)
                 
                 plot_vehicle(instance.pose_target.x,
                                 instance.pose_target.y,
@@ -314,11 +324,11 @@ def plot_vehicle(x, y, theta, x_traj, y_traj, color):
     p2 = T @ p2_i
     p3 = T @ p3_i
 
-    plt.plot([p1[0], p2[0]], [p1[1], p2[1]], color+'-')
-    plt.plot([p2[0], p3[0]], [p2[1], p3[1]], color+'-')
-    plt.plot([p3[0], p1[0]], [p3[1], p1[1]], color+'-')
+    plt.plot([p1[0], p2[0]], [p1[1], p2[1]], color+'-',linewidth=3)
+    plt.plot([p2[0], p3[0]], [p2[1], p3[1]], color+'-',linewidth=3)
+    plt.plot([p3[0], p1[0]], [p3[1], p1[1]], color+'-',linewidth=3)
 
-    plt.plot(x_traj, y_traj, color+'--')
+    plt.plot(x_traj, y_traj, color+'--', linewidth=1)
 
 
 def wTv(x, y, theta):
@@ -333,7 +343,7 @@ def wTv(x, y, theta):
 
 def callback(data):
     ctrl_cmd = data.data
-    print(ctrl_cmd)
+    #print(ctrl_cmd)
     np.savetxt(utils_path+'/ctrl_cmd.txt',np.array(ctrl_cmd,dtype=np.float32))
 
 def main():
@@ -345,19 +355,19 @@ def main():
     rospy.Subscriber('ctrl_cmd',numpy_msg(Floats), callback)
     
     # Initial Conditions
-    pose_target = Pose(0.01, 0.01, pi/4)
-    pose_start_1 = Pose(5, 1, pi/4)
-    controller= Controller(5, 8, 2)
-    robot_1 = Robot("platoform_center", "y", 1, 1, controller)
+    pose_target = Pose(x0[0], x0[1], x0[2])
+    pose_start_1 = Pose(s0[0], s0[1], s0[2])
+    controller= Controller(5, 8, 2) # controller parameters 
+    robot_1 = Robot("platoform_center", "y", 100, 100, controller)
    
     # Sensor Initialization
     
     f1 = 1 #Hz
     f2 = 1 #Hz
     mean1 = 0
-    variance1 = 0.02
+    variance1 = 20
     mean2 = 0
-    variance2 = 0.02
+    variance2 = 20
     sensor1 = Sensor('first_streamer',f1,mean1,variance1,1)#
     sensor2 = Sensor('seconda_streamer',f2,mean2,variance2,-1)
     tracker1 = Tracker('first_observer')
