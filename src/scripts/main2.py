@@ -1,6 +1,8 @@
 #Import basic system modules
 import os
+from platform import platform
 import sys
+import time
 # Import math modules
 from re import T
 import matplotlib.pyplot as plt
@@ -22,7 +24,7 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs/plo
 sys.path.append(plot_path)
 
 # Simulation parameters
-TIME_DURATION = 61
+TIME_DURATION = 250
 TIME_STEP = 0.01
 SHOW_ANIMATION = False
 PLOT_WINDOW_SIZE_X = 900
@@ -34,7 +36,7 @@ simulation_running = True
 #GLOBAL VARIABLES
 x0 = [30, 100, pi/3]
 x0_dot = [5, 0]
-s0 = [800, 450, pi]
+s0 = [750, 450, pi]
 count = 0
 prev_count = 0
 goal_theta = 0
@@ -42,6 +44,8 @@ old_pose  = 0
 N = 4 #planning horizon
 target_x_traj = []
 target_y_traj = []
+platform_x = []
+platform_y = []
 rmse_x = []
 rmse_y = []
 target_est_x = []
@@ -133,20 +137,24 @@ class Robot:
         global t, count, prev_count, goal_theta, old_pose
         self.x_traj.append(self.pose.x)
         self.y_traj.append(self.pose.y)
+        platform_x.append(self.pose.x)
+        platform_y.append(self.pose.y)
         t += 1
         
+
+        if count == N: 
+            count = 0
         if t%200 == 0:
             count = count+1
-
-        if count == N+1: 
-            count = 1
+            print(count)
+        
 
         if prev_count != count:
         
             #print('provs')
             heading_change = heading_changes[count-1]
-            if count > 1:
-                goal_theta = heading_change + old_pose  #heading_changes[count-2]
+            if count > 0:
+                goal_theta = heading_change + old_pose
             else: 
                 goal_theta = heading_change
 
@@ -173,7 +181,7 @@ class Robot:
         self.pose.y = self.pose.y + linear_velocity * \
             np.sin(self.pose.theta) * dt
 
-        if np.abs(angular_velocity) < 0.15:
+        if 0.15 < np.abs(angular_velocity) < 0.30:
             prev_count = count
         
 
@@ -185,9 +193,11 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
     rate = rospy.Rate(100) #loop spin at 100 Hz
     # Init Time Variables
     t = 0    
+    count = 0
     while simulation_running is True and t <= TIME_DURATION:
         
         t += TIME_STEP
+        count += 1
         for instance in robots:
         # SIMULATE SENSORS MEASURAMENTS
             sensor1.vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta)
@@ -216,8 +226,15 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         pub_covariance.publish(np.array(cov,dtype=np.float32))
         pub_platform_state.publish(np.array(sensor_pose,dtype=np.float32))
         # LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
-        ctrl_cmd = np.loadtxt(utils_path+'/ctrl_cmd.txt')
-        print(ctrl_cmd)
+        filesize = os.path.getsize(utils_path+'/ctrl_cmd.txt')
+        
+        if count%200 == 0:
+            print('loaded_new_cmds')
+            ctrl_cmd = np.loadtxt(utils_path+'/ctrl_cmd.txt')
+        else: # load it
+            
+            ctrl_cmd = [0, 0, 0, 0]
+        #print(ctrl_cmd)
         # SAVE DATA FOR PLOT
         err_y = np.sqrt(((target_state[1] - curr_est[1,0])**2))
         err_x = np.sqrt(((target_state[0] - curr_est[0,0])**2))
@@ -230,7 +247,7 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         
         instance.move(TIME_STEP, ctrl_cmd)
         instance.move_target(TIME_STEP)
-        if t > 60:
+        if t > (TIME_DURATION-1):
             print('saving data for plot')
             np.savetxt(plot_path+'/target_x_traj.txt',target_x_traj)
             np.savetxt(plot_path+'/target_y_traj.txt',target_y_traj)
@@ -238,6 +255,8 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
             np.savetxt(plot_path+'/target_est_y.txt',target_est_y)
             np.savetxt(plot_path+'/rmse_y.txt',rmse_y)
             np.savetxt(plot_path+'/rmse_x.txt',rmse_x)
+            np.savetxt(plot_path+'/x_platform.txt',platform_x)
+            np.savetxt(plot_path+'/y_platform.txt',platform_y)
         rate.sleep()
 
 
@@ -267,7 +286,7 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
                             np.cos(instance.pose.theta),
                             np.sin(instance.pose.theta),
                             color='g',
-                            width=1)
+                            width=5)
 
                 plot_vehicle(sensor_pose[0],
                                 sensor_pose[1],
@@ -309,7 +328,7 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
                                 instance.x_traj,
                                 instance.y_traj, 
                                 instance.color)
-            
+            #plt.show()
             plt.pause(TIME_STEP)
             
 

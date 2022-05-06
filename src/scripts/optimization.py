@@ -19,9 +19,9 @@ sys.path.append(lib_path)
 
 #GLOBAL VARIABLES
 count = 0
-key1 = -pi/6
+key1 = -pi/3
 key2 = 0
-key3 = pi/6
+key3 = pi/3
 keys = [key1, key2, key3]
 key_final = None
 tc = 2
@@ -212,14 +212,20 @@ def main():
         target_est = [target_est[0],target_est[1],target_est[2],target_est[3]]
         platform_state = np.loadtxt(lib_path+'/platform_state.txt')
         platform_state = [platform_state[0],platform_state[1],platform_state[2]] 
-        covariance = np.loadtxt(lib_path+'/covariance.txt')
-        tracker1 = Tracker('first_observer', P_init)
-        tracker2 = Tracker('second', P_init)
-        tracker3 = Tracker('third', P_init)
+        filesize = os.path.getsize(lib_path+'/covariance.txt')
+        if filesize == 0: # if empty
+            covariance = np.matrix([[1,0,tc,0],
+                              [0,1,0,tc],
+                              [0,0,1,0],
+                              [0,0,0,1]])
+        else: # else load it
+            covariance = np.loadtxt(lib_path+'/covariance.txt')
         for i in range(4):
             for j in range(4):
                 P_init[i,j] = covariance[i+j]
-
+        tracker1 = Tracker('first_observer', P_init)
+        tracker2 = Tracker('second', P_init)
+        tracker3 = Tracker('third', P_init)
         costs1 = []
         costs2 = []
         costs3 = []
@@ -280,15 +286,13 @@ def main():
             #root = insert1(root, key, cost)
             #tracker1 = Tracker('first_observer', P1)
             ctrl_cmd.append(key_final)
-
-        print("Inorder traversal of the given tree")
-        stop = time.time()
-        print('OPTIMIZATION TIME:',stop - start)
-        print(ctrl_cmd)
         pub_ctrl_cmd.publish(np.array(ctrl_cmd,np.float32))
+        stop = time.time()
+        print('OPTIMIZATION TIME:',(stop - start)*10)
+        print(ctrl_cmd)
         ctrl_cmd = []
         rate.sleep()
-        time.sleep(8)
+        time.sleep(9)
         
         
 if __name__ == '__main__':
