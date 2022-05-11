@@ -1,7 +1,8 @@
 from xmlrpc.client import ServerProxy
 import numpy as np
 import numpy.matlib
-from math import atan2
+from math import atan2, atan
+import random
 
 def state_vector_to_scalars(state_vector):
     '''
@@ -100,9 +101,17 @@ class ExtendedKalmanFilter:
         [xt, yt, dotx, doty] = state_vector_to_scalars(self.__x)
         
         # Compute the output error for both measuraments.
+        #y_tilde1 = measures[0] - atan((yt - sensor_state1[1])/(xt - sensor_state1[0]))#atan2(yt - sensor_state1[1],xt - sensor_state1[0])
+        #y_tilde2 = measures[1] - atan((yt - sensor_state2[1])/(xt - sensor_state2[0]))#atan2(yt - sensor_state2[1],xt - sensor_state2[0])
         y_tilde1 = measures[0] - atan2(yt - sensor_state1[1],xt - sensor_state1[0])
         y_tilde2 = measures[1] - atan2(yt - sensor_state2[1],xt - sensor_state2[0])
+        
+        '''if np.abs(y_tilde1) > 1:
+            y_tilde1 = 0.1
+        if np.abs(y_tilde2) > 1:
+            y_tilde2 = 0.1'''
         y_tilde = np.array([[y_tilde1], [y_tilde2]])
+
         self.recompute_HR(sensor_state1,sensor_state2)
 
         # Pre compute for the kalman gain K

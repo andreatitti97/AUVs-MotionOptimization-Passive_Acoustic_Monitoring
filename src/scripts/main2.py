@@ -24,19 +24,18 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs/plo
 sys.path.append(plot_path)
 
 # Simulation parameters
-TIME_DURATION = 250
+TIME_DURATION = 1000 #seconds
 TIME_STEP = 0.01
+TIME_SCALER = 8
 SHOW_ANIMATION = False
-PLOT_WINDOW_SIZE_X = 900
-PLOT_WINDOW_SIZE_Y = 900
+PLOT_WINDOW_SIZE_X = 3000
+PLOT_WINDOW_SIZE_Y = 3000
 PLOT_FONT_SIZE = 10
+TARGET_INIT = [35, 113, pi/3, 3] #[x,y,theta,linear vel]
+PLATFORM_INIT_POSE = [100, 50, pi] #[x,y,theta]
+#GLOBAL VARIABLES
 t = 0
 simulation_running = True
-
-#GLOBAL VARIABLES
-x0 = [30, 100, pi/3]
-x0_dot = [5, 0]
-s0 = [750, 450, pi]
 count = 0
 prev_count = 0
 goal_theta = 0
@@ -86,17 +85,11 @@ class Robot:
         self.MAX_LINEAR_SPEED = max_linear_speed
         self.MAX_ANGULAR_SPEED = max_angular_speed
         self.path_finder_controller = path_finder_controller
-        self.x_traj = []
-        self.y_traj = []
-        self.target_x_traj = []
-        self.target_y_traj = []
         self.pose = Pose(0,0,0)
         self.pose_start = Pose(0,0,0)
         self.pose_target =Pose(0,0,0)
-
-        self.vel_lin_target = x0_dot[0]
+        self.vel_lin_target = TARGET_INIT[3]
         self.vel_ang_target = 0
-        self.is_at_target = False
 
     def set_start_target_poses(self, pose_start, pose_target):
         """
@@ -114,7 +107,14 @@ class Robot:
         self.pose = pose_start
 
     def move_target(self, dt):
-        
+        """
+        Moves the target for one time step increment
+
+        Parameters
+        ----------
+        dt : (float)
+            time step
+        """
         target_x_traj.append(self.pose_target.x)
         target_y_traj.append(self.pose_target.y)
         linear_velocity = self.vel_lin_target
@@ -127,16 +127,16 @@ class Robot:
 
     def move(self, dt, heading_changes):
         """
-        Moves the robot for one time step increment
+        Moves the platform for one time step increment
 
         Parameters
         ----------
         dt : (float)
             time step
+        heading_changes : (float)
+            requested heading change
         """
         global t, count, prev_count, goal_theta, old_pose
-        self.x_traj.append(self.pose.x)
-        self.y_traj.append(self.pose.y)
         platform_x.append(self.pose.x)
         platform_y.append(self.pose.y)
         t += 1
@@ -144,21 +144,17 @@ class Robot:
 
         if count == N: 
             count = 0
-        if t%200 == 0:
+        if t%(200/TIME_SCALER) == 0:
             count = count+1
-            print(count)
         
 
         if prev_count != count:
-        
-            #print('provs')
+            #print('new_cmd_send_to_motors',count)
             heading_change = heading_changes[count-1]
             if count > 0:
                 goal_theta = heading_change + old_pose
             else: 
                 goal_theta = heading_change
-
-            #heading_change = heading_change+self.pose.theta 
             rho, linear_velocity, angular_velocity = \
             self.path_finder_controller.calc_control_command(
                 0,
@@ -189,14 +185,15 @@ class Robot:
 def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platform_state, pub_covariance):
     """Simulate the sensor platform and the moving target"""
     
-    global simulation_running
-    rate = rospy.Rate(100) #loop spin at 100 Hz
+    global simulation_running #ctrl_cmd
+    Hz = 1/(TIME_STEP)
+    rate = rospy.Rate(Hz)
     # Init Time Variables
     t = 0    
     count = 0
     while simulation_running is True and t <= TIME_DURATION:
         
-        t += TIME_STEP
+        t += TIME_STEP*TIME_SCALER
         count += 1
         for instance in robots:
         # SIMULATE SENSORS MEASURAMENTS
@@ -209,32 +206,37 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
             [measure2, sensor_pose2] = sensor2.measureBearing()  
             
             measures = [measure1, measure2]
-            target_state = [instance.pose_target.x,instance.pose_target.y, x0_dot[0]*np.cos(instance.pose_target.theta),
-         x0_dot[0]*np.sin(instance.pose_target.theta)]
+            target_state = [instance.pose_target.x,instance.pose_target.y, TARGET_INIT[3]*np.cos(instance.pose_target.theta),
+          TARGET_INIT[3]*np.sin(instance.pose_target.theta)]
 
         # SIMULATE EKF
-        tracker1.processMeasurement(measures,target_state, sensor_pose, sensor_pose2, TIME_STEP)
+        tracker1.processMeasurement(measures,target_state, sensor_pose, sensor_pose2, TIME_STEP*TIME_SCALER)
         [curr_est, P] = tracker1.state
         
         # PUBLISH INFORMATION FOR OPTIMIZATION
         cov = []
         pub_estimation.publish(np.array(curr_est,dtype=np.float32))
+        
         for i in range(4):
             for j in range(4):
                 cov.append(P[i,j])
 
         pub_covariance.publish(np.array(cov,dtype=np.float32))
         pub_platform_state.publish(np.array(sensor_pose,dtype=np.float32))
-        # LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
-        filesize = os.path.getsize(utils_path+'/ctrl_cmd.txt')
         
-        if count%200 == 0:
-            print('loaded_new_cmds')
-            ctrl_cmd = np.loadtxt(utils_path+'/ctrl_cmd.txt')
+        # LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
+        if count >= 200:
+            if count%(200/TIME_SCALER) == 0:
+                
+                cmds = np.loadtxt(utils_path+'/ctrl_cmd.txt')
+                print('sendEd',cmds)
+            else: 
+                cmds = [0, 0, 0, 0]
         else: # load it
             
-            ctrl_cmd = [0, 0, 0, 0]
-        #print(ctrl_cmd)
+            cmds = [0, 0, 0, 0]
+        if np.size(cmds) == 0: # little check if errors loading
+            cmds = [0, 0, 0, 0]
         # SAVE DATA FOR PLOT
         err_y = np.sqrt(((target_state[1] - curr_est[1,0])**2))
         err_x = np.sqrt(((target_state[0] - curr_est[0,0])**2))
@@ -245,8 +247,8 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         rmse_y.append(err_x)
         
         
-        instance.move(TIME_STEP, ctrl_cmd)
-        instance.move_target(TIME_STEP)
+        instance.move(TIME_STEP*TIME_SCALER, cmds)
+        instance.move_target(TIME_STEP*TIME_SCALER)
         if t > (TIME_DURATION-1):
             print('saving data for plot')
             np.savetxt(plot_path+'/target_x_traj.txt',target_x_traj)
@@ -291,23 +293,18 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
                 plot_vehicle(sensor_pose[0],
                                 sensor_pose[1],
                                 sensor_pose[2],
-                                instance.x_traj,
-                                instance.y_traj,
                                 color='r')
 
                 plot_vehicle(sensor_pose2[0],
                                 sensor_pose2[1],
                                 sensor_pose2[2],
-                                instance.x_traj,
-                                instance.y_traj,
                                 color='g')
                           
 
                 plot_vehicle(instance.pose.x,
                                 instance.pose.y,
                                 instance.pose.theta,
-                                instance.x_traj,
-                                instance.y_traj, instance.color)
+                                instance.color)
 
                 plt.arrow(instance.pose_target.x,
                             instance.pose_target.y,
@@ -329,10 +326,10 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
                                 instance.y_traj, 
                                 instance.color)
             #plt.show()
-            plt.pause(TIME_STEP)
+            plt.pause(TIME_STEP*TIME_SCALER)
             
 
-def plot_vehicle(x, y, theta, x_traj, y_traj, color):
+def plot_vehicle(x, y, theta, color):
     # Corners of triangular vehicle when pointing to the right (0 radians)
     p1_i = np.array([0.5, 0, 1]).T
     p2_i = np.array([-0.5, 0.25, 1]).T
@@ -347,7 +344,6 @@ def plot_vehicle(x, y, theta, x_traj, y_traj, color):
     plt.plot([p2[0], p3[0]], [p2[1], p3[1]], color+'-',linewidth=3)
     plt.plot([p3[0], p1[0]], [p3[1], p1[1]], color+'-',linewidth=3)
 
-    plt.plot(x_traj, y_traj, color+'--', linewidth=1)
 
 
 def wTv(x, y, theta):
@@ -360,22 +356,17 @@ def wTv(x, y, theta):
         [0, 0, 1]
     ])
 
-def callback(data):
-    ctrl_cmd = data.data
-    #print(ctrl_cmd)
-    np.savetxt(utils_path+'/ctrl_cmd.txt',np.array(ctrl_cmd,dtype=np.float32))
-
 def main():
+    global ctrl_cmd
     # ROS INIT
     rospy.init_node('simulation')
     pub_estimation = rospy.Publisher('estimation', numpy_msg(Floats), queue_size=100)
     pub_covariance = rospy.Publisher('covariance', numpy_msg(Floats), queue_size=1000)
     pub_platform_state = rospy.Publisher('platform_state', numpy_msg(Floats), queue_size=100)
-    rospy.Subscriber('ctrl_cmd',numpy_msg(Floats), callback)
     
     # Initial Conditions
-    pose_target = Pose(x0[0], x0[1], x0[2])
-    pose_start_1 = Pose(s0[0], s0[1], s0[2])
+    pose_target = Pose(TARGET_INIT[0], TARGET_INIT[1],  TARGET_INIT[2])
+    pose_start_1 = Pose(PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1], PLATFORM_INIT_POSE[2])
     controller= Controller(5, 8, 2) # controller parameters 
     robot_1 = Robot("platoform_center", "y", 100, 100, controller)
    
@@ -396,7 +387,9 @@ def main():
     # Instantiate the object Robot 
     robots: list[Robot] = [robot_1]
     # Run The Simulation
-    
+    print('launch the optimization')
+    time.sleep(3)
+    print('STARTED SIMULATION')
     run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platform_state, pub_covariance)
 
 if __name__ == '__main__':
