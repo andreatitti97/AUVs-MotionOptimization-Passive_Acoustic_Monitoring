@@ -15,8 +15,8 @@ ekf_x = np.loadtxt(lib_path+'/target_est_x.txt')
 real_x = np.loadtxt(lib_path+'/target_x_traj.txt')
 err_x = np.loadtxt(lib_path+'/rmse_y.txt')
 err_y = np.loadtxt(lib_path+'/rmse_x.txt')
-s_x = np.loadtxt(lib_path+'/y_platform.txt')
-s_y = np.loadtxt(lib_path+'/x_platform.txt')
+s_x = np.loadtxt(lib_path+'/x_platform.txt')
+s_y = np.loadtxt(lib_path+'/y_platform.txt')
 
 # PLOT
 n_sample = np.size(ekf_y)
@@ -41,6 +41,7 @@ plt.show()
 
 plt.plot(s_x,s_y)
 plt.plot(real_x,real_y)
+
 plt.xlabel('x platform (m)')
 plt.ylabel('y platform (m)')
 

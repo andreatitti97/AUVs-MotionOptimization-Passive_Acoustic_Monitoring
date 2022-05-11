@@ -103,21 +103,16 @@ def callback1(data):
     global target_est
     tmp = data.data
     target_est = [tmp[0], tmp[1], tmp[2], tmp[3]]
-    #np.savetxt(lib_path+'/target_est.txt',np.array(target_est,dtype=np.float32))
-
 
 def callback2(data):
 
     global platform_state
     tmp = data.data
     platform_state = [tmp[0], tmp[1], tmp[2]]
-    #np.savetxt(lib_path+'/platform_state.txt',np.array(platform_state,dtype=np.float32))
 
-    
 def callback3(data):
     global covariance
     covariance = data.data
-    #np.savetxt(lib_path+'/covariance.txt',np.array(covariance,dtype=np.float32))
 
 def main():
 
@@ -143,12 +138,10 @@ def main():
 
         t_est = target_est
         s_state = platform_state
-        if np.size(covariance) != 0:
-            for i in range(4):
+        for i in range(4):
                 for j in range(4):
                     P[i,j] = covariance[i+j]
-        else: 
-            P = P
+
         tracker1 = Tracker('first', P)
         tracker2 = Tracker('second', P)
         tracker3 = Tracker('third', P)

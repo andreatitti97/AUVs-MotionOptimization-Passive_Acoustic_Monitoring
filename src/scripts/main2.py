@@ -32,7 +32,7 @@ PLOT_WINDOW_SIZE_X = 3000
 PLOT_WINDOW_SIZE_Y = 3000
 PLOT_FONT_SIZE = 10
 TARGET_INIT = [35, 113, pi/3, 3] #[x,y,theta,linear vel]
-PLATFORM_INIT_POSE = [100, 50, pi] #[x,y,theta]
+PLATFORM_INIT_POSE = [1200, 500, 2,35619] #[x,y,theta]
 #GLOBAL VARIABLES
 t = 0
 simulation_running = True
@@ -186,7 +186,7 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
     """Simulate the sensor platform and the moving target"""
     
     global simulation_running #ctrl_cmd
-    Hz = 1/(TIME_STEP)
+    Hz = 1/(TIME_STEP) #NB: different from sampling rate for move things, this is ros rate
     rate = rospy.Rate(Hz)
     # Init Time Variables
     t = 0    
