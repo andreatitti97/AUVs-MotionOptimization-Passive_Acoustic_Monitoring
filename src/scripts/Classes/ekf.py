@@ -1,7 +1,7 @@
 from xmlrpc.client import ServerProxy
 import numpy as np
 import numpy.matlib
-from math import atan2
+from math import atan2, pi
 import os, sys
 lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs')
 sys.path.append(lib_path)
@@ -101,7 +101,15 @@ class ExtendedKalmanFilter:
         
         # Compute the output error for both measuraments.
         y_tilde1 = measures[0] - atan2(yt - sensor_state1[1],xt - sensor_state1[0])
+        if y_tilde1 > pi:
+            y_tilde1 = y_tilde1 - 2*pi
+        if y_tilde1 < -pi:
+            y_tilde1 = y_tilde1 + 2*pi
         y_tilde2 = measures[1] - atan2(yt - sensor_state2[1],xt - sensor_state2[0])
+        if y_tilde2 > pi:
+            y_tilde2 = y_tilde2 - 2*pi
+        if y_tilde2 < -pi:
+            y_tilde2 = y_tilde2 + 2*pi
         y_tilde = np.array([[y_tilde1], [y_tilde2]])
         self.recompute_H(sensor_state1,sensor_state2)
 

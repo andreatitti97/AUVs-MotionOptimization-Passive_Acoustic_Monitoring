@@ -26,7 +26,6 @@ plt.plot(t,ekf_y[0:n_sample],'g')
 plt.plot(t,real_y[0:n_sample],'r--')
 plt.xlabel('time(s)')
 plt.ylabel('y pos target (m)')
-
 plt.legend(['estimated','real'])
 plt.grid()
 plt.subplot(2,1,2)

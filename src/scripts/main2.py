@@ -24,15 +24,16 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs/plo
 sys.path.append(plot_path)
 
 # Simulation parameters
-TIME_DURATION = 2000 #seconds
+TIME_DURATION = 3600 #seconds
 TIME_STEP = 0.01
-TIME_SCALER = 20
+TIME_SCALER = 50
 SHOW_ANIMATION = False
 PLOT_WINDOW_SIZE_X = 3000
 PLOT_WINDOW_SIZE_Y = 3000
 PLOT_FONT_SIZE = 10
 TARGET_INIT = [100, 113, pi/3, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
-PLATFORM_INIT_POSE = [3000, 1000, pi] #[x,y,theta]
+PLATFORM_INIT_POSE = [4000, 1000, pi] #[x,y,theta]
+MEAS_VARIANCE = 50
 #GLOBAL VARIABLES
 t = 0
 simulation_running = True
@@ -228,8 +229,8 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         if count >= 200:
             if count%(200/TIME_SCALER) == 0:
                 
-                cmds = np.loadtxt(utils_path+'/ctrl_cmd.txt')
-                print('sendEd',cmds)
+                cmds = np.genfromtxt(utils_path+'/ctrl_cmd.txt',dtype=np.float32,usecols=np.arange(0,1))
+                print('SENDED FOLLOWING CMDS',cmds)
             else: 
                 cmds = [0, 0, 0, 0]
         else: # load it
@@ -369,15 +370,8 @@ def main():
     robot_1 = Robot("platoform_center", "y", 100, 100, controller)
    
     # Sensor Initialization
-    
-    f1 = 1 #Hz
-    f2 = 1 #Hz
-    mean1 = 0
-    variance1 = 20
-    mean2 = 0
-    variance2 = 20
-    sensor1 = Sensor('first_streamer',f1,mean1,variance1,1)#
-    sensor2 = Sensor('seconda_streamer',f2,mean2,variance2,-1)
+    sensor1 = Sensor('first_streamer',1,0,MEAS_VARIANCE,1)#freq,mean,variance,displachement
+    sensor2 = Sensor('seconda_streamer',1,0,MEAS_VARIANCE,-1)
     tracker1 = Tracker('first_observer')
     
     # Set the AUV and the TARGET to the initial conditions

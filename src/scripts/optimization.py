@@ -12,23 +12,23 @@ from rospy.numpy_msg import numpy_msg
 # Import costum classes
 from Classes.sensor import Sensor
 from Classes.tracker_optimization import Tracker
-from main2 import TIME_SCALER, TIME_STEP, TARGET_INIT
+from main2 import TIME_SCALER, TIME_STEP, TARGET_INIT, MEAS_VARIANCE
 # PATH DEFINITION
 lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs/utils')
 sys.path.append(lib_path)
 
 #GLOBAL VARIABLES - simulation parameters
-key1 = -pi/4
+key1 = -pi/2
 key2 = 0
-key3 = pi/4
+key3 = pi/2
 keys = [key1, key2, key3]
 key_final = None
 tc = 2 #elapsed time for EKF simulation (how much time we predict the target movement for each time step)
 target_theta = TARGET_INIT[2]
 velTarget = TARGET_INIT[3]
 # Sensors
-sensor1 = Sensor('first_streamer',1,0,20,1)
-sensor2 = Sensor('seconda_streamer',1,0,20,-1)
+sensor1 = Sensor('first_streamer',1,0,MEAS_VARIANCE,1)
+sensor2 = Sensor('seconda_streamer',1,0,MEAS_VARIANCE,-1)
 # Init global variables for callbacks
 platform_state = []
 target_est = []
@@ -148,11 +148,7 @@ def main():
         start = time.time()
         for t in range(T):
             for k in range(3):
-                
-                
-                
-                if k == 0:
-                    
+                if k == 0:  
                     x1, P1, s1 = simulation(keys[k], t_est, s_state, P, tracker1)
                     cost1 = compute_cost(P1)
                     #print('s1',x1)
@@ -170,6 +166,7 @@ def main():
             t_est = x1
             s_state = s1
             P = P1
+            key_final = key1
             if cost2 < cost:
                 key_final = key2
                 cost = cost2
@@ -178,11 +175,11 @@ def main():
                 P = P2
             if cost3 < cost:
                 key_final = key3
+                cost = cost3
                 t_est = x3
                 s_state = s3
                 P = P3
-            else:
-                key_final = key1
+                
             ctrl_cmd.append(key_final)
         np.savetxt(lib_path+'/ctrl_cmd.txt',ctrl_cmd)
         stop = time.time()

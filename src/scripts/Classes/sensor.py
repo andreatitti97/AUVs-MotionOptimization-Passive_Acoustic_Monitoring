@@ -45,7 +45,11 @@ class Sensor:
         
 
     def measureBearing(self):
-
+        '''vect = [self.w_pose_t[1]-self.w_pose_s[1],self.w_pose_t[0]-self.w_pose_s[0]]
+        self.abs_bearing = atan2(vect[0],vect[1]) # abs bearing = rel_bearing - vehcile ori
+        rel_bearing = self.abs_bearing + self.theta_v
+        if  pi/6 < rel_bearing < 5*pi/6:'''
+            
         vect = [self.w_poseNoisy_t[1]-self.w_pose_s[1],self.w_poseNoisy_t[0]-self.w_pose_s[0]]
         self.abs_bearing = atan2(vect[0],vect[1]) 
         return self.abs_bearing, self.w_pose_s
