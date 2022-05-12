@@ -26,7 +26,7 @@ class ExtendedKalmanFilter:
 
         self.__H = np.matlib.zeros((2,4))
 
-        self.__R = np.matrix([[1,0],[0,1]])
+        self.__R = np.matrix([[20,0],[0,20]])
         
         #This is for adding disturbance on the target model
         self.__noise_ax = 0
@@ -71,7 +71,7 @@ class ExtendedKalmanFilter:
                               [e31, 0, e33, 0],
                               [0, e42, 0, e44]])
 
-    def recompute_HR(self, s1, s2):
+    def recompute_H(self, s1, s2):
 
         
         px,py, vx, vy = state_vector_to_scalars(self.__x)
@@ -103,7 +103,7 @@ class ExtendedKalmanFilter:
         y_tilde1 = measures[0] - atan2(yt - sensor_state1[1],xt - sensor_state1[0])
         y_tilde2 = measures[1] - atan2(yt - sensor_state2[1],xt - sensor_state2[0])
         y_tilde = np.array([[y_tilde1], [y_tilde2]])
-        self.recompute_HR(sensor_state1,sensor_state2)
+        self.recompute_H(sensor_state1,sensor_state2)
 
         # Pre compute for the kalman gain K
         #TODO: this code is not DRY should refactor here.

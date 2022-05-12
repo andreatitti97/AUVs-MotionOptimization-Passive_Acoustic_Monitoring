@@ -1,5 +1,4 @@
 #Import basic system modules
-from platform import platform
 import sys
 import os
 import time
@@ -19,9 +18,9 @@ lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs/util
 sys.path.append(lib_path)
 
 #GLOBAL VARIABLES - simulation parameters
-key1 = -pi/3
+key1 = -pi/4
 key2 = 0
-key3 = pi/3
+key3 = pi/4
 keys = [key1, key2, key3]
 key_final = None
 tc = 2 #elapsed time for EKF simulation (how much time we predict the target movement for each time step)
@@ -142,9 +141,9 @@ def main():
                 for j in range(4):
                     P[i,j] = covariance[i+j]
 
-        tracker1 = Tracker('first', P)
-        tracker2 = Tracker('second', P)
-        tracker3 = Tracker('third', P)
+        tracker1 = Tracker('1', P)
+        tracker2 = Tracker('2', P)
+        tracker3 = Tracker('3', P)
 
         start = time.time()
         for t in range(T):
@@ -181,7 +180,7 @@ def main():
                 key_final = key3
                 t_est = x3
                 s_state = s3
-                P = P2
+                P = P3
             else:
                 key_final = key1
             ctrl_cmd.append(key_final)

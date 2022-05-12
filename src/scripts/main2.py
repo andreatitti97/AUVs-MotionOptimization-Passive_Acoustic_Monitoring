@@ -24,15 +24,15 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs/plo
 sys.path.append(plot_path)
 
 # Simulation parameters
-TIME_DURATION = 1000 #seconds
+TIME_DURATION = 2000 #seconds
 TIME_STEP = 0.01
-TIME_SCALER = 8
+TIME_SCALER = 20
 SHOW_ANIMATION = False
 PLOT_WINDOW_SIZE_X = 3000
 PLOT_WINDOW_SIZE_Y = 3000
 PLOT_FONT_SIZE = 10
-TARGET_INIT = [35, 113, pi/3, 3] #[x,y,theta,linear vel]
-PLATFORM_INIT_POSE = [1200, 500, 2,35619] #[x,y,theta]
+TARGET_INIT = [100, 113, pi/3, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
+PLATFORM_INIT_POSE = [3000, 1000, pi] #[x,y,theta]
 #GLOBAL VARIABLES
 t = 0
 simulation_running = True
@@ -343,8 +343,6 @@ def plot_vehicle(x, y, theta, color):
     plt.plot([p1[0], p2[0]], [p1[1], p2[1]], color+'-',linewidth=3)
     plt.plot([p2[0], p3[0]], [p2[1], p3[1]], color+'-',linewidth=3)
     plt.plot([p3[0], p1[0]], [p3[1], p1[1]], color+'-',linewidth=3)
-
-
 
 def wTv(x, y, theta):
     ''' Funzione che ritorna la trasformate

@@ -36,7 +36,8 @@ class Sensor:
         #to do target pose only linear positions and vel
 
     def targetPoseNoisy(self, x_t, y_t, theta_t):
-        #print(self.noise)
+        
+        self.noise = np.random.normal(self.mean, self.variance)
         self.w_poseNoisy_t = np.transpose([x_t+self.noise, y_t+self.noise, theta_t])
         self.wTt = transformation_matrix(self.w_poseNoisy_t[0], self.w_poseNoisy_t[1], self.w_poseNoisy_t[2])
         self.vTt = np.linalg.inv(self.wTv)*self.wTt
