@@ -1,5 +1,3 @@
-from random import sample
-from cvxpy import length
 import matplotlib.pyplot as plt
 from math import pi
 import numpy as np
@@ -17,7 +15,10 @@ err_x = np.loadtxt(lib_path+'/rmse_y.txt')
 err_y = np.loadtxt(lib_path+'/rmse_x.txt')
 s_x = np.loadtxt(lib_path+'/x_platform.txt')
 s_y = np.loadtxt(lib_path+'/y_platform.txt')
-
+auv1_x = np.loadtxt(lib_path+'/auv1_x.txt')
+auv1_y = np.loadtxt(lib_path+'/auv1_y.txt')
+auv2_x = np.loadtxt(lib_path+'/auv2_x.txt')
+auv2_y = np.loadtxt(lib_path+'/auv2_y.txt')
 # PLOT
 n_sample = np.size(ekf_y)
 t = np.linspace(0,TIME_DURATION,n_sample)
@@ -40,15 +41,21 @@ plt.show()
 
 plt.plot(s_x,s_y)
 plt.plot(real_x,real_y)
-
+#plt.plot(auv1_x,auv1_y,'r--',linewidth=1)
+#plt.plot(auv2_x,auv2_y,'g--',linewidth=1)
 plt.xlabel('x platform (m)')
 plt.ylabel('y platform (m)')
-circle1 = plt.Circle((3000,0),50,color='r')
-circle2 = plt.Circle((real_x[0],real_x[0]),25,color='y')
+circle1 = plt.Circle((2000,0),50,color='r')
+circle2 = plt.Circle((real_x[0],real_y[0]),25,color='y')
 circle3 = plt.Circle((s_x[0],s_y[0]),25,color='b')
+#circle4 = plt.Circle((auv1_x[0],auv1_y[0]),25,color='r')
+#circle5 = plt.Circle((auv2_x[0],auv2_y[0]),25,color='g')
+plt.xlim([0,10000])
 plt.gca().add_patch(circle1)
 plt.gca().add_patch(circle2)
 plt.gca().add_patch(circle3)
+#plt.gca().add_patch(circle5)
+#plt.gca().add_patch(circle4)
 plt.legend(['platform path','target path','base','target start','platform start'])
 plt.grid()
 plt.show()

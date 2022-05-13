@@ -1,4 +1,3 @@
-
 from math import atan2, pi
 import numpy as np
 
@@ -17,11 +16,11 @@ class Sensor:
         self.f = f
         self.mean = mean
         self.variance = variance
-        d = 100
+        d = 200
         self.baseline = sign*d 
         self.noise = np.random.normal(self.mean, self.variance)
         self.measure = []
-        
+        self.w_pose_t = []
 
     def vehiclePose(self, x_v, y_v, theta_v):
         self.theta_v = theta_v
@@ -33,25 +32,29 @@ class Sensor:
 
     def targetPoseReal(self, x_t, y_t, theta_t):#w.r.t. the  <w>
         self.w_pose_t = np.transpose([x_t, y_t, theta_t])
-        #to do target pose only linear positions and vel
-
-    def targetPoseNoisy(self, x_t, y_t, theta_t):
-        
-        self.noise = np.random.normal(self.mean, self.variance)
-        self.w_poseNoisy_t = np.transpose([x_t+self.noise, y_t+self.noise, theta_t])
-        self.wTt = transformation_matrix(self.w_poseNoisy_t[0], self.w_poseNoisy_t[1], self.w_poseNoisy_t[2])
-        self.vTt = np.linalg.inv(self.wTv)*self.wTt
-        self.v_poseNoisy_t = np.dot(self.vTt,self.w_poseNoisy_t)
-        
 
     def measureBearing(self):
-        '''vect = [self.w_pose_t[1]-self.w_pose_s[1],self.w_pose_t[0]-self.w_pose_s[0]]
-        self.abs_bearing = atan2(vect[0],vect[1]) # abs bearing = rel_bearing - vehcile ori
-        rel_bearing = self.abs_bearing + self.theta_v
-        if  pi/6 < rel_bearing < 5*pi/6:'''
-            
-        vect = [self.w_poseNoisy_t[1]-self.w_pose_s[1],self.w_poseNoisy_t[0]-self.w_pose_s[0]]
-        self.abs_bearing = atan2(vect[0],vect[1]) 
+        vect = [self.w_pose_t[1]-self.w_pose_s[1],self.w_pose_t[0]-self.w_pose_s[0]]
+        self.abs_bearing = atan2(vect[0],vect[1]) # abs bearing = rel_bearing - vehcile ori -> [-pi,+pi]
+
+        if self.abs_bearing < 0:
+
+            self.abs_bearing = 2*pi + self.abs_bearing # change convention Bearing_abs -> [0,2*pi]
+        if self.theta_v  <= self.abs_bearing: # if the target is counter clock wise w.r.t to surge vel
+            rel_bearing = self.abs_bearing - self.theta_v 
+        else:
+            rel_bearing = 2*pi - self.theta_v - self.abs_bearing
+
+        self.noise = np.random.normal(self.mean, self.variance)
+        activation_function = 10*np.cos(rel_bearing)
+        if  pi/6 <= rel_bearing <= 5*pi/6 or 7*pi/6 <= rel_bearing <= 5.76:
+            print('broadfire')
+        else:
+            print('endfire')    
+        self.w_pose_t = [self.w_pose_t[0]+self.noise*activation_function, self.w_pose_t[1]+self.noise*activation_function, self.w_pose_t[2]]
+        vect =  [self.w_pose_t[1]-self.w_pose_s[1],self.w_pose_t[0]-self.w_pose_s[0]]
+        self.abs_bearing = atan2(vect[0],vect[1])#overwrite absolute bearing with the corrupted quantities
+
         return self.abs_bearing, self.w_pose_s
 
     

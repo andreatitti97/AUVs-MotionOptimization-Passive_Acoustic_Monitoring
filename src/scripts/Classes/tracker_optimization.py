@@ -1,9 +1,4 @@
 from Classes.ekf import ExtendedKalmanFilter
-import multiprocessing
-import time
-import numpy as np
-from queue import Queue
-from threading import Thread
 
 class Tracker:
     '''

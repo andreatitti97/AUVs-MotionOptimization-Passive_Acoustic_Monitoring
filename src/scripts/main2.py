@@ -28,11 +28,11 @@ TIME_DURATION = 3600 #seconds
 TIME_STEP = 0.01
 TIME_SCALER = 50
 SHOW_ANIMATION = False
-PLOT_WINDOW_SIZE_X = 3000
-PLOT_WINDOW_SIZE_Y = 3000
+PLOT_WINDOW_SIZE_X = 50
+PLOT_WINDOW_SIZE_Y = 50
 PLOT_FONT_SIZE = 10
-TARGET_INIT = [100, 113, pi/3, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
-PLATFORM_INIT_POSE = [4000, 1000, pi] #[x,y,theta]
+TARGET_INIT = [4000, 11000, -pi/2, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
+PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 MEAS_VARIANCE = 50
 #GLOBAL VARIABLES
 t = 0
@@ -50,6 +50,10 @@ rmse_x = []
 rmse_y = []
 target_est_x = []
 target_est_y = []
+auv1_x = []
+auv1_y = []
+auv2_x = []
+auv2_y = []
 
 class Pose:
     """2D pose"""
@@ -199,11 +203,11 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         for instance in robots:
         # SIMULATE SENSORS MEASURAMENTS
             sensor1.vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta)
-            sensor1.targetPoseNoisy(instance.pose_target.x,instance.pose_target.y,instance.pose_target.theta)
+            sensor1.targetPoseReal(instance.pose_target.x,instance.pose_target.y,instance.pose_target.theta)
             [measure1,sensor_pose] = sensor1.measureBearing()
             
             sensor2.vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta)
-            sensor2.targetPoseNoisy(instance.pose_target.x,instance.pose_target.y,instance.pose_target.theta)
+            sensor2.targetPoseReal(instance.pose_target.x,instance.pose_target.y,instance.pose_target.theta)
             [measure2, sensor_pose2] = sensor2.measureBearing()  
             
             measures = [measure1, measure2]
@@ -230,7 +234,7 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
             if count%(200/TIME_SCALER) == 0:
                 
                 cmds = np.genfromtxt(utils_path+'/ctrl_cmd.txt',dtype=np.float32,usecols=np.arange(0,1))
-                print('SENDED FOLLOWING CMDS',cmds)
+                #print('SENDED FOLLOWING CMDS',cmds)
             else: 
                 cmds = [0, 0, 0, 0]
         else: # load it
@@ -241,7 +245,10 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         # SAVE DATA FOR PLOT
         err_y = np.sqrt(((target_state[1] - curr_est[1,0])**2))
         err_x = np.sqrt(((target_state[0] - curr_est[0,0])**2))
-
+        auv1_x.append(sensor_pose[0])
+        auv1_y.append(sensor_pose[1])
+        auv2_x.append(sensor_pose2[0])
+        auv2_y.append(sensor_pose2[1])
         target_est_y.append(curr_est[1,0])
         target_est_x.append(curr_est[0,0])
         rmse_x.append(err_y)
@@ -260,6 +267,10 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
             np.savetxt(plot_path+'/rmse_x.txt',rmse_x)
             np.savetxt(plot_path+'/x_platform.txt',platform_x)
             np.savetxt(plot_path+'/y_platform.txt',platform_y)
+            np.savetxt(plot_path+'/auv1_x.txt',auv1_x)
+            np.savetxt(plot_path+'/auv1_y.txt',auv1_y)
+            np.savetxt(plot_path+'/auv2_x.txt',auv2_x)
+            np.savetxt(plot_path+'/auv2_y.txt',auv2_y)
         rate.sleep()
 
 
@@ -323,12 +334,10 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
                 plot_vehicle(instance.pose_target.x,
                                 instance.pose_target.y,
                                 instance.pose_target.theta,
-                                instance.x_traj,
-                                instance.y_traj, 
                                 instance.color)
             #plt.show()
             plt.pause(TIME_STEP*TIME_SCALER)
-            
+        
 
 def plot_vehicle(x, y, theta, color):
     # Corners of triangular vehicle when pointing to the right (0 radians)

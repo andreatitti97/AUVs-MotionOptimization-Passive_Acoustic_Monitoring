@@ -18,9 +18,9 @@ lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs/util
 sys.path.append(lib_path)
 
 #GLOBAL VARIABLES - simulation parameters
-key1 = -pi/2
+key1 = -pi/6
 key2 = 0
-key3 = pi/2
+key3 = pi/6
 keys = [key1, key2, key3]
 key_final = None
 tc = 2 #elapsed time for EKF simulation (how much time we predict the target movement for each time step)
@@ -76,10 +76,10 @@ def simulation(control_input, target_init, platform_init, init_cov, tracker1):
 
     #update measurament
     sensor1.vehiclePose(platform_state[0], platform_state[1], platform_state[2])  
-    sensor1.targetPoseNoisy(target_state[0], target_state[1], target_theta)
+    sensor1.targetPoseReal(target_state[0], target_state[1], target_theta)
     
     sensor2.vehiclePose(platform_state[0], platform_state[1], platform_state[2])
-    sensor2.targetPoseNoisy(target_state[0], target_state[1], target_theta)
+    sensor2.targetPoseReal(target_state[0], target_state[1], target_theta)
     
     [measure1,sensor_pose1] = sensor1.measureBearing()
     [measure2,sensor_pose2] = sensor2.measureBearing()
