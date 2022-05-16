@@ -22,13 +22,11 @@ class Sensor:
         self.measure = []
         self.w_pose_t = []
 
-    def vehiclePose(self, x_v, y_v, theta_v):
-        self.theta_v = theta_v
+    def vehiclePose(self, x_v, y_v, theta_v, dt):#w.r.t the <w> - return sensor pose from vehicle pose
+        self.theta_v = theta_v + 2*dt
         self.wTv = transformation_matrix(x_v, y_v, theta_v)
-
         v_pose_s = [0, self.baseline/2, 1]
-        tmp = np.dot(self.wTv,v_pose_s)
-        self.w_pose_s = np.array([tmp[0],tmp[1], theta_v])
+        self.w_pose_s = np.array([(x_v+v_pose_s[0])+np.cos(self.theta_v)*dt,(y_v+v_pose_s[1])+np.sin(self.theta_v)*dt,self.theta_v])
 
     def targetPoseReal(self, x_t, y_t, theta_t):#w.r.t. the  <w>
         self.w_pose_t = np.transpose([x_t, y_t, theta_t])

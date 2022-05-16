@@ -24,9 +24,9 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs/plo
 sys.path.append(plot_path)
 
 # Simulation parameters
-TIME_DURATION = 3600 #seconds
+TIME_DURATION = 500 #seconds
 TIME_STEP = 0.01
-TIME_SCALER = 50
+TIME_SCALER = 10
 SHOW_ANIMATION = False
 PLOT_WINDOW_SIZE_X = 50
 PLOT_WINDOW_SIZE_Y = 50
@@ -62,6 +62,16 @@ class Pose:
         self.x = x
         self.y = y
         self.theta = theta
+
+def wTv(x, y, theta):
+    ''' Funzione che ritorna la trasformate
+     tra il frame mondo e il veicolo
+    '''
+    return np.array([
+        [np.cos(theta), -np.sin(theta), x],
+        [np.sin(theta), np.cos(theta), y],
+        [0, 0, 1]
+    ])
 
 class Robot:
     """
@@ -202,11 +212,11 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         count += 1
         for instance in robots:
         # SIMULATE SENSORS MEASURAMENTS
-            sensor1.vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta)
+            sensor1.vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta,TIME_STEP)
             sensor1.targetPoseReal(instance.pose_target.x,instance.pose_target.y,instance.pose_target.theta)
             [measure1,sensor_pose] = sensor1.measureBearing()
             
-            sensor2.vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta)
+            sensor2.vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta,TIME_STEP)
             sensor2.targetPoseReal(instance.pose_target.x,instance.pose_target.y,instance.pose_target.theta)
             [measure2, sensor_pose2] = sensor2.measureBearing()  
             
@@ -272,97 +282,6 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
             np.savetxt(plot_path+'/auv2_x.txt',auv2_x)
             np.savetxt(plot_path+'/auv2_y.txt',auv2_y)
         rate.sleep()
-
-
-        if SHOW_ANIMATION:
-            plt.cla()
-            plt.xlim(0, PLOT_WINDOW_SIZE_X)
-            plt.ylim(0, PLOT_WINDOW_SIZE_Y)
-
-            # For stopping simulation with the esc key.
-            plt.gcf().canvas.mpl_connect(
-                'key_release_event',
-                lambda event: [exit(0) if event.key == 'escape' else None])
-
-            plt.text(0.3, PLOT_WINDOW_SIZE_Y - 1,
-                     'Time: {:.2f}'.format(t),
-                     fontsize=PLOT_FONT_SIZE)
-
-            for instance in robots:
-                plt.arrow(instance.pose_start.x,
-                            instance.pose_start.y,
-                            np.cos(instance.pose_start.theta),
-                            np.sin(instance.pose_start.theta),
-                            color='r',
-                            width=1)
-                plt.arrow(instance.pose.x,
-                            instance.pose.y,
-                            np.cos(instance.pose.theta),
-                            np.sin(instance.pose.theta),
-                            color='g',
-                            width=5)
-
-                plot_vehicle(sensor_pose[0],
-                                sensor_pose[1],
-                                sensor_pose[2],
-                                color='r')
-
-                plot_vehicle(sensor_pose2[0],
-                                sensor_pose2[1],
-                                sensor_pose2[2],
-                                color='g')
-                          
-
-                plot_vehicle(instance.pose.x,
-                                instance.pose.y,
-                                instance.pose.theta,
-                                instance.color)
-
-                plt.arrow(instance.pose_target.x,
-                            instance.pose_target.y,
-                            np.cos(instance.pose_target.theta),
-                            np.sin(instance.pose_target.theta),
-                            color='r',
-                            width=1)
-                plt.arrow(instance.pose_target.x,
-                            instance.pose_target.y,
-                            np.cos(instance.pose_target.theta),
-                            np.sin(instance.pose_target.theta),
-                            color='g',
-                            width=1)
-                
-                plot_vehicle(instance.pose_target.x,
-                                instance.pose_target.y,
-                                instance.pose_target.theta,
-                                instance.color)
-            #plt.show()
-            plt.pause(TIME_STEP*TIME_SCALER)
-        
-
-def plot_vehicle(x, y, theta, color):
-    # Corners of triangular vehicle when pointing to the right (0 radians)
-    p1_i = np.array([0.5, 0, 1]).T
-    p2_i = np.array([-0.5, 0.25, 1]).T
-    p3_i = np.array([-0.5, -0.25, 1]).T
-
-    T = wTv(x, y, theta)
-    p1 = T @ p1_i
-    p2 = T @ p2_i
-    p3 = T @ p3_i
-
-    plt.plot([p1[0], p2[0]], [p1[1], p2[1]], color+'-',linewidth=3)
-    plt.plot([p2[0], p3[0]], [p2[1], p3[1]], color+'-',linewidth=3)
-    plt.plot([p3[0], p1[0]], [p3[1], p1[1]], color+'-',linewidth=3)
-
-def wTv(x, y, theta):
-    ''' Funzione che ritorna la trasformate
-     tra il frame mondo e il veicolo
-    '''
-    return np.array([
-        [np.cos(theta), -np.sin(theta), x],
-        [np.sin(theta), np.cos(theta), y],
-        [0, 0, 1]
-    ])
 
 def main():
     global ctrl_cmd

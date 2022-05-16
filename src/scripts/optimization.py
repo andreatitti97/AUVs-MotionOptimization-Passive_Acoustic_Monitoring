@@ -15,6 +15,7 @@ from Classes.tracker_optimization import Tracker
 from main2 import TIME_SCALER, TIME_STEP, TARGET_INIT, MEAS_VARIANCE
 # PATH DEFINITION
 lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs/utils')
+plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs/plot')
 sys.path.append(lib_path)
 
 #GLOBAL VARIABLES - simulation parameters
@@ -75,10 +76,10 @@ def simulation(control_input, target_init, platform_init, init_cov, tracker1):
     target_state = target.update_state() 
 
     #update measurament
-    sensor1.vehiclePose(platform_state[0], platform_state[1], platform_state[2])  
+    sensor1.vehiclePose(platform_state[0], platform_state[1], platform_state[2],tc)  
     sensor1.targetPoseReal(target_state[0], target_state[1], target_theta)
     
-    sensor2.vehiclePose(platform_state[0], platform_state[1], platform_state[2])
+    sensor2.vehiclePose(platform_state[0], platform_state[1], platform_state[2],tc)
     sensor2.targetPoseReal(target_state[0], target_state[1], target_theta)
     
     [measure1,sensor_pose1] = sensor1.measureBearing()
@@ -90,7 +91,7 @@ def simulation(control_input, target_init, platform_init, init_cov, tracker1):
     [state, P] = tracker1.state
     
     state = [state[0,0], state[1,0], state[2,0], state[3,0]]
-    return state, P, platform_state
+    return state, P, platform_state, target_state
 
 def compute_cost(P):
    
@@ -128,6 +129,11 @@ def main():
     T = 4  
     cost = 0
     ctrl_cmd = []
+    target_traj_est_x = []
+    target_traj_est_y = []
+    target_traj_real_x = []
+    target_traj_real_y = []
+    ctrl_plot = []
     P = np.eye((4))
     input('PRESS INVIO TO START OPTIMIZATION')
     print('start optimization')
@@ -149,16 +155,16 @@ def main():
         for t in range(T):
             for k in range(3):
                 if k == 0:  
-                    x1, P1, s1 = simulation(keys[k], t_est, s_state, P, tracker1)
+                    x1, P1, s1, x_real1 = simulation(keys[k], t_est, s_state, P, tracker1)
                     cost1 = compute_cost(P1)
                     #print('s1',x1)
 
                 if k == 1:
-                    x2, P2, s2 = simulation(keys[k], t_est, s_state, P, tracker2)
+                    x2, P2, s2, x_real2 = simulation(keys[k], t_est, s_state, P, tracker2)
                     cost2 = compute_cost(P2)
                     #print('s2',x2)
                 if k == 2:
-                    x3, P3, s3 = simulation(keys[k], t_est, s_state, P, tracker3)
+                    x3, P3, s3, x_real3 = simulation(keys[k], t_est, s_state, P, tracker3)
                     cost3 = compute_cost(P3)
                     #print('s3',x3)
 
@@ -179,9 +185,19 @@ def main():
                 t_est = x3
                 s_state = s3
                 P = P3
-                
+            target_traj_est_x.append(t_est[0])
+            target_traj_est_y.append(t_est[1])
+            target_traj_real_x.append(x_real1[0])
+            target_traj_real_y.append(x_real1[1])
             ctrl_cmd.append(key_final)
+            ctrl_plot.append(key_final)
         np.savetxt(lib_path+'/ctrl_cmd.txt',ctrl_cmd)
+        np.savetxt(plot_path+'/target_traj_est_x.txt',target_traj_est_x)
+        np.savetxt(plot_path+'/target_traj_est_y.txt',target_traj_est_y)
+        np.savetxt(plot_path+'/target_traj_real_x.txt',target_traj_real_x)
+        np.savetxt(plot_path+'/target_traj_real_y.txt',target_traj_real_y)
+        np.savetxt(plot_path+'/plot_cmds.txt',ctrl_plot)
+
         stop = time.time()
         print('OPTIMIZATION TIME:',(stop - start))
         print(ctrl_cmd)
