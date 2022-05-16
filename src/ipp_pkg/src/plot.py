@@ -1,10 +1,8 @@
 import matplotlib.pyplot as plt
-from math import pi
 import numpy as np
-import sys, os
+import os
 from main2 import TIME_DURATION
 lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
-sys.path.append(lib_path)
 
 #LOAD LOG FILES
 ekf_y = np.loadtxt(lib_path+'/target_est_y.txt')

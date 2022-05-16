@@ -1,11 +1,10 @@
 #Import basic system modules
-import sys
 import os
 import time
 # Import math modules
 import numpy as np
 from math import sin, cos, pi
-# Import ROS modules
+# Import ROS modules and Service
 import rospy
 from rospy_tutorials.msg import Floats
 from rospy.numpy_msg import numpy_msg
@@ -26,7 +25,7 @@ TIME_SCALER = main2.TIME_SCALER
 TIME_STEP = main2.TIME_STEP
 MEAS_VARIANCE = main2.MEAS_VARIANCE
 TARGET_INIT = main2.TARGET_INIT
-# PATH DEFINITION
+# FOLDER PATH DEFINITION
 lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/utils')
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 
@@ -131,10 +130,10 @@ def main():
     global covariance, target_est, platform_state
     # Sensor Initialization
     rospy.init_node('optimization')
-    rospy.Subscriber("estimation", numpy_msg(Floats),callback1)
-    rospy.Subscriber("platform_state", numpy_msg(Floats),callback2)
-    rospy.Subscriber("covariance", numpy_msg(Floats),callback3)
-    
+    #rospy.Subscriber("estimation", numpy_msg(Floats),callback1)
+    #rospy.Subscriber("platform_state", numpy_msg(Floats),callback2)
+    #rospy.Subscriber("covariance", numpy_msg(Floats),callback3)
+    pub = rospy.Publisher("ctrl_cmd",numpy_msg(Floats),queue_size=100)
     Hz = 1/(TIME_STEP)
     rate = rospy.Rate(Hz)
 
@@ -148,17 +147,23 @@ def main():
     target_traj_real_y = []
     ctrl_plot = []
     P = np.eye((4))
-    input('PRESS INVIO TO START OPTIMIZATION')
-    print('start optimization')
-    time.sleep((T*2)/TIME_SCALER)
+    print('started optimization')
+    #time.sleep((T*2)/TIME_SCALER)
     while not rospy.is_shutdown():
         # INIT TARGET MODEL AND PLATFORM MODEL WITH THE LATEST ESTIMATION AND SENSOR POSITIONS 
 
-        t_est = target_est
-        s_state = platform_state
+        t_est = rospy.wait_for_message('/estimation',numpy_msg(Floats))
+        print('R1')
+        s_state = rospy.wait_for_message('/platform_state',numpy_msg(Floats))
+        print('R2')
+        covariance = rospy.wait_for_message('/covariance',numpy_msg(Floats))
+        print('R3')
+        t_est = t_est.data
+        s_state = s_state.data
+        covariance = covariance.data
         for i in range(4):
                 for j in range(4):
-                    P[i,j] = covariance[i+j]
+                    P[i,j] = covariance.data[i+j]
 
         tracker1 = tracker.Tracker('1', P)
         tracker2 = tracker.Tracker('2', P)
@@ -204,6 +209,8 @@ def main():
             target_traj_real_y.append(x_real1[1])
             ctrl_cmd.append(key_final)
             ctrl_plot.append(key_final)
+            pub.publish(np.array(ctrl_cmd,dtype=np.float32))
+        #SAVE FILE FOR PLOT    
         np.savetxt(lib_path+'/ctrl_cmd.txt',ctrl_cmd)
         np.savetxt(plot_path+'/target_traj_est_x.txt',target_traj_est_x)
         np.savetxt(plot_path+'/target_traj_est_y.txt',target_traj_est_y)
@@ -216,10 +223,9 @@ def main():
         print(ctrl_cmd)
         ctrl_cmd = []
         rate.sleep()
-        time.sleep((T*2)/TIME_SCALER)
+        #time.sleep((T*2)/TIME_SCALER)
         
         
 if __name__ == '__main__':
     
-    #s = rospy.Service('optimization', AddTwoInts, server)
     main()

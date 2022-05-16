@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 #Import basic system modules
 import os
-import sys
 import time
 # Import math modules
 from re import T
@@ -236,28 +235,33 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         [curr_est, P] = tracker1.state
         
         # PUBLISH INFORMATION FOR OPTIMIZATION
-        cov = []
-        pub_estimation.publish(np.array(curr_est,dtype=np.float32))
         
-        for i in range(4):
-            for j in range(4):
-                cov.append(P[i,j])
-
-        pub_covariance.publish(np.array(cov,dtype=np.float32))
-        pub_platform_state.publish(np.array(sensor_pose,dtype=np.float32))
         
-        # LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
+        #SEND LAST INFORMATIONS and LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
         if count >= 200:
             if count%(200/TIME_SCALER) == 0:
+                print('SENDING DATA')
+                cov = []
+                pub_estimation.publish(np.array(curr_est,dtype=np.float32))
+                time.sleep(1)
+                pub_platform_state.publish(np.array(sensor_pose,dtype=np.float32))
+                time.sleep(1)
                 
-                cmds = np.genfromtxt(utils_path+'/ctrl_cmd.txt',dtype=np.float32,usecols=np.arange(0,1))
+                for i in range(4):
+                    for j in range(4):
+                        cov.append(P[i,j])
+                pub_covariance.publish(np.array(cov,dtype=np.float32))
+
+                #cmds = np.genfromtxt(utils_path+'/ctrl_cmd.txt',dtype=np.float32,usecols=np.arange(0,1))
                 #print('SENDED FOLLOWING CMDS',cmds)
+                print('SENDED ALL DATA')
+                cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats),timeout=10)
+                cmds = cmds.data
+                
+                print('RECEIVED CMDS:',cmds)
             else: 
                 cmds = [0, 0, 0, 0]
         else: # load it
-            
-            cmds = [0, 0, 0, 0]
-        if np.size(cmds) == 0: # little check if errors loading
             cmds = [0, 0, 0, 0]
         # SAVE DATA FOR PLOT
         err_y = np.sqrt(((target_state[1] - curr_est[1,0])**2))
@@ -274,7 +278,7 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         
         instance.move(TIME_STEP*TIME_SCALER, cmds)
         instance.move_target(TIME_STEP*TIME_SCALER)
-        if t > (TIME_DURATION-1):
+        if t == (TIME_DURATION):
             print('saving data for plot')
             np.savetxt(plot_path+'/target_x_traj.txt',target_x_traj)
             np.savetxt(plot_path+'/target_y_traj.txt',target_y_traj)
@@ -294,9 +298,9 @@ def main():
     global ctrl_cmd
     # ROS INIT
     rospy.init_node('simulation')
-    pub_estimation = rospy.Publisher('estimation', numpy_msg(Floats), queue_size=100)
-    pub_covariance = rospy.Publisher('covariance', numpy_msg(Floats), queue_size=1000)
-    pub_platform_state = rospy.Publisher('platform_state', numpy_msg(Floats), queue_size=100)
+    pub_estimation = rospy.Publisher('estimation', numpy_msg(Floats), queue_size=10)
+    pub_covariance = rospy.Publisher('covariance', numpy_msg(Floats), queue_size=100)
+    pub_platform_state = rospy.Publisher('platform_state', numpy_msg(Floats), queue_size=10)
     
     # Initial Conditions
     pose_target = Pose(TARGET_INIT[0], TARGET_INIT[1],  TARGET_INIT[2])
