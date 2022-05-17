@@ -45,10 +45,10 @@ class Sensor:
 
         self.noise = np.random.normal(self.mean, self.variance)
         activation_function = 10*np.cos(rel_bearing)
-        if  pi/6 <= rel_bearing <= 5*pi/6 or 7*pi/6 <= rel_bearing <= 5.76:
-            print('broadfire')
-        else:
-            print('endfire')    
+        #if  pi/6 <= rel_bearing <= 5*pi/6 or 7*pi/6 <= rel_bearing <= 5.76:
+            #print('broadfire')
+        #else:
+            #print('endfire')    
         self.w_pose_t = [self.w_pose_t[0]+self.noise*activation_function, self.w_pose_t[1]+self.noise*activation_function, self.w_pose_t[2]]
         vect =  [self.w_pose_t[1]-self.w_pose_s[1],self.w_pose_t[0]-self.w_pose_s[0]]
         self.abs_bearing = atan2(vect[0],vect[1])#overwrite absolute bearing with the corrupted quantities

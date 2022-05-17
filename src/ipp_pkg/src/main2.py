@@ -2,13 +2,17 @@
 #Import basic system modules
 import os
 import time
+import importlib.util
 # Import math modules
 from re import T
 from math import pi
 import numpy as np
 import copy
-# IMPORT PACKAGE CLASSES
-import importlib.util
+#Import ROS modules
+import rospy
+from rospy_tutorials.msg import Floats
+from rospy.numpy_msg import numpy_msg
+# Import Costum classes
 class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
 spec = importlib.util.spec_from_file_location("module.tracker", class_path+"/tracker.py")
 tracker = importlib.util.module_from_spec(spec)
@@ -19,35 +23,27 @@ spec.loader.exec_module(controller)
 spec = importlib.util.spec_from_file_location("module.tracker", class_path+"/sensor.py")
 sensor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sensor)
-#Import ROS modules
-import rospy
-from rospy_tutorials.msg import Floats
-from rospy.numpy_msg import numpy_msg
-# Import Costum classes
 # PATH DEFINITON
 utils_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/utils')
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
-
 
 # Simulation parameters
 TIME_DURATION = 500 #seconds
 TIME_STEP = 0.01
 TIME_SCALER = 10
-SHOW_ANIMATION = False
-PLOT_WINDOW_SIZE_X = 50
-PLOT_WINDOW_SIZE_Y = 50
-PLOT_FONT_SIZE = 10
 TARGET_INIT = [4000, 11000, -pi/2, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 MEAS_VARIANCE = 50
+OPTIMIZATION_STATUS = True
 #GLOBAL VARIABLES
 t = 0
-simulation_running = True
+N = 4 #planning horizon
+# Internal counters
 count = 0
 prev_count = 0
 goal_theta = 0
 old_pose  = 0
-N = 4 #planning horizon
+# INIT array for plot
 target_x_traj = []
 target_y_traj = []
 platform_x = []
@@ -176,7 +172,7 @@ class Robot:
                 goal_theta = heading_change + old_pose
             else: 
                 goal_theta = heading_change
-            rho, linear_velocity, angular_velocity = \
+            linear_velocity, angular_velocity = \
             self.path_finder_controller.calc_control_command(
                 0,
                 0,
@@ -205,14 +201,13 @@ class Robot:
 
 def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platform_state, pub_covariance):
     """Simulate the sensor platform and the moving target"""
-    
-    global simulation_running #ctrl_cmd
+
     Hz = 1/(TIME_STEP) #NB: different from sampling rate for move things, this is ros rate
     rate = rospy.Rate(Hz)
     # Init Time Variables
     t = 0    
     count = 0
-    while simulation_running is True and t <= TIME_DURATION:
+    while t <= TIME_DURATION:
         
         t += TIME_STEP*TIME_SCALER
         count += 1
@@ -238,26 +233,22 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         
         
         #SEND LAST INFORMATIONS and LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
-        if count >= 200:
+        if count >= 200 and OPTIMIZATION_STATUS == True:
             if count%(200/TIME_SCALER) == 0:
                 print('SENDING DATA')
                 cov = []
                 pub_estimation.publish(np.array(curr_est,dtype=np.float32))
-                time.sleep(1)
+                rospy.sleep(TIME_STEP*5)
                 pub_platform_state.publish(np.array(sensor_pose,dtype=np.float32))
-                time.sleep(1)
+                rospy.sleep(TIME_STEP*5)
                 
                 for i in range(4):
                     for j in range(4):
                         cov.append(P[i,j])
                 pub_covariance.publish(np.array(cov,dtype=np.float32))
-
-                #cmds = np.genfromtxt(utils_path+'/ctrl_cmd.txt',dtype=np.float32,usecols=np.arange(0,1))
-                #print('SENDED FOLLOWING CMDS',cmds)
                 print('SENDED ALL DATA')
-                cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats),timeout=10)
+                cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))
                 cmds = cmds.data
-                
                 print('RECEIVED CMDS:',cmds)
             else: 
                 cmds = [0, 0, 0, 0]
@@ -295,7 +286,6 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         rate.sleep()
 
 def main():
-    global ctrl_cmd
     # ROS INIT
     rospy.init_node('simulation')
     pub_estimation = rospy.Publisher('estimation', numpy_msg(Floats), queue_size=10)
@@ -305,9 +295,10 @@ def main():
     # Initial Conditions
     pose_target = Pose(TARGET_INIT[0], TARGET_INIT[1],  TARGET_INIT[2])
     pose_start_1 = Pose(PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1], PLATFORM_INIT_POSE[2])
-
-    tracker1 = tracker.Tracker('first_observer')
-    controller1 = controller.Controller(5, 8, 2) # controller parameters 
+    
+    # Init tracker controller and robots
+    tracker1 = tracker.Tracker('first_observer',False)
+    controller1 = controller.Controller(5, 1.5) # controller parameters 
     robot_1 = Robot("platoform_center", "y", 100, 100, controller1)
     
     # Sensor Initialization
@@ -320,7 +311,7 @@ def main():
     robots: list[Robot] = [robot_1]
     # Run The Simulation
     print('launch the optimization')
-    time.sleep(3)
+    time.sleep(3)#wait for optimization to launch
     print('STARTED SIMULATION')
     run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platform_state, pub_covariance)
 

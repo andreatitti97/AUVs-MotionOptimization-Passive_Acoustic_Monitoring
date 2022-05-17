@@ -64,15 +64,15 @@ plt.grid()
 plt.show()
 
 # FOR SEE IF optimization is processin the target well ( just checl if the target estimation and path is similar to prev plot)
-'''plt.plot(opt_est_x,opt_est_y)
+plt.plot(opt_est_x,opt_est_y)
 plt.plot(opt_real_x,opt_real_y)
 plt.xlim([2000,4200])
 plt.grid()
-plt.show()'''
+plt.show()
 #PLOT ctrl cmds from optimization
 n_sample1 = np.size(ctrl_cmds)
 t1 = np.linspace(0,TIME_DURATION,n_sample1)
-plt.plot(t1,ctrl_cmds,'-ok',color='black',markerfacecolor='red')
+plt.plot(t1,ctrl_cmds,'-ok','black',markerfacecolor='red')
 plt.xlim([0,TIME_DURATION/4])
 plt.grid()
 plt.show()

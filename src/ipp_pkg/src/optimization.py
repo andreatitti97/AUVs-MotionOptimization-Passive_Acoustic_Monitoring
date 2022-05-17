@@ -11,7 +11,7 @@ from rospy.numpy_msg import numpy_msg
 # Import costum classes
 import importlib.util
 class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
-spec = importlib.util.spec_from_file_location("module.tracker_optimization", class_path+"/tracker_optimization.py")
+spec = importlib.util.spec_from_file_location("module.tracker_optimization", class_path+"/tracker.py")
 tracker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tracker)
 spec = importlib.util.spec_from_file_location("module.sensor", class_path+"/sensor.py")
@@ -109,30 +109,11 @@ def compute_cost(P):
     cost = np.trace(P)
     return cost
 
-def callback1(data):
-
-    global target_est
-    tmp = data.data
-    target_est = [tmp[0], tmp[1], tmp[2], tmp[3]]
-
-def callback2(data):
-
-    global platform_state
-    tmp = data.data
-    platform_state = [tmp[0], tmp[1], tmp[2]]
-
-def callback3(data):
-    global covariance
-    covariance = data.data
-
 def main():
 
     global covariance, target_est, platform_state
     # Sensor Initialization
     rospy.init_node('optimization')
-    #rospy.Subscriber("estimation", numpy_msg(Floats),callback1)
-    #rospy.Subscriber("platform_state", numpy_msg(Floats),callback2)
-    #rospy.Subscriber("covariance", numpy_msg(Floats),callback3)
     pub = rospy.Publisher("ctrl_cmd",numpy_msg(Floats),queue_size=100)
     Hz = 1/(TIME_STEP)
     rate = rospy.Rate(Hz)
@@ -148,7 +129,6 @@ def main():
     ctrl_plot = []
     P = np.eye((4))
     print('started optimization')
-    #time.sleep((T*2)/TIME_SCALER)
     while not rospy.is_shutdown():
         # INIT TARGET MODEL AND PLATFORM MODEL WITH THE LATEST ESTIMATION AND SENSOR POSITIONS 
 
@@ -165,9 +145,9 @@ def main():
                 for j in range(4):
                     P[i,j] = covariance.data[i+j]
 
-        tracker1 = tracker.Tracker('1', P)
-        tracker2 = tracker.Tracker('2', P)
-        tracker3 = tracker.Tracker('3', P)
+        tracker1 = tracker.Tracker('1', True, P)
+        tracker2 = tracker.Tracker('2', True, P)
+        tracker3 = tracker.Tracker('3', True, P)
 
         start = time.time()
         for t in range(T):
@@ -191,25 +171,31 @@ def main():
             s_state = s1
             P = P1
             key_final = key1
+            target_prediction = x_real1
             if cost2 < cost:
                 key_final = key2
                 cost = cost2
                 t_est = x2
                 s_state = s2
                 P = P2
+                target_prediction = x_real2
             if cost3 < cost:
                 key_final = key3
                 cost = cost3
                 t_est = x3
                 s_state = s3
                 P = P3
+                target_prediction = x_real3
             target_traj_est_x.append(t_est[0])
             target_traj_est_y.append(t_est[1])
-            target_traj_real_x.append(x_real1[0])
-            target_traj_real_y.append(x_real1[1])
+            target_traj_real_x.append(target_prediction[0])
+            target_traj_real_y.append(target_prediction[1])
             ctrl_cmd.append(key_final)
             ctrl_plot.append(key_final)
-            pub.publish(np.array(ctrl_cmd,dtype=np.float32))
+
+        rospy.sleep(TIME_STEP*10)
+        pub.publish(np.array(ctrl_cmd,dtype=np.float32))
+
         #SAVE FILE FOR PLOT    
         np.savetxt(lib_path+'/ctrl_cmd.txt',ctrl_cmd)
         np.savetxt(plot_path+'/target_traj_est_x.txt',target_traj_est_x)
@@ -223,9 +209,7 @@ def main():
         print(ctrl_cmd)
         ctrl_cmd = []
         rate.sleep()
-        #time.sleep((T*2)/TIME_SCALER)
-        
-        
+ 
 if __name__ == '__main__':
     
     main()

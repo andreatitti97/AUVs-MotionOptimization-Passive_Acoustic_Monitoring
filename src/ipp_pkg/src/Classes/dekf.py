@@ -10,15 +10,17 @@ def state_vector_to_scalars(state_vector):
     return (state_vector[0][0,0],state_vector[1][0,0],state_vector[2][0,0],state_vector[3][0,0])    
 
 class ExtendedKalmanFilter:
-    def __init__(self):
+    def __init__(self,bool,init_cov=[]):
         '''
         Each object being tracked will result in the creation of a new ExtendedKalmanFilter instance.
         '''
         self.__x = None
         self.__F = None
         self.__Q = None
-
-        self.__P = np.matrix([[1,0,0,0],
+        if bool == True:
+            self.__P = init_cov
+        else:
+            self.__P = np.matrix([[1,0,0,0],
                               [0,1,0,0],
                               [0,0,1,0],
                               [0,0,0,1]])
@@ -99,11 +101,7 @@ class ExtendedKalmanFilter:
         [xt, yt, dotx, doty] = state_vector_to_scalars(self.__x)
         
         # Compute the output error for both measuraments.
-        #y_tilde1 = measures[0] - atan((yt - sensor_state1[1])/(xt - sensor_state1[0]))#atan2(yt - sensor_state1[1],xt - sensor_state1[0])
-        #y_tilde2 = measures[1] - atan((yt - sensor_state2[1])/(xt - sensor_state2[0]))#atan2(yt - sensor_state2[1],xt - sensor_state2[0])
         y_tilde1 = measures[0] - atan2(yt - sensor_state1[1],xt - sensor_state1[0])
-        y_tilde2 = measures[1] - atan2(yt - sensor_state2[1],xt - sensor_state2[0])
-        
         if y_tilde1 > pi:
             y_tilde1 = y_tilde1 - 2*pi
         if y_tilde1 < -pi:
