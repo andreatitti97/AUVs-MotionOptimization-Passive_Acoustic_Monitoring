@@ -25,6 +25,7 @@ TIME_SCALER = main2.TIME_SCALER
 TIME_STEP = main2.TIME_STEP
 MEAS_VARIANCE = main2.MEAS_VARIANCE
 TARGET_INIT = main2.TARGET_INIT
+tc = main2.OPTIMIZATION_TIME_STEP
 # FOLDER PATH DEFINITION
 lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/utils')
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
@@ -35,12 +36,11 @@ key2 = 0
 key3 = pi/6
 keys = [key1, key2, key3]
 key_final = None
-tc = 2 #elapsed time for EKF simulation (how much time we predict the target movement for each time step)
 target_theta = TARGET_INIT[2]
 velTarget = TARGET_INIT[3]
 # Sensors
-sensor1 = sensor.Sensor('first_streamer',1,0,MEAS_VARIANCE,1)
-sensor2 = sensor.Sensor('seconda_streamer',1,0,MEAS_VARIANCE,-1)
+sensor1 = sensor.Sensor('first_streamer',1,0,0,1)
+sensor2 = sensor.Sensor('seconda_streamer',1,0,0,-1)
 # Init global variables for callbacks
 platform_state = []
 target_est = []
@@ -80,7 +80,7 @@ class Target():
         self.y = self.y + self.vly*self.dt
         return [self.x, self.y, self.vlx, self.vly]
 
-def simulation(control_input, target_init, platform_init, init_cov, tracker1):
+def simulation(control_input, target_init, platform_init, init_cov, tracker):
     platform = Platform(platform_init)
     target = Target(target_init)
     platform_state = platform.update_state(control_input)  
@@ -98,8 +98,8 @@ def simulation(control_input, target_init, platform_init, init_cov, tracker1):
     measures = [measure1, measure2]
     # update EKF
     
-    tracker1.processMeasurement(measures,target_state, sensor_pose1, sensor_pose2, tc)
-    [state, P] = tracker1.state
+    tracker.processMeasurement(measures,target_state, sensor_pose1, sensor_pose2, tc)
+    [state, P] = tracker.state
     
     state = [state[0,0], state[1,0], state[2,0], state[3,0]]
     return state, P, platform_state, target_state
@@ -186,6 +186,7 @@ def main():
                 s_state = s3
                 P = P3
                 target_prediction = x_real3
+            
             target_traj_est_x.append(t_est[0])
             target_traj_est_y.append(t_est[1])
             target_traj_real_x.append(target_prediction[0])
@@ -208,6 +209,8 @@ def main():
         print('OPTIMIZATION TIME:',(stop - start))
         print(ctrl_cmd)
         ctrl_cmd = []
+        #target_traj_real_x = []
+        #target_traj_real_y = []
         rate.sleep()
  
 if __name__ == '__main__':

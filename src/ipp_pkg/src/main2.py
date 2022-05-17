@@ -28,13 +28,14 @@ utils_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/log
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 
 # Simulation parameters
-TIME_DURATION = 100 #seconds
+TIME_DURATION = 1800 #seconds
 TIME_STEP = 0.01
-TIME_SCALER = 10 #max 20 for allow communication 
-TARGET_INIT = [4000, 11000, -pi/2, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TIME_SCALER = 50 #max 20 for allow communication -> circa 9 minuti per simulare un ora 
+TARGET_INIT = [8000, 1600, -2.85, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 MEAS_VARIANCE = 50
 OPTIMIZATION_ON = True
+OPTIMIZATION_TIME_STEP = 8
 #GLOBAL VARIABLES
 t = 0
 N = 4 #planning horizon
@@ -161,7 +162,7 @@ class Robot:
 
         if count == N: 
             count = 0
-        if t%(200/TIME_SCALER) == 0:
+        if t%(OPTIMIZATION_TIME_STEP*100/TIME_SCALER) == 0:
             count = count+1
         
 
@@ -234,7 +235,7 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         
         #SEND LAST INFORMATIONS and LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
         if count >= 200 and OPTIMIZATION_ON == True:
-            if count%(200/TIME_SCALER) == 0:
+            if count%(OPTIMIZATION_TIME_STEP*100/TIME_SCALER) == 0:
                 print('SENDING DATA')
                 cov = []
                 pub_estimation.publish(np.array(curr_est,dtype=np.float32))
@@ -263,15 +264,16 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         auv2_y.append(sensor_pose2[1])
         target_est_y.append(curr_est[1,0])
         target_est_x.append(curr_est[0,0])
-        rmse_x.append(err_y)
-        rmse_y.append(err_x)
+        rmse_x.append(err_x)
+        rmse_y.append(err_y)
         
         
         instance.move(TIME_STEP*TIME_SCALER, cmds)
         instance.move_target(TIME_STEP*TIME_SCALER)
         print(t,TIME_DURATION)
         if int(t) == (TIME_DURATION-1):
-            print('saving data for plot')
+            rospy.loginfo('saving data for plot')
+            
             np.savetxt(plot_path+'/target_x_traj.txt',target_x_traj)
             np.savetxt(plot_path+'/target_y_traj.txt',target_y_traj)
             np.savetxt(plot_path+'/target_est_x.txt',target_est_x)
@@ -299,7 +301,7 @@ def main():
     
     # Init tracker controller and robots
     tracker1 = tracker.Tracker('first_observer',False)
-    controller1 = controller.Controller(5, 1.5) # controller parameters 
+    controller1 = controller.Controller(5, 2) # controller parameters 
     robot_1 = Robot("platoform_center", "y", 100, 100, controller1)
     
     # Sensor Initialization
