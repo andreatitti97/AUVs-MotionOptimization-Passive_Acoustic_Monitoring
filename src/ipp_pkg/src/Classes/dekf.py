@@ -6,7 +6,6 @@ def state_vector_to_scalars(state_vector):
     '''
     Returns the elements from the state_vector as a tuple of scalars.
     '''
-    #print(state_vector)
     return (state_vector[0][0,0],state_vector[1][0,0],state_vector[2][0,0],state_vector[3][0,0])    
 
 class ExtendedKalmanFilter:

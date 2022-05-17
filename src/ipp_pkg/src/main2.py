@@ -28,13 +28,13 @@ utils_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/log
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 
 # Simulation parameters
-TIME_DURATION = 500 #seconds
+TIME_DURATION = 100 #seconds
 TIME_STEP = 0.01
-TIME_SCALER = 10
+TIME_SCALER = 10 #max 20 for allow communication 
 TARGET_INIT = [4000, 11000, -pi/2, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 MEAS_VARIANCE = 50
-OPTIMIZATION_STATUS = True
+OPTIMIZATION_ON = True
 #GLOBAL VARIABLES
 t = 0
 N = 4 #planning horizon
@@ -233,7 +233,7 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         
         
         #SEND LAST INFORMATIONS and LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
-        if count >= 200 and OPTIMIZATION_STATUS == True:
+        if count >= 200 and OPTIMIZATION_ON == True:
             if count%(200/TIME_SCALER) == 0:
                 print('SENDING DATA')
                 cov = []
@@ -269,7 +269,8 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         
         instance.move(TIME_STEP*TIME_SCALER, cmds)
         instance.move_target(TIME_STEP*TIME_SCALER)
-        if t == (TIME_DURATION):
+        print(t,TIME_DURATION)
+        if int(t) == (TIME_DURATION-1):
             print('saving data for plot')
             np.savetxt(plot_path+'/target_x_traj.txt',target_x_traj)
             np.savetxt(plot_path+'/target_y_traj.txt',target_y_traj)
