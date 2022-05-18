@@ -128,16 +128,13 @@ def main():
     target_traj_real_y = []
     ctrl_plot = []
     P = np.eye((4))
-    print('started optimization')
+    rospy.loginfo('STARTED OPTIMIZATION')
     while not rospy.is_shutdown():
         # INIT TARGET MODEL AND PLATFORM MODEL WITH THE LATEST ESTIMATION AND SENSOR POSITIONS 
 
         t_est = rospy.wait_for_message('/estimation',numpy_msg(Floats))
-        print('R1')
         s_state = rospy.wait_for_message('/platform_state',numpy_msg(Floats))
-        print('R2')
         covariance = rospy.wait_for_message('/covariance',numpy_msg(Floats))
-        print('R3')
         t_est = t_est.data
         s_state = s_state.data
         covariance = covariance.data
@@ -206,11 +203,9 @@ def main():
         np.savetxt(plot_path+'/plot_cmds.txt',ctrl_plot)
 
         stop = time.time()
-        print('OPTIMIZATION TIME:',(stop - start))
-        print(ctrl_cmd)
+        rospy.loginfo('OPTIMIZATION TIME:',(stop - start))
+        rospy.loginfo(ctrl_cmd)
         ctrl_cmd = []
-        #target_traj_real_x = []
-        #target_traj_real_y = []
         rate.sleep()
  
 if __name__ == '__main__':

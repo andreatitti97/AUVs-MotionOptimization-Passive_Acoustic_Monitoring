@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
 
-<node pkg="ipp_pkg" type="main2.py" name="main2"/>
+<node pkg="ipp_pkg" type="main2.py" name="main2" output="screen"/>
 
 <node pkg="ipp_pkg" type="optimization.py" name="optimization"/>
 

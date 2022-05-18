@@ -30,17 +30,17 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 # Simulation parameters
 TIME_DURATION = 1800 #seconds
 TIME_STEP = 0.01
-TIME_SCALER = 50 #max 20 for allow communication -> circa 9 minuti per simulare un ora 
-TARGET_INIT = [8000, 1600, -2.85, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TIME_SCALER = 20 #max 20 for allow communication -> circa 9 minuti per simulare un ora 
+TARGET_INIT = [8500, 1000, pi/2+pi/4, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 MEAS_VARIANCE = 50
 OPTIMIZATION_ON = True
-OPTIMIZATION_TIME_STEP = 8
+OPTIMIZATION_TIME_STEP = 8 #FOR NOW I THINK IS THE BEST - testare il caso migliore
 #GLOBAL VARIABLES
 t = 0
 N = 4 #planning horizon
 # Internal counters
-count = 0
+count2 = 0
 prev_count = 0
 goal_theta = 0
 old_pose  = 0
@@ -154,22 +154,21 @@ class Robot:
         heading_changes : (float)
             requested heading change
         """
-        global t, count, prev_count, goal_theta, old_pose
+        global t, count2, prev_count, goal_theta, old_pose
         platform_x.append(self.pose.x)
         platform_y.append(self.pose.y)
         t += 1
         
 
-        if count == N: 
-            count = 0
+        if count2 == N: 
+            count2 = 0
         if t%(OPTIMIZATION_TIME_STEP*100/TIME_SCALER) == 0:
-            count = count+1
+            count2 = count2+1
         
 
-        if prev_count != count:
-            #print('new_cmd_send_to_motors',count)
-            heading_change = heading_changes[count-1]
-            if count > 0:
+        if prev_count != count2:
+            heading_change = heading_changes[count2-1]
+            if count2 > 0:
                 goal_theta = heading_change + old_pose
             else: 
                 goal_theta = heading_change
@@ -196,22 +195,22 @@ class Robot:
             np.sin(self.pose.theta) * dt
 
         if 0.15 < np.abs(angular_velocity) < 0.30:
-            prev_count = count
+            prev_count = count2
         
 
 
 def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platform_state, pub_covariance):
     """Simulate the sensor platform and the moving target"""
-
+    
     Hz = 1/(TIME_STEP) #NB: different from sampling rate for move things, this is ros rate
     rate = rospy.Rate(Hz)
     # Init Time Variables
     t = 0    
-    count = 0
+    count1 = 0
     while t <= TIME_DURATION:
-        
+        rospy.loginfo(t)
         t += TIME_STEP*TIME_SCALER
-        count += 1
+        count1 += 1
         for instance in robots:
         # SIMULATE SENSORS MEASURAMENTS
             sensor1.vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta,TIME_STEP)
@@ -234,9 +233,9 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         
         
         #SEND LAST INFORMATIONS and LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
-        if count >= 200 and OPTIMIZATION_ON == True:
-            if count%(OPTIMIZATION_TIME_STEP*100/TIME_SCALER) == 0:
-                print('SENDING DATA')
+        if count1 >= 200 and OPTIMIZATION_ON == True:
+            if count1%(N*OPTIMIZATION_TIME_STEP/(TIME_STEP*TIME_SCALER)) == 0:
+                rospy.loginfo('SENDING DATA')
                 cov = []
                 pub_estimation.publish(np.array(curr_est,dtype=np.float32))
                 rospy.sleep(TIME_STEP*5)
@@ -247,17 +246,16 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
                     for j in range(4):
                         cov.append(P[i,j])
                 pub_covariance.publish(np.array(cov,dtype=np.float32))
-                print('SENDED ALL DATA')
                 cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))
                 cmds = cmds.data
-                print('RECEIVED CMDS:',cmds)
+                rospy.loginfo('RECEIVED CMDS:',cmds)
             else: 
                 cmds = [0, 0, 0, 0]
         else: # load it
             cmds = [0, 0, 0, 0]
         # SAVE DATA FOR PLOT
-        err_y = np.sqrt(((target_state[1] - curr_est[1,0])**2))
         err_x = np.sqrt(((target_state[0] - curr_est[0,0])**2))
+        err_y = np.sqrt(((target_state[1] - curr_est[1,0])**2))
         auv1_x.append(sensor_pose[0])
         auv1_y.append(sensor_pose[1])
         auv2_x.append(sensor_pose2[0])
@@ -266,26 +264,37 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         target_est_x.append(curr_est[0,0])
         rmse_x.append(err_x)
         rmse_y.append(err_y)
-        
+
         
         instance.move(TIME_STEP*TIME_SCALER, cmds)
         instance.move_target(TIME_STEP*TIME_SCALER)
-        print(t,TIME_DURATION)
         if int(t) == (TIME_DURATION-1):
             rospy.loginfo('saving data for plot')
-            
             np.savetxt(plot_path+'/target_x_traj.txt',target_x_traj)
             np.savetxt(plot_path+'/target_y_traj.txt',target_y_traj)
-            np.savetxt(plot_path+'/target_est_x.txt',target_est_x)
-            np.savetxt(plot_path+'/target_est_y.txt',target_est_y)
-            np.savetxt(plot_path+'/rmse_y.txt',rmse_y)
-            np.savetxt(plot_path+'/rmse_x.txt',rmse_x)
-            np.savetxt(plot_path+'/x_platform.txt',platform_x)
-            np.savetxt(plot_path+'/y_platform.txt',platform_y)
-            np.savetxt(plot_path+'/auv1_x.txt',auv1_x)
-            np.savetxt(plot_path+'/auv1_y.txt',auv1_y)
-            np.savetxt(plot_path+'/auv2_x.txt',auv2_x)
-            np.savetxt(plot_path+'/auv2_y.txt',auv2_y)
+            
+            if OPTIMIZATION_ON == True:
+                np.savetxt(plot_path+'/target_est_x_ON.txt',target_est_x)
+                np.savetxt(plot_path+'/target_est_y_ON.txt',target_est_y)
+                np.savetxt(plot_path+'/rmse_y_ON.txt',rmse_y)
+                np.savetxt(plot_path+'/rmse_x_ON.txt',rmse_x)
+                np.savetxt(plot_path+'/x_platform_ON.txt',platform_x)
+                np.savetxt(plot_path+'/y_platform_ON.txt',platform_y)
+                np.savetxt(plot_path+'/auv1_x_ON.txt',auv1_x)
+                np.savetxt(plot_path+'/auv1_y_ON.txt',auv1_y)
+                np.savetxt(plot_path+'/auv2_x_ON.txt',auv2_x)
+                np.savetxt(plot_path+'/auv2_y_ON.txt',auv2_y)
+            else:
+                np.savetxt(plot_path+'/target_est_x_OFF.txt',target_est_x)
+                np.savetxt(plot_path+'/target_est_y_OFF.txt',target_est_y)
+                np.savetxt(plot_path+'/rmse_y_OFF.txt',rmse_y)
+                np.savetxt(plot_path+'/rmse_x_OFF.txt',rmse_x)
+                np.savetxt(plot_path+'/x_platform_OFF.txt',platform_x)
+                np.savetxt(plot_path+'/y_platform_OFF.txt',platform_y)
+                np.savetxt(plot_path+'/auv1_x_OFF.txt',auv1_x)
+                np.savetxt(plot_path+'/auv1_y_OFF.txt',auv1_y)
+                np.savetxt(plot_path+'/auv2_x_OFF.txt',auv2_x)
+                np.savetxt(plot_path+'/auv2_y_OFF.txt',auv2_y)
         rate.sleep()
 
 def main():
@@ -301,7 +310,7 @@ def main():
     
     # Init tracker controller and robots
     tracker1 = tracker.Tracker('first_observer',False)
-    controller1 = controller.Controller(5, 2) # controller parameters 
+    controller1 = controller.Controller(5, 5) # controller parameters  (rho,alpha -> gain linear and angul vel) DO NOT CHANGE
     robot_1 = Robot("platoform_center", "y", 100, 100, controller1)
     
     # Sensor Initialization
@@ -313,9 +322,12 @@ def main():
     # Instantiate the object Robot 
     robots: list[Robot] = [robot_1]
     # Run The Simulation
-    print('launch the optimization')
+    rospy.loginfo('LAUNCH THE OPTIMIZATION')
     time.sleep(3)#wait for optimization to launch
-    print('STARTED SIMULATION')
+    if OPTIMIZATION_ON == True:
+        rospy.loginfo('STARTED SIMULATION - OPTIMIZATION ON')
+    else:
+        rospy.loginfo('STARTED SIMULATION - OPTIMIZATION OFF')
     run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platform_state, pub_covariance)
 
 if __name__ == '__main__':

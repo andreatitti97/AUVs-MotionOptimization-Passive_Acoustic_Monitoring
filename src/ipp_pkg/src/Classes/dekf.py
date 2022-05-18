@@ -101,12 +101,12 @@ class ExtendedKalmanFilter:
         
         # Compute the output error for both measuraments.
         y_tilde1 = measures[0] - atan2(yt - sensor_state1[1],xt - sensor_state1[0])
-        if y_tilde1 > pi:
+        if y_tilde1 >= pi:
             y_tilde1 = y_tilde1 - 2*pi
         if y_tilde1 < -pi:
             y_tilde1 = y_tilde1 + 2*pi
         y_tilde2 = measures[1] - atan2(yt - sensor_state2[1],xt - sensor_state2[0])
-        if y_tilde2 > pi:
+        if y_tilde2 >= pi:
             y_tilde2 = y_tilde2 - 2*pi
         if y_tilde2 < -pi:
             y_tilde2 = y_tilde2 + 2*pi
