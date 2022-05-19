@@ -26,11 +26,11 @@ class ExtendedKalmanFilter:
 
         self.__H = np.matlib.zeros((2,4))
 
-        self.__R = np.matrix([[20,0],[0,20]])
+        self.__R = np.matrix([[50,0],[0,50]])
         
         #This is for adding disturbance on the target model
-        self.__noise_ax = 0
-        self.__noise_ay = 0
+        self.__noise_ax = 10
+        self.__noise_ay = 10
         self.trackingDataState = []
 
     @property
@@ -70,7 +70,7 @@ class ExtendedKalmanFilter:
                               [0, e22, 0, e24],
                               [e31, 0, e33, 0],
                               [0, e42, 0, e44]])
-
+        print(self.__Q)
     def recompute_H(self, s1, s2):
 
         

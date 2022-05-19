@@ -31,7 +31,7 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 TIME_DURATION = 1800 #seconds
 TIME_STEP = 0.01
 TIME_SCALER = 20 #max 20 for allow communication -> circa 9 minuti per simulare un ora 
-TARGET_INIT = [8500, 1000, pi/2+pi/4, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [8500, 1000, +pi/2+pi/4, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 MEAS_VARIANCE = 50
 OPTIMIZATION_ON = True
@@ -213,11 +213,11 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         count1 += 1
         for instance in robots:
         # SIMULATE SENSORS MEASURAMENTS
-            sensor1.vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta,TIME_STEP)
+            sensor1.vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta, TIME_STEP)
             sensor1.targetPoseReal(instance.pose_target.x,instance.pose_target.y,instance.pose_target.theta)
             [measure1,sensor_pose] = sensor1.measureBearing()
             
-            sensor2.vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta,TIME_STEP)
+            sensor2.vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta, TIME_STEP)
             sensor2.targetPoseReal(instance.pose_target.x,instance.pose_target.y,instance.pose_target.theta)
             [measure2, sensor_pose2] = sensor2.measureBearing()  
             
@@ -248,7 +248,7 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
                 pub_covariance.publish(np.array(cov,dtype=np.float32))
                 cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))
                 cmds = cmds.data
-                rospy.loginfo('RECEIVED CMDS:',cmds)
+                rospy.loginfo('RECEIVED CMDS')
             else: 
                 cmds = [0, 0, 0, 0]
         else: # load it
@@ -310,7 +310,7 @@ def main():
     
     # Init tracker controller and robots
     tracker1 = tracker.Tracker('first_observer',False)
-    controller1 = controller.Controller(5, 5) # controller parameters  (rho,alpha -> gain linear and angul vel) DO NOT CHANGE
+    controller1 = controller.Controller(5, 1) # controller parameters  (rho,alpha -> gain linear and angul vel) DO NOT CHANGE
     robot_1 = Robot("platoform_center", "y", 100, 100, controller1)
     
     # Sensor Initialization
@@ -322,9 +322,9 @@ def main():
     # Instantiate the object Robot 
     robots: list[Robot] = [robot_1]
     # Run The Simulation
-    rospy.loginfo('LAUNCH THE OPTIMIZATION')
-    time.sleep(3)#wait for optimization to launch
     if OPTIMIZATION_ON == True:
+        rospy.loginfo('LAUNCH THE OPTIMIZATION')
+        time.sleep(3)# wait for optimization to launch
         rospy.loginfo('STARTED SIMULATION - OPTIMIZATION ON')
     else:
         rospy.loginfo('STARTED SIMULATION - OPTIMIZATION OFF')

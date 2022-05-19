@@ -18,16 +18,23 @@ class Sensor:
         self.variance = variance
         d = 200
         self.baseline = sign*d 
-        self.noise = np.random.normal(self.mean, self.variance)
-        self.measure = []
         self.w_pose_t = []
 
     def vehiclePose(self, x_v, y_v, theta_v, dt):#w.r.t the <w> - return sensor pose from vehicle pose
-        self.theta_v = theta_v + 2*dt
-        self.wTv = transformation_matrix(x_v, y_v, theta_v)
-        v_pose_s = [0, self.baseline/2, 1]
-        self.w_pose_s = np.array([(x_v+v_pose_s[0])+np.cos(self.theta_v)*dt,
-                                    (y_v+v_pose_s[1])+np.sin(self.theta_v)*dt,self.theta_v])
+        
+
+        self.theta_v = theta_v + dt
+        v_pose_s = [0, self.baseline/2]
+        '''self.w_pose_s = np.array([(x_v+v_pose_s[0])+np.cos(self.theta_v)*dt,
+                                    (y_v+v_pose_s[1])+np.sin(self.theta_v)*dt,self.theta_v])'''
+                                        
+        self.w_pose_s = np.array([(x_v+np.sin(self.theta_v)*self.baseline/2)+np.cos(self.theta_v)*dt,
+                                        (y_v-np.cos(self.theta_v)*self.baseline/2)+np.sin(self.theta_v)*dt, self.theta_v])
+        '''tmp = atan2(self.w_pose_s[1],self.w_pose_s[0])
+        if tmp < atan2(y_v,x_v):
+            self.theta_v = theta_v
+            self.w_pose_s = np.array([(x_v+np.sin(self.theta_v)*self.baseline/2)+np.cos(self.theta_v),
+                                        (y_v-np.cos(self.theta_v)*self.baseline/2)+np.sin(self.theta_v), self.theta_v])'''
 
     def targetPoseReal(self, x_t, y_t, theta_t):#w.r.t. the  <w>
         self.w_pose_t = np.transpose([x_t, y_t, theta_t])
@@ -45,11 +52,14 @@ class Sensor:
             rel_bearing = 2*pi - self.theta_v - self.abs_bearing
 
         self.noise = np.random.normal(self.mean, self.variance)
-        activation_function = 10*(np.cos(rel_bearing))
-        '''if activation_function < 0:
-            activation_function = activation_function-1
+        A = 10
+        epsi = 1
+        activation_function = A*np.cos(rel_bearing)
+        #TODO - I THINK IS OK
+        if activation_function < 0: 
+            activation_function = activation_function-epsi
         else:
-            activation_function = activation_function+1'''
+            activation_function = activation_function+epsi
         self.w_pose_t = [self.w_pose_t[0]+self.noise*activation_function, self.w_pose_t[1]+self.noise*activation_function,
                             self.w_pose_t[2]]
         vect =  [self.w_pose_t[1]-self.w_pose_s[1],self.w_pose_t[0]-self.w_pose_s[0]]

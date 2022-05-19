@@ -80,17 +80,17 @@ class Target():
         self.y = self.y + self.vly*self.dt
         return [self.x, self.y, self.vlx, self.vly]
 
-def simulation(control_input, target_init, platform_init, init_cov, tracker):
+def simulation(control_input, target_init, platform_init, tracker):
     platform = Platform(platform_init)
     target = Target(target_init)
     platform_state = platform.update_state(control_input)  
     target_state = target.update_state() 
 
     #update measurament
-    sensor1.vehiclePose(platform_state[0], platform_state[1], platform_state[2],tc)  
+    sensor1.vehiclePose(platform_state[0], platform_state[1], platform_state[2], tc)  
     sensor1.targetPoseReal(target_state[0], target_state[1], target_theta)
     
-    sensor2.vehiclePose(platform_state[0], platform_state[1], platform_state[2],tc)
+    sensor2.vehiclePose(platform_state[0], platform_state[1], platform_state[2], tc)
     sensor2.targetPoseReal(target_state[0], target_state[1], target_theta)
     
     [measure1,sensor_pose1] = sensor1.measureBearing()
@@ -150,16 +150,16 @@ def main():
         for t in range(T):
             for k in range(3):
                 if k == 0:  
-                    x1, P1, s1, x_real1 = simulation(keys[k], t_est, s_state, P, tracker1)
+                    x1, P1, s1, x_real1 = simulation(keys[k], t_est, s_state, tracker1)
                     cost1 = compute_cost(P1)
                     #print('s1',x1)
 
                 if k == 1:
-                    x2, P2, s2, x_real2 = simulation(keys[k], t_est, s_state, P, tracker2)
+                    x2, P2, s2, x_real2 = simulation(keys[k], t_est, s_state, tracker2)
                     cost2 = compute_cost(P2)
                     #print('s2',x2)
                 if k == 2:
-                    x3, P3, s3, x_real3 = simulation(keys[k], t_est, s_state, P, tracker3)
+                    x3, P3, s3, x_real3 = simulation(keys[k], t_est, s_state, tracker3)
                     cost3 = compute_cost(P3)
                     #print('s3',x3)
 
@@ -203,7 +203,7 @@ def main():
         np.savetxt(plot_path+'/plot_cmds.txt',ctrl_plot)
 
         stop = time.time()
-        rospy.loginfo('OPTIMIZATION TIME:',(stop - start))
+        #rospy.loginfo('OPTIMIZATION TIME:',(stop - start))
         rospy.loginfo(ctrl_cmd)
         ctrl_cmd = []
         rate.sleep()
