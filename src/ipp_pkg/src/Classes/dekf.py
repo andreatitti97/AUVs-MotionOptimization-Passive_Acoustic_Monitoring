@@ -28,9 +28,16 @@ class ExtendedKalmanFilter:
 
         self.__R = np.matrix([[0.1,0],[0,0.1]])
         
-        #This is for adding disturbance on the target model
-        self.__noise_ax = 0.1
-        self.__noise_ay = 0.1
+        #This is for adding disturbance on the target 
+        # FOR NOW WHEN THE EKF IS CALLED DURING OPTIMIZATION THERE IS NO DISTURBANCE because we receive a corrpted state (both measurmane and state)
+        # and from this state + cov we simply apply the linear model obtaining ONE realizatio of the target 
+        # TODO this can improved by sampling from the input distribution (state+cov) other possible target realization, through #USCENTED TRANSORM
+        if bool == True:
+            self.__noise_ax = 0.0
+            self.__noise_ay = 0.0
+        else:
+            self.__noise_ax = 0.1
+            self.__noise_ay = 0.1
         self.trackingDataState = []
 
     @property

@@ -31,10 +31,12 @@ lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 
 #GLOBAL VARIABLES - simulation parameters
-key1 = -pi/6
+key1 = -pi/12
 key2 = 0
-key3 = pi/6
-keys = [key1, key2, key3]
+key3 = pi/12
+key4 = pi/6
+key5 = -pi/6
+keys = [key1, key2, key3, key4, key5]
 key_final = None
 target_theta = TARGET_INIT[2]
 velTarget = TARGET_INIT[3]
@@ -145,10 +147,12 @@ def main():
         tracker1 = tracker.Tracker('1', True, P)
         tracker2 = tracker.Tracker('2', True, P)
         tracker3 = tracker.Tracker('3', True, P)
+        tracker4 = tracker.Tracker('4', True, P)
+        tracker5 = tracker.Tracker('5', True, P)
 
         start = time.time()
         for t in range(T):
-            for k in range(3):
+            for k in range(5):
                 if k == 0:  
                     x1, P1, s1, x_real1 = simulation(keys[k], t_est, s_state, tracker1)
                     cost1 = compute_cost(P1)
@@ -162,6 +166,15 @@ def main():
                     x3, P3, s3, x_real3 = simulation(keys[k], t_est, s_state, tracker3)
                     cost3 = compute_cost(P3)
                     #print('s3',x3)
+                if k == 3:
+                    x4, P4, s4, x_real4 = simulation(keys[k], t_est, s_state, tracker4)
+                    cost4 = compute_cost(P3)
+                    #print('s3',x3)
+                if k == 4:
+                    x5, P5, s5, x_real5 = simulation(keys[k], t_est, s_state, tracker5)
+                    cost5 = compute_cost(P3)
+                    #print('s3',x3)    
+            
 
             cost = cost1
             t_est = x1
@@ -183,6 +196,20 @@ def main():
                 s_state = s3
                 P = P3
                 target_prediction = x_real3
+            if cost4 < cost:
+                key_final = key4
+                cost = cost4
+                t_est = x4
+                s_state = s4
+                P = P4
+                target_prediction = x_real4
+            if cost5 < cost:
+                key_final = key5
+                cost = cost5
+                t_est = x5
+                s_state = s5
+                P = P5
+                target_prediction = x_real5
             
             target_traj_est_x.append(t_est[0])
             target_traj_est_y.append(t_est[1])
@@ -201,9 +228,6 @@ def main():
         np.savetxt(plot_path+'/target_traj_real_x.txt',target_traj_real_x)
         np.savetxt(plot_path+'/target_traj_real_y.txt',target_traj_real_y)
         np.savetxt(plot_path+'/plot_cmds.txt',ctrl_plot)
-
-        stop = time.time()
-        #rospy.loginfo('OPTIMIZATION TIME:',(stop - start))
         rospy.loginfo(ctrl_cmd)
         ctrl_cmd = []
         rate.sleep()

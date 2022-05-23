@@ -3,6 +3,8 @@
 import os
 import time
 import importlib.util
+from matplotlib.pyplot import plot
+import scipy.stats
 # Import math modules
 from re import T
 from math import pi
@@ -34,7 +36,7 @@ TIME_SCALER = 20 #max 20 for allow communication -> circa 9 minuti per simulare 
 TARGET_INIT = [8500, 1000, pi/2+pi/4, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 MEAS_VARIANCE = 0.1
-OPTIMIZATION_ON = False
+OPTIMIZATION_ON = True
 OPTIMIZATION_TIME_STEP = 8 
 #GLOBAL VARIABLES
 t = 0
@@ -58,7 +60,8 @@ auv1_x = []
 auv1_y = []
 auv2_x = []
 auv2_y = []
-
+y_x = []
+y_y = []
 class Pose:
     """2D pose"""
 
@@ -195,7 +198,7 @@ class Robot:
         self.pose.y = self.pose.y + linear_velocity * \
             np.sin(self.pose.theta) * dt
 
-        if 0.15 < np.abs(angular_velocity) < 0.30:
+        if 0.1 < np.abs(angular_velocity) < 0.2: #0.15 - 0.3
             prev_count = count2
         
 
@@ -229,13 +232,12 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         # SIMULATE EKF
         tracker1.processMeasurement(measures,target_state, sensor_pose, sensor_pose2, TIME_STEP*TIME_SCALER)
         [curr_est, P] = tracker1.state
-        
+
         # PUBLISH INFORMATION FOR OPTIMIZATION
-        
-        
-        #SEND LAST INFORMATIONS and LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
+        # SEND LAST INFORMATIONS and LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
         if count1 >= 200 and OPTIMIZATION_ON == True:
             if count1%(N*OPTIMIZATION_TIME_STEP/(TIME_STEP*TIME_SCALER)) == 0:
+                
                 rospy.loginfo('SENDING DATA')
                 cov = []
                 pub_estimation.publish(np.array(curr_est,dtype=np.float32))
@@ -255,6 +257,8 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         else: # load it
             cmds = [0, 0, 0, 0]
         # SAVE DATA FOR PLOT
+        target_est_y.append(curr_est[1,0])
+        target_est_x.append(curr_est[0,0])
         err_x = np.sqrt(((target_state[0] - curr_est[0,0])**2))
         err_y = np.sqrt(((target_state[1] - curr_est[1,0])**2))
         norma_err = np.sqrt(err_x**2+err_y**2)
@@ -262,8 +266,7 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         auv1_y.append(sensor_pose[1])
         auv2_x.append(sensor_pose2[0])
         auv2_y.append(sensor_pose2[1])
-        target_est_y.append(curr_est[1,0])
-        target_est_x.append(curr_est[0,0])
+        
         rmse_x.append(err_x)
         rmse_y.append(err_y)
         rmse.append(norma_err)
@@ -274,7 +277,8 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
             rospy.loginfo('saving data for plot')
             np.savetxt(plot_path+'/target_x_traj.txt',target_x_traj)
             np.savetxt(plot_path+'/target_y_traj.txt',target_y_traj)
-            
+            np.savetxt(plot_path+'/MLE_x.txt',y_x)
+            np.savetxt(plot_path+'/MLE_y.txt',y_y)
             if OPTIMIZATION_ON == True:
                 np.savetxt(plot_path+'/target_est_x_ON.txt',target_est_x)
                 np.savetxt(plot_path+'/target_est_y_ON.txt',target_est_y)

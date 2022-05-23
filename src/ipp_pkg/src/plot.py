@@ -58,6 +58,7 @@ plt.grid()
 plt.subplot(2,1,2)
 plt.plot(t,ekf_y_off[0:n_sample],'b')
 plt.plot(t,real_y[0:n_sample],'r--')
+
 plt.xlabel('time(s)')
 plt.ylabel('y pos target (m)')
 plt.legend(['optimization OFF','real'])
