@@ -41,11 +41,14 @@ class Sensor:
 
     def measureBearing(self):
         vect = [self.w_pose_t[1]-self.w_pose_s[1],self.w_pose_t[0]-self.w_pose_s[0]]
+        self.noise = np.random.normal(self.mean, self.variance)
         self.abs_bearing = atan2(vect[0],vect[1]) # abs bearing = rel_bearing - vehcile ori -> [-pi,+pi]
 
         if self.abs_bearing < 0:
 
             self.abs_bearing = 2*pi + self.abs_bearing # change convention Bearing_abs -> [0,2*pi]
+
+
         if self.theta_v  <= self.abs_bearing: # if the target is counter clock wise w.r.t to surge vel
             rel_bearing = self.abs_bearing - self.theta_v 
         else:
@@ -55,15 +58,15 @@ class Sensor:
         A = 10
         epsi = 1
         activation_function = A*np.cos(rel_bearing)
+        
         #TODO - I THINK IS OK
         if activation_function < 0: 
             activation_function = activation_function-epsi
         else:
             activation_function = activation_function+epsi
-        self.w_pose_t = [self.w_pose_t[0]+self.noise*activation_function, self.w_pose_t[1]+self.noise*activation_function,
-                            self.w_pose_t[2]]
+        self.w_pose_t = [self.w_pose_t[0], self.w_pose_t[1], self.w_pose_t[2]]
         vect =  [self.w_pose_t[1]-self.w_pose_s[1],self.w_pose_t[0]-self.w_pose_s[0]]
-        self.abs_bearing = atan2(vect[0],vect[1])#overwrite absolute bearing with the corrupted quantities
+        self.abs_bearing = atan2(vect[0],vect[1]) + activation_function*self.noise#overwrite absolute bearing with the corrupted quantities
 
         return self.abs_bearing, self.w_pose_s
 

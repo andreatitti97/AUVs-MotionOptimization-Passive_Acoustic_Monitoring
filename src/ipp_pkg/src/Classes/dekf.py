@@ -26,11 +26,11 @@ class ExtendedKalmanFilter:
 
         self.__H = np.matlib.zeros((2,4))
 
-        self.__R = np.matrix([[50,0],[0,50]])
+        self.__R = np.matrix([[0.1,0],[0,0.1]])
         
         #This is for adding disturbance on the target model
-        self.__noise_ax = 10
-        self.__noise_ay = 10
+        self.__noise_ax = 0.1
+        self.__noise_ay = 0.1
         self.trackingDataState = []
 
     @property
@@ -60,7 +60,7 @@ class ExtendedKalmanFilter:
         e11 = dt4 * self.__noise_ax / 4
         e13 = dt3 * self.__noise_ax / 2
         e22 = dt4 * self.__noise_ay / 4
-        e24 = dt3 * self.__noise_ay /  2
+        e24 = dt3 * self.__noise_ay / 2
         e31 = dt3 * self.__noise_ax / 2
         e33 = dt2 * self.__noise_ax
         e42 = dt3 * self.__noise_ay / 2

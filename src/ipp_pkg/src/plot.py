@@ -15,11 +15,14 @@ real_x = np.loadtxt(lib_path+'/target_x_traj.txt')
 
 ekf_y_off = np.loadtxt(lib_path+'/target_est_y_OFF.txt')
 ekf_x_off = np.loadtxt(lib_path+'/target_est_x_OFF.txt')
+
 # RMSE optimization ON vs OFF
 err_y_on = np.loadtxt(lib_path+'/rmse_y_ON.txt')
 err_x_on = np.loadtxt(lib_path+'/rmse_x_ON.txt')
+err_on = np.loadtxt(lib_path+'/rmse_ON.txt')
 err_y_off = np.loadtxt(lib_path+'/rmse_y_OFF.txt')
 err_x_off = np.loadtxt(lib_path+'/rmse_x_OFF.txt')
+err_off = np.loadtxt(lib_path+'/rmse_OFF.txt')
 # Platform and AUV path OFF vs ON
 s_x_on = np.loadtxt(lib_path+'/x_platform_ON.txt')
 s_y_on = np.loadtxt(lib_path+'/y_platform_ON.txt')
@@ -146,7 +149,15 @@ plt.ylabel('Heading Changes (rad)')
 plt.grid()
 plt.show()
 
-plt.subplot(2,1,1)
+plt.plot(t,err_on[0:n_sample])
+plt.plot(t,err_off[0:n_sample])
+plt.legend(['optimization ON','optimization OFF'])
+plt.title('ESTIMATION COMPARISON')
+plt.xlabel('time (s)')
+plt.ylabel('RMSE (m)')
+plt.grid()
+plt.show()
+'''plt.subplot(2,1,1)
 plt.plot(t,err_x_on[0:n_sample])
 plt.plot(t,err_x_off[0:n_sample])
 plt.legend(['optimization ON','optimization OFF'])
@@ -163,5 +174,5 @@ plt.title(['ESTIMATION ERROR ALONG Y-AXIS'])
 plt.xlabel('time (s)')
 plt.ylabel('RMSE (m)')
 plt.grid()
-plt.show()
+plt.show()'''
 

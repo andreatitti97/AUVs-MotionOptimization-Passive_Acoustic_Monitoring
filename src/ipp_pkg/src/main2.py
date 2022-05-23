@@ -31,11 +31,11 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 TIME_DURATION = 1800 #seconds
 TIME_STEP = 0.01
 TIME_SCALER = 20 #max 20 for allow communication -> circa 9 minuti per simulare un ora 
-TARGET_INIT = [8500, 1000, +pi/2+pi/4, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [8500, 1000, pi/2+pi/4, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
-MEAS_VARIANCE = 50
-OPTIMIZATION_ON = True
-OPTIMIZATION_TIME_STEP = 8 #FOR NOW I THINK IS THE BEST - testare il caso migliore
+MEAS_VARIANCE = 0.1
+OPTIMIZATION_ON = False
+OPTIMIZATION_TIME_STEP = 8 
 #GLOBAL VARIABLES
 t = 0
 N = 4 #planning horizon
@@ -51,6 +51,7 @@ platform_x = []
 platform_y = []
 rmse_x = []
 rmse_y = []
+rmse = []
 target_est_x = []
 target_est_y = []
 auv1_x = []
@@ -256,6 +257,7 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         # SAVE DATA FOR PLOT
         err_x = np.sqrt(((target_state[0] - curr_est[0,0])**2))
         err_y = np.sqrt(((target_state[1] - curr_est[1,0])**2))
+        norma_err = np.sqrt(err_x**2+err_y**2)
         auv1_x.append(sensor_pose[0])
         auv1_y.append(sensor_pose[1])
         auv2_x.append(sensor_pose2[0])
@@ -264,7 +266,7 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         target_est_x.append(curr_est[0,0])
         rmse_x.append(err_x)
         rmse_y.append(err_y)
-
+        rmse.append(norma_err)
         
         instance.move(TIME_STEP*TIME_SCALER, cmds)
         instance.move_target(TIME_STEP*TIME_SCALER)
@@ -278,6 +280,7 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
                 np.savetxt(plot_path+'/target_est_y_ON.txt',target_est_y)
                 np.savetxt(plot_path+'/rmse_y_ON.txt',rmse_y)
                 np.savetxt(plot_path+'/rmse_x_ON.txt',rmse_x)
+                np.savetxt(plot_path+'/rmse_ON.txt',rmse)
                 np.savetxt(plot_path+'/x_platform_ON.txt',platform_x)
                 np.savetxt(plot_path+'/y_platform_ON.txt',platform_y)
                 np.savetxt(plot_path+'/auv1_x_ON.txt',auv1_x)
@@ -289,6 +292,7 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
                 np.savetxt(plot_path+'/target_est_y_OFF.txt',target_est_y)
                 np.savetxt(plot_path+'/rmse_y_OFF.txt',rmse_y)
                 np.savetxt(plot_path+'/rmse_x_OFF.txt',rmse_x)
+                np.savetxt(plot_path+'/rmse_OFF.txt',rmse)
                 np.savetxt(plot_path+'/x_platform_OFF.txt',platform_x)
                 np.savetxt(plot_path+'/y_platform_OFF.txt',platform_y)
                 np.savetxt(plot_path+'/auv1_x_OFF.txt',auv1_x)
