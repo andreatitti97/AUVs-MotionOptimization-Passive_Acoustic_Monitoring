@@ -60,8 +60,7 @@ auv1_x = []
 auv1_y = []
 auv2_x = []
 auv2_y = []
-y_x = []
-y_y = []
+
 class Pose:
     """2D pose"""
 
@@ -100,12 +99,9 @@ class Robot:
         linear and angular velocities. 
     """
 
-    def __init__(self, name, color, max_linear_speed, max_angular_speed,
-                 path_finder_controller):
+    def __init__(self, name, color, path_finder_controller):
         self.name = name
         self.color = color
-        self.MAX_LINEAR_SPEED = max_linear_speed
-        self.MAX_ANGULAR_SPEED = max_angular_speed
         self.path_finder_controller = path_finder_controller
         self.pose = Pose(0,0,0)
         self.pose_start = Pose(0,0,0)
@@ -166,6 +162,7 @@ class Robot:
 
         if count2 == N: 
             count2 = 0
+
         if t%(OPTIMIZATION_TIME_STEP*100/TIME_SCALER) == 0:
             count2 = count2+1
         
@@ -266,9 +263,6 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         auv1_y.append(sensor_pose[1])
         auv2_x.append(sensor_pose2[0])
         auv2_y.append(sensor_pose2[1])
-        
-        rmse_x.append(err_x)
-        rmse_y.append(err_y)
         rmse.append(norma_err)
         
         instance.move(TIME_STEP*TIME_SCALER, cmds)
@@ -277,13 +271,10 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
             rospy.loginfo('saving data for plot')
             np.savetxt(plot_path+'/target_x_traj.txt',target_x_traj)
             np.savetxt(plot_path+'/target_y_traj.txt',target_y_traj)
-            np.savetxt(plot_path+'/MLE_x.txt',y_x)
-            np.savetxt(plot_path+'/MLE_y.txt',y_y)
+
             if OPTIMIZATION_ON == True:
                 np.savetxt(plot_path+'/target_est_x_ON.txt',target_est_x)
                 np.savetxt(plot_path+'/target_est_y_ON.txt',target_est_y)
-                np.savetxt(plot_path+'/rmse_y_ON.txt',rmse_y)
-                np.savetxt(plot_path+'/rmse_x_ON.txt',rmse_x)
                 np.savetxt(plot_path+'/rmse_ON.txt',rmse)
                 np.savetxt(plot_path+'/x_platform_ON.txt',platform_x)
                 np.savetxt(plot_path+'/y_platform_ON.txt',platform_y)
@@ -294,8 +285,6 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
             else:
                 np.savetxt(plot_path+'/target_est_x_OFF.txt',target_est_x)
                 np.savetxt(plot_path+'/target_est_y_OFF.txt',target_est_y)
-                np.savetxt(plot_path+'/rmse_y_OFF.txt',rmse_y)
-                np.savetxt(plot_path+'/rmse_x_OFF.txt',rmse_x)
                 np.savetxt(plot_path+'/rmse_OFF.txt',rmse)
                 np.savetxt(plot_path+'/x_platform_OFF.txt',platform_x)
                 np.savetxt(plot_path+'/y_platform_OFF.txt',platform_y)
@@ -319,7 +308,7 @@ def main():
     # Init tracker controller and robots
     tracker1 = tracker.Tracker('first_observer',False)
     controller1 = controller.Controller(5, 1) # controller parameters  (rho,alpha -> gain linear and angul vel) DO NOT CHANGE
-    robot_1 = Robot("platoform_center", "y", 100, 100, controller1)
+    robot_1 = Robot("platoform_center", "y", controller1)
     
     # Sensor Initialization
     sensor1 = sensor.Sensor('first_streamer',1,0,MEAS_VARIANCE,1)#freq,mean,variance,displachement
