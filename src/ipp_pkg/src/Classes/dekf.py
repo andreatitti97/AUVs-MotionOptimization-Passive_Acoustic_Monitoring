@@ -77,7 +77,7 @@ class ExtendedKalmanFilter:
                               [0, e22, 0, e24],
                               [e31, 0, e33, 0],
                               [0, e42, 0, e44]])
-        print(self.__Q)
+                              
     def recompute_H(self, s1, s2):
 
         

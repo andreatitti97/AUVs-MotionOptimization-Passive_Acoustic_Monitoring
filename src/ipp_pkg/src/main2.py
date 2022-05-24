@@ -33,20 +33,21 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 TIME_DURATION = 1800 #seconds
 TIME_STEP = 0.01
 TIME_SCALER = 20 #max 20 for allow communication -> circa 9 minuti per simulare un ora 
-TARGET_INIT = [8500, 1000, pi/2+pi/4, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [8000, -1000, pi/2+pi/4, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 MEAS_VARIANCE = 0.1
-OPTIMIZATION_ON = True
+OPTIMIZATION_ON = False
 OPTIMIZATION_TIME_STEP = 8 
 #GLOBAL VARIABLES
 t = 0
 N = 4 #planning horizon
 # Internal counters
 count2 = 0
+count1 = 0
 prev_count = 0
 goal_theta = 0
 old_pose  = 0
-# INIT array for plot
+# INIT lists for plot
 target_x_traj = []
 target_y_traj = []
 platform_x = []
@@ -133,6 +134,8 @@ class Robot:
         dt : (float)
             time step
         """
+        global count1
+        print(count1)
         target_x_traj.append(self.pose_target.x)
         target_y_traj.append(self.pose_target.y)
         linear_velocity = self.vel_lin_target
@@ -202,7 +205,7 @@ class Robot:
 
 def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platform_state, pub_covariance):
     """Simulate the sensor platform and the moving target"""
-    
+    global count1
     Hz = 1/(TIME_STEP) #NB: different from sampling rate for move things, this is ros rate
     rate = rospy.Rate(Hz)
     # Init Time Variables

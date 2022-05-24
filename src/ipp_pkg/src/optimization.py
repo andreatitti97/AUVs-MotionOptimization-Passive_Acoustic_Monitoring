@@ -78,6 +78,7 @@ class Target():
         self.dt = tc
         self.vlx = velTarget*cos(target_theta)
         self.vly = velTarget*sin(target_theta)
+
         self.x = self.x + self.vlx*self.dt
         self.y = self.y + self.vly*self.dt
         return [self.x, self.y, self.vlx, self.vly]
