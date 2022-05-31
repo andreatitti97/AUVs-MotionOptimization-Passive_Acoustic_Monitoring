@@ -3,7 +3,7 @@ import os
 import time
 # Import math modules
 import numpy as np
-from math import sin, cos, pi
+from math import cos, pi
 # Import ROS modules and Service
 import rospy
 from rospy_tutorials.msg import Floats
@@ -93,8 +93,8 @@ def simulation(control_input, target_init, platform_init, tracker):
     sensor2.vehiclePose(platform_state[0], platform_state[1], platform_state[2], tc)
     sensor2.targetPoseReal(target_state[0], target_state[1], target_theta)
     
-    [measure1,sensor_pose1] = sensor1.measureBearing()
-    [measure2,sensor_pose2] = sensor2.measureBearing()
+    [measure1,sensor_pose1, rel_bearing1] = sensor1.measureBearing()
+    [measure2,sensor_pose2, rel_bearing2] = sensor2.measureBearing()
     measures = [measure1, measure2]
     # update EKF
     
