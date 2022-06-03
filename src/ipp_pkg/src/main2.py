@@ -227,13 +227,16 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
             sensor2.vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta, TIME_STEP)
             sensor2.targetPoseReal(instance.pose_target.x,instance.pose_target.y,instance.pose_target.theta)
             [measure2, vehicle_pose2, rel_bearing2] = sensor2.measureBearing()  
-            
             measures = [measure1, measure2]
             target_state = [instance.pose_target.x,instance.pose_target.y, TARGET_INIT[3]*np.cos(instance.pose_target.theta),
           TARGET_INIT[3]*np.sin(instance.pose_target.theta)]
 
         # SIMULATE EKF
-        tracker1.processMeasurement(measures,target_state, vehicle_pose, vehicle_pose2, TIME_STEP*TIME_SCALER)
+        if count1 == 1: #add distrubnace to th initial guess
+            initial_gaussian_noise = np.random.normal(0, 10)
+            initial_guess = [target_state[0] + initial_gaussian_noise,target_state[1] + initial_gaussian_noise,
+                                0,0 ]
+        tracker1.processMeasurement(measures,initial_guess, vehicle_pose, vehicle_pose2, TIME_STEP*TIME_SCALER)
         [curr_est, P] = tracker1.state
         
         # PUBLISH INFORMATION FOR OPTIMIZATION
