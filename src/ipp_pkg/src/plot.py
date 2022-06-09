@@ -156,14 +156,14 @@ plt.legend(['Angle Difference'])
 plt.grid()
 plt.show()
 # PLOT OPTIMIZATION TARGET PREDICTION 
-'''
+
 plt.plot(opt_real_x,opt_real_y,'o')
 plt.title(['TARGET PREDICTION DURING OPTIMIZATION'])
 plt.xlabel('x pos target (m)',fontsize=20)
 plt.ylabel('y pos target (m)',fontsize=20)
 plt.legend(['estimated','real'])
 plt.grid()
-plt.show()'''
+plt.show()
 
 # PLOT ctrl cmds from optimization
 n_sample1 = np.size(ctrl_cmds)
