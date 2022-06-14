@@ -47,6 +47,7 @@ sensor2 = sensor.Sensor('seconda_streamer',1,0,0,-1)
 platform_state = []
 target_est = []
 covariance = []
+negative_trace_counter = 0
 
 class Platform():
     def __init__(self, init_vector):
@@ -71,11 +72,11 @@ class Target():
 
         self.vlx = init_vector[2]
         self.vly = init_vector[3]
-        self.dt = 0
+        self.dt = tc
 
     def update_state(self):
 
-        self.dt = tc
+        
         self.x = self.x + self.vlx*self.dt
         self.y = self.y + self.vly*self.dt
         return [self.x, self.y, self.vlx, self.vly]
@@ -85,6 +86,7 @@ def simulation(control_input, target_init, platform_init, tracker):
     target = Target(target_init)
     platform_state = platform.update_state(control_input)  
     target_state = target.update_state() 
+
 
     #update measurament
     sensor1.vehiclePose(platform_state[0], platform_state[1], platform_state[2], tc)  
@@ -100,15 +102,32 @@ def simulation(control_input, target_init, platform_init, tracker):
     
     tracker.processMeasurement(measures,target_state, sensor_pose1, sensor_pose2, tc)
     [state, P] = tracker.state
-    print('trace:',np.trace(P))
-    print('state:',state)
-    print('platform',platform_state)
+    platform_state = platform.update_state(control_input)  
+    target_state = target.update_state() 
+
+    #print('trace:',np.trace(P))
+    #print('state:',state)
+    #print('platform',platform_state)
     state = [state[0,0], state[1,0], state[2,0], state[3,0]]
+    '''if P[0,0] < 0:
+        P[0,0] = np.abs(P[0,0])
+    if P[1,1] < 0:
+        P[1,1] = np.abs(P[1,1])
+    if P[2,2] < 0:
+        P[2,2] = np.abs(P[2,2])
+    if P[3,3] < 0:
+        P[3,3] = np.abs(P[3,3])'''
     return state, P, platform_state, target_state
 
 def compute_cost(P):
-   
+    global negative_trace_counter
     cost = np.trace(P)
+    eigen = np.linalg.eig(P)
+    #print('cov:',P)
+    #print('eig:',eigen)
+    if cost < 0:
+        negative_trace_counter += 1
+        
     return cost
 
 def main():
@@ -144,6 +163,10 @@ def main():
                 for j in range(4):
                     P[i,j] = covariance.data[i+j]
 
+        P = np.matrix([[t_est[0]**2, 0, 0, 0],
+                        [0, t_est[1]**2, 0, 0],
+                        [0, 0, t_est[2]**2, 0],
+                        [0, 0, 0, t_est[3]**2]])
         tracker1 = tracker.Tracker('1', True, P)
         tracker2 = tracker.Tracker('2', True, P)
         tracker3 = tracker.Tracker('3', True, P)
@@ -152,7 +175,7 @@ def main():
 
         start = time.time()
         for t in range(T):
-            for k in range(5):
+            for k in range(3):
                 if k == 0:  
                     x1, P1, s1, x_real1 = simulation(keys[k], t_est, s_state, tracker1)
                     cost1 = compute_cost(P1)
@@ -168,11 +191,11 @@ def main():
                     #print('s3',x3)
                 if k == 3:
                     x4, P4, s4, x_real4 = simulation(keys[k], t_est, s_state, tracker4)
-                    cost4 = compute_cost(P3)
+                    cost4 = compute_cost(P4)
                     #print('s3',x3)
                 if k == 4:
                     x5, P5, s5, x_real5 = simulation(keys[k], t_est, s_state, tracker5)
-                    cost5 = compute_cost(P3)
+                    cost5 = compute_cost(P5)
                     #print('s3',x3)    
             
             
@@ -196,20 +219,7 @@ def main():
                 s_state = s3
                 P = P3
                 target_prediction = x_real3
-            if cost4 < cost:
-                key_final = key4
-                cost = cost4
-                t_est = x4
-                s_state = s4
-                P = P4
-                target_prediction = x_real4
-            if cost5 < cost:
-                key_final = key5
-                cost = cost5
-                t_est = x5
-                s_state = s5
-                P = P5
-                target_prediction = x_real5
+            
             
             target_traj_est_x.append(t_est[0])
             target_traj_est_y.append(t_est[1])
@@ -218,9 +228,12 @@ def main():
             ctrl_cmd.append(key_final)
             ctrl_plot.append(key_final)
 
+        print('neg_counter',negative_trace_counter)
         rospy.sleep(TIME_STEP*10)
+        
         pub.publish(np.array(ctrl_cmd,dtype=np.float32))
-
+        
+        
         #SAVE FILE FOR PLOT    
         np.savetxt(lib_path+'/ctrl_cmd.txt',ctrl_cmd)
         np.savetxt(plot_path+'/target_traj_est_x.txt',target_traj_est_x)

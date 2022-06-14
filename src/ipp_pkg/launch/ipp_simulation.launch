@@ -3,6 +3,6 @@
 
 <node pkg="ipp_pkg" type="main2.py" name="main2" output="screen"/>
 
-<node pkg="ipp_pkg" type="optimization.py" name="optimization" output="screen"/>
+<node pkg="ipp_pkg" type="optimization_bnb.py" name="optimization" output="screen"/>
 
 </launch>

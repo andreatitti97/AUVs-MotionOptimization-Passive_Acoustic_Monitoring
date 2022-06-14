@@ -180,7 +180,7 @@ class Simple(pybnb.Problem):
         choices3 = self.choices + tmp3
 
         if len(choices1) == 4 or len(choices2) == 4 or len(choices3) == 4:
-            self.value = self.value - 10000 #trick 
+            self.value = self.value - 3 #trick 
         father_value = self.value
 
         child1_value = father_value + cost1
@@ -227,7 +227,7 @@ tracker2 = tracker.Tracker('2', True, P)
 tracker3 = tracker.Tracker('3', True, P)
 
 
-problem = Simple(x_hat, s, P, 10000, tracker1, tracker2, tracker3)
+problem = Simple(x_hat, s, P, 3, tracker1, tracker2, tracker3)
 solver = pybnb.Solver()
 results = solver.solve(problem, node_limit=94) 
 best_node_states = results.best_node.state

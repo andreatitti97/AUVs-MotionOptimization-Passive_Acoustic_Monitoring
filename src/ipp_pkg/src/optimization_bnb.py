@@ -32,13 +32,7 @@ lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 
 #GLOBAL VARIABLES - simulation parameters
-key1 = -pi/12
-key2 = 0
-key3 = pi/12
-key4 = pi/6
-key5 = -pi/6
-keys = [key1, key2, key3, key4, key5]
-key_final = None
+
 target_theta = TARGET_INIT[2]
 velTarget = TARGET_INIT[3]
 # Sensors
@@ -172,6 +166,7 @@ class Simple(pybnb.Problem):
         
         child = pybnb.Node()
         cost1 = compute_cost(P1)
+        
         self.tmp_bound = self._bound
         tmp1 = [ctrl_cmd[0]]
         tmp2 = [ctrl_cmd[1]]
@@ -179,9 +174,10 @@ class Simple(pybnb.Problem):
         choices1 = self.choices + tmp1
         choices2 = self.choices + tmp2
         choices3 = self.choices + tmp3
-
+        print(len(choices1))
         if len(choices1) == 4 or len(choices2) == 4 or len(choices3) == 4:
-            self.value = self.value - 10000 #trick 
+            rospy.loginfo('condition met')
+            self.value = self.value - 1000000000 #trick 
         father_value = self.value
 
         child1_value = father_value + cost1
@@ -198,6 +194,7 @@ class Simple(pybnb.Problem):
         child = pybnb.Node()
         child.state = (x_real3, s3, P3, child3_value, self.tmp_bound, choices3)
         yield child
+        print('cost123:', cost1, cost2, cost3)
         print('depth:',child.tree_depth)
 
 
@@ -231,8 +228,6 @@ def main():
     rate = rospy.Rate(Hz)
 
     # Init plannin horizon, cost, ctrl_cmds, covarianc
-    T = 4  
-    cost = 0
     ctrl_opt = []
     target_traj_est_x = []
     target_traj_est_y = []
@@ -253,7 +248,10 @@ def main():
         for i in range(4):
                 for j in range(4):
                     P[i,j] = covariance.data[i+j]
-
+        P = np.matrix([[t_est[0]**2, 0, 0, 0],
+                        [0, t_est[1]**2, 0, 0],
+                        [0, 0, t_est[2]**2, 0],
+                        [0, 0, 0, t_est[3]**2]])
         tracker1 = tracker.Tracker('1', True, P)
         tracker2 = tracker.Tracker('2', True, P)
         tracker3 = tracker.Tracker('3', True, P)
@@ -263,7 +261,8 @@ def main():
 
         rospy.sleep(TIME_STEP*10)
 
-        problem = Simple(t_est, s_state, P, np.trace(P), tracker1, tracker2, tracker3)
+        #problem = Simple(t_est, s_state, P, np.trace(P), tracker1, tracker2, tracker3)
+        problem = Simple(t_est, s_state, P, 1000000000, tracker1, tracker2, tracker3)
         solver = pybnb.Solver()
         results = solver.solve(problem, node_limit=94) 
         best_node_states = results.best_node.state
@@ -271,7 +270,7 @@ def main():
         print(best_node_states[5])
         ctrl_opt = best_node_states[5]
         pub.publish(np.array(ctrl_opt,dtype=np.float32))
-
+        ctrl_plot.append(ctrl_opt)
         #SAVE FILE FOR PLOT    
         np.savetxt(lib_path+'/ctrl_cmd.txt',ctrl_cmd)
         np.savetxt(plot_path+'/target_traj_est_x.txt',target_traj_est_x)

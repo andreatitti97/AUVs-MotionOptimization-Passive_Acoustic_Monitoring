@@ -1,7 +1,7 @@
 import numpy as np
 from math import atan2, pi
 import numpy.matlib
-
+count = 0
 def state_vector_to_scalars(state_vector):
     '''
     Returns the elements from the state_vector as a tuple of scalars.
@@ -13,11 +13,13 @@ class ExtendedKalmanFilter:
         '''
         Each object being tracked will result in the creation of a new ExtendedKalmanFilter instance.
         '''
+        self.__xI = np.matlib.identity(4)
         self.__x = None
         self.__F = None
         self.__Q = None
         if bool == True:
-            self.__P = init_cov
+            self.__P = init_cov   # FUNDAMENTAL BUG !!!!!!!!! THE INIT CONDITION CAUSE THE FILTER TO BE UNSTABLE, NOW init cond from last esti
+            
         else:
             self.__P = np.matrix([[1,0,0,0],
                               [0,1,0,0],
@@ -26,7 +28,10 @@ class ExtendedKalmanFilter:
 
         self.__H = np.matlib.zeros((2,4))
 
-        self.__R = np.matrix([[0.1,0],[0,0.1]])
+        if bool == True:
+            self.__R = np.matrix([[0.1,0],[0,0.1]])
+        else:
+            self.__R = np.matrix([[0.1,0],[0,0.1]])
         
         #This is for adding disturbance on the target 
         # FOR NOW WHEN THE EKF IS CALLED DURING OPTIMIZATION THERE IS NO DISTURBANCE because we receive a corrpted state (both measurmane and state)
@@ -102,7 +107,7 @@ class ExtendedKalmanFilter:
         self.__P = (self.__F * self.__P * self.__F.T) + self.__Q
         
     def update(self,measures, sensor_state1, sensor_state2):
-
+        global count
         # Return state estimated
         [xt, yt, dotx, doty] = state_vector_to_scalars(self.__x)
         
@@ -130,5 +135,11 @@ class ExtendedKalmanFilter:
         #Update our prediction using the error and kalman gain.
         
         self.__x = self.__x + K*y_tilde
-        self.__P = self.__P - K*self.__H*self.__P
-        
+        #self.__P = self.__P - K*self.__H*self.__P
+        self.__P = (self.__xI - K*self.__H) * self.__P
+        #print(np.trace(self.__P))
+        if np.trace(self.__P) < 0:
+            #print(np.trace(self.__P))
+            count += 1
+            print(count)
+            #print('ekf_number_of:',count)

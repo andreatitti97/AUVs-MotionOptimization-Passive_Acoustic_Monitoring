@@ -62,6 +62,7 @@ auv2_y = []
 bearing1 = []
 bearing2 = []
 bearing3 = []
+
 class Pose:
     """2D pose"""
 
@@ -258,6 +259,7 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
                 cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))
                 cmds = cmds.data
                 rospy.loginfo('RECEIVED CMDS')
+                #time.sleep(10)
             else: 
                 cmds = [0, 0, 0, 0]
         else: # load it
