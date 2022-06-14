@@ -12,6 +12,8 @@
 #
 # The mpi4py module is required.
 #
+from curses.ascii import ctrl
+from random import choices
 import pybnb
 #Import basic system modules
 import os
@@ -126,9 +128,10 @@ class Simple(pybnb.Problem):
         self._s = s
         self._P = P
         self.weight = 0
-        self.value = initial_cost
+        self.value = initial_cost #fake obj
         self.level = 0
         self._bound = 0 #lower bound 
+        self._objective = 0 #real obj
         self.choices = []
         self.tracker1 = tracker1
         self.tracker2 = tracker2
@@ -152,49 +155,50 @@ class Simple(pybnb.Problem):
         return bound
 
     def save_state(self, node):
-        node.state = (self._x_hat, self._s, self._P, self.value, self._bound)
+        node.state = (self._x_hat, self._s, self._P, self.value, self._bound, self.choices)
 
     def load_state(self, node):
-        (self._x_hat, self._s, self._P, self.value, self._bound) = node.state
+        (self._x_hat, self._s, self._P, self.value, self._bound, self.choices) = node.state
 
     def branch(self): #durante il branch devi calcolare le varie realizzazioni quindi simuli qua
         # qui carica lo stato del nodo padre e genera 3 figli a cui assegnare i vari costi e stati, ricorda che devi far ereditare
-        # anche le realizzazioni del target e della piattaforma e P, non solo il costo.
+        # anche le realizzazioni del trget e della piattaforma e P, non solo il costo.
         x_hat, s, P = self._x_hat, self._s, self._P
-        ##print('FATHER ',x_hat,s)
-        
+    
         x1, P1, s1, x_real1 = simulation(ctrl_cmd[0], x_hat, s, self.tracker1)
         x2, P2, s2, x_real2 = simulation(ctrl_cmd[1], x_hat, s, self.tracker2)#TODO tracker
         x3, P3, s3, x_real3 = simulation(ctrl_cmd[2], x_hat, s, self.tracker3)
-        #print(x_real1, x_real2, x_real3)
-        time.sleep(1)
-        father_value = self.value
+        
         child = pybnb.Node()
         cost1 = compute_cost(P1)
-        self.tmp += 0
+        self.tmp_bound = self._bound
+        tmp1 = [ctrl_cmd[0]]
+        tmp2 = [ctrl_cmd[1]]
+        tmp3 = [ctrl_cmd[2]]
+        choices1 = self.choices + tmp1
+        choices2 = self.choices + tmp2
+        choices3 = self.choices + tmp3
+
+        if len(choices1) == 4 or len(choices2) == 4 or len(choices3) == 4:
+            self.value = self.value - 10000 #trick 
+        father_value = self.value
+
         child1_value = father_value + cost1
-        print(child1_value,father_value)
-        child.state = (x_real1, s1, P1, child1_value, self.tmp)
+        child.state = (x_real1, s1, P1, child1_value, self.tmp_bound, choices1)
+        
         yield child
         cost2 = compute_cost(P2)
         child2_value = father_value + cost2
         child = pybnb.Node()
-        child.state = (x_real2, s2, P2, child2_value, self.tmp)
+        child.state = (x_real2, s2, P2, child2_value, self.tmp_bound, choices2)
         yield child
         cost3 = compute_cost(P3)
         child3_value = father_value + cost3
         child = pybnb.Node()
-        child.state = (x_real3, s3, P3, child3_value, self.tmp)
+        child.state = (x_real3, s3, P3, child3_value, self.tmp_bound, choices3)
         yield child
-        # PRINT FOR DEBUGGING
-        #print(P1,P2,P3)
-        print('state:',child.state)
         print('depth:',child.tree_depth)
-        #tmp = child.tree_depth
-        #print(cost1,cost2,cost3)
-        #print(x1,x2,x3)
-        #print(s1,s2,s3)
-        
+
 
     #
     # optional methods
@@ -210,6 +214,7 @@ class Simple(pybnb.Problem):
         
         pass
 
+# init param (should be received from simulation)
 x_hat = [1,1,1,1]
 s = [5, 5, 0]
 P = np.matrix([[1,0,0,0],
@@ -220,53 +225,15 @@ T = 1
 tracker1 = tracker.Tracker('1', True, P)
 tracker2 = tracker.Tracker('2', True, P)
 tracker3 = tracker.Tracker('3', True, P)
-costs = 0
-for t in range(T):
-    for k in range(3):
-        if k == 0:  
-            x1, P1, s1, x_real1 = simulation(ctrl_cmd[k], x_hat, s, tracker1)
-            cost1 = compute_cost(P1)
-            #print('s1',x1)
-            print(x_real1)
-        if k == 1:
-            x2, P2, s2, x_real2 = simulation(ctrl_cmd[k], x_hat, s, tracker2)
-            cost2 = compute_cost(P2)
-            #print('s2',x2)
-        if k == 2:
-            x3, P3, s3, x_real3 = simulation(ctrl_cmd[k], x_hat, s, tracker3)
-            cost3 = compute_cost(P3)
-            #print('s3',x3)
 
-    
 
-    cost = cost1
-    x_hat = x1
-    s = s1
-    P = P1
-    key_final = key1
-    target_prediction = x_real1
-    if cost2 < cost:
-        key_final = key2
-        cost = cost2
-        x_hat = x2
-        s = s2
-        P = P2
-        target_prediction = x_real2
-    if cost3 < cost:
-        key_final = key3
-        cost = cost3
-        x_hat = x3
-        s = s3
-        P = P3
-        target_prediction = x_real3
-    costs = costs + cost
-print(costs)
-initial_cost = costs
-
-problem = Simple(x_hat, s, P, initial_cost, tracker1, tracker2, tracker3)
+problem = Simple(x_hat, s, P, 10000, tracker1, tracker2, tracker3)
 solver = pybnb.Solver()
-results = solver.solve(problem, node_limit=50) #accettable gap between optimal objective and the found one.
+results = solver.solve(problem, node_limit=94) 
+best_node_states = results.best_node.state
 print(results.best_node)
+print(best_node_states[5])
 
-# node limit 
-#, absolute_gap=1e-9
+#print(results.nodes)
+# node limit =94
+#absolute_gap=1e-9 #accettable gap between optimal objective and the found one.
