@@ -104,19 +104,7 @@ def simulation(control_input, target_init, platform_init, tracker):
     [state, P] = tracker.state
     platform_state = platform.update_state(control_input)  
     target_state = target.update_state() 
-
-    #print('trace:',np.trace(P))
-    #print('state:',state)
-    #print('platform',platform_state)
     state = [state[0,0], state[1,0], state[2,0], state[3,0]]
-    '''if P[0,0] < 0:
-        P[0,0] = np.abs(P[0,0])
-    if P[1,1] < 0:
-        P[1,1] = np.abs(P[1,1])
-    if P[2,2] < 0:
-        P[2,2] = np.abs(P[2,2])
-    if P[3,3] < 0:
-        P[3,3] = np.abs(P[3,3])'''
     return state, P, platform_state, target_state
 
 def compute_cost(P):

@@ -1,7 +1,7 @@
 import numpy as np
 from math import atan2, pi
 import numpy.matlib
-count = 0
+
 def state_vector_to_scalars(state_vector):
     '''
     Returns the elements from the state_vector as a tuple of scalars.
@@ -18,7 +18,7 @@ class ExtendedKalmanFilter:
         self.__F = None
         self.__Q = None
         if bool == True:
-            self.__P = init_cov   # FUNDAMENTAL BUG !!!!!!!!! THE INIT CONDITION CAUSE THE FILTER TO BE UNSTABLE, NOW init cond from last esti
+            self.__P = init_cov
             
         else:
             self.__P = np.matrix([[1,0,0,0],
@@ -135,11 +135,5 @@ class ExtendedKalmanFilter:
         #Update our prediction using the error and kalman gain.
         
         self.__x = self.__x + K*y_tilde
-        #self.__P = self.__P - K*self.__H*self.__P
         self.__P = (self.__xI - K*self.__H) * self.__P
-        #print(np.trace(self.__P))
-        if np.trace(self.__P) < 0:
-            #print(np.trace(self.__P))
-            count += 1
-            print(count)
-            #print('ekf_number_of:',count)
+

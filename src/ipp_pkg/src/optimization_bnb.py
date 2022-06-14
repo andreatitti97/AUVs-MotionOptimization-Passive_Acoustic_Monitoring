@@ -28,11 +28,9 @@ MEAS_VARIANCE = main2.MEAS_VARIANCE
 TARGET_INIT = main2.TARGET_INIT
 tc = main2.OPTIMIZATION_TIME_STEP
 # FOLDER PATH DEFINITION
-lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/utils')
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 
 #GLOBAL VARIABLES - simulation parameters
-
 target_theta = TARGET_INIT[2]
 velTarget = TARGET_INIT[3]
 # Sensors
@@ -41,18 +39,17 @@ sensor2 = sensor.Sensor('seconda_streamer',1,0,0,-1)
 # Init global variables for callbacks
 platform_state = []
 target_est = []
-covariance = []
-target_theta = pi/4 #TARGET_INIT[2]
-velTarget = 3 #TARGET_INIT[3]
+
+# OPTIMIZATION PARAMETERS
 key1 = -pi/12
 key2 = 0
 key3 = pi/12
-
+DELTA = 1000000000
 ctrl_cmd = [key1, key2, key3]
 tc = 8
 sensor1 = sensor.Sensor('first_streamer',1,0,0,1)
 sensor2 = sensor.Sensor('seconda_streamer',1,0,0,-1)
-count = []
+
 class Platform():
     def __init__(self, init_vector):
         self.x = init_vector[0]
@@ -62,7 +59,6 @@ class Platform():
         self.dt = tc
     def update_state(self, delta):
 
-        self.dt = tc
         self.theta = self.theta + delta
         self.x = self.x + cos(self.theta)*self.vl*self.dt
         self.y = self.y + sin(self.theta)*self.vl*self.dt
@@ -80,7 +76,6 @@ class Target():
 
     def update_state(self):
 
-        self.dt = tc
         self.x = self.x + self.vlx*self.dt
         self.y = self.y + self.vly*self.dt
         return [self.x, self.y, self.vlx, self.vly]
@@ -122,19 +117,15 @@ class Simple(pybnb.Problem):
         self._x_hat = x_hat
         self._s = s
         self._P = P
-        self.weight = 0
         self.value = initial_cost #fake obj
-        self.level = 0
         self._bound = 0 #lower bound 
         self._objective = 0 #real obj
         self.choices = []
         self.tracker1 = tracker1
         self.tracker2 = tracker2
         self.tracker3 = tracker3
-        self.tmp = 0
-    #
+
     # required methods
-    #
     def sense(self):
         return pybnb.minimize
 
@@ -174,27 +165,28 @@ class Simple(pybnb.Problem):
         choices1 = self.choices + tmp1
         choices2 = self.choices + tmp2
         choices3 = self.choices + tmp3
-        print(len(choices1))
+
         if len(choices1) == 4 or len(choices2) == 4 or len(choices3) == 4:
             rospy.loginfo('condition met')
-            self.value = self.value - 1000000000 #trick 
+            self.value = self.value - DELTA #trick 
         father_value = self.value
 
         child1_value = father_value + cost1
         child.state = (x_real1, s1, P1, child1_value, self.tmp_bound, choices1)
-        
         yield child
+
         cost2 = compute_cost(P2)
         child2_value = father_value + cost2
         child = pybnb.Node()
         child.state = (x_real2, s2, P2, child2_value, self.tmp_bound, choices2)
         yield child
+
         cost3 = compute_cost(P3)
         child3_value = father_value + cost3
         child = pybnb.Node()
         child.state = (x_real3, s3, P3, child3_value, self.tmp_bound, choices3)
         yield child
-        print('cost123:', cost1, cost2, cost3)
+
         print('depth:',child.tree_depth)
 
 
@@ -227,27 +219,21 @@ def main():
     Hz = 1/(TIME_STEP)
     rate = rospy.Rate(Hz)
 
-    # Init plannin horizon, cost, ctrl_cmds, covarianc
+    # Init array
     ctrl_opt = []
-    target_traj_est_x = []
-    target_traj_est_y = []
-    target_traj_real_x = []
-    target_traj_real_y = []
     ctrl_plot = []
     P = np.eye((4))
     rospy.loginfo('STARTED OPTIMIZATION')
+    
     while not rospy.is_shutdown():
         # INIT TARGET MODEL AND PLATFORM MODEL WITH THE LATEST ESTIMATION AND SENSOR POSITIONS 
 
         t_est = rospy.wait_for_message('/estimation',numpy_msg(Floats))
         s_state = rospy.wait_for_message('/platform_state',numpy_msg(Floats))
-        covariance = rospy.wait_for_message('/covariance',numpy_msg(Floats))
+
         t_est = t_est.data
         s_state = s_state.data
-        covariance = covariance.data
-        for i in range(4):
-                for j in range(4):
-                    P[i,j] = covariance.data[i+j]
+
         P = np.matrix([[t_est[0]**2, 0, 0, 0],
                         [0, t_est[1]**2, 0, 0],
                         [0, 0, t_est[2]**2, 0],
@@ -255,28 +241,22 @@ def main():
         tracker1 = tracker.Tracker('1', True, P)
         tracker2 = tracker.Tracker('2', True, P)
         tracker3 = tracker.Tracker('3', True, P)
-
-        start = time.time()
-        
-
         rospy.sleep(TIME_STEP*10)
 
-        #problem = Simple(t_est, s_state, P, np.trace(P), tracker1, tracker2, tracker3)
-        problem = Simple(t_est, s_state, P, 1000000000, tracker1, tracker2, tracker3)
+        # Compute the best solution solving the optimization with BnB or Greedy search
+        problem = Simple(t_est, s_state, P, DELTA, tracker1, tracker2, tracker3)
         solver = pybnb.Solver()
         results = solver.solve(problem, node_limit=94) 
         best_node_states = results.best_node.state
+
+        # PRINT and PUBLISH results of optimization
         print(results.best_node)
         print(best_node_states[5])
         ctrl_opt = best_node_states[5]
         pub.publish(np.array(ctrl_opt,dtype=np.float32))
         ctrl_plot.append(ctrl_opt)
-        #SAVE FILE FOR PLOT    
-        np.savetxt(lib_path+'/ctrl_cmd.txt',ctrl_cmd)
-        np.savetxt(plot_path+'/target_traj_est_x.txt',target_traj_est_x)
-        np.savetxt(plot_path+'/target_traj_est_y.txt',target_traj_est_y)
-        np.savetxt(plot_path+'/target_traj_real_x.txt',target_traj_real_x)
-        np.savetxt(plot_path+'/target_traj_real_y.txt',target_traj_real_y)
+
+        #SAVE DATA FOR PLOT    
         np.savetxt(plot_path+'/plot_cmds.txt',ctrl_plot)
         rospy.loginfo(ctrl_cmd)
         ctrl_opt = []
