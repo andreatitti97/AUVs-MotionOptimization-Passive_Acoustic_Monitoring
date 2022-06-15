@@ -32,23 +32,23 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 
 #GLOBAL VARIABLES - simulation parameters
 target_theta = TARGET_INIT[2]
-velTarget = TARGET_INIT[3]
 # Sensors
 sensor1 = sensor.Sensor('first_streamer',1,0,0,1)
 sensor2 = sensor.Sensor('seconda_streamer',1,0,0,-1)
 # Init global variables for callbacks
 platform_state = []
 target_est = []
-
 # OPTIMIZATION PARAMETERS
 key1 = -pi/12
 key2 = 0
 key3 = pi/12
-DELTA = 1000000000
-ctrl_cmd = [key1, key2, key3]
+key4 = -pi/15
+key5 = + pi/15
+key6 = -pi/6
+key7 = +pi/6
+DELTA = 10**10
+ctrl_cmd = [key1, key2, key3, key4, key5, key6, key7]
 tc = 8
-sensor1 = sensor.Sensor('first_streamer',1,0,0,1)
-sensor2 = sensor.Sensor('seconda_streamer',1,0,0,-1)
 
 class Platform():
     def __init__(self, init_vector):
@@ -80,10 +80,10 @@ class Target():
         self.y = self.y + self.vly*self.dt
         return [self.x, self.y, self.vlx, self.vly]
 
-def simulation(control_input, target_init, platform_init, tracker):
+def simulation(control_input, target_est, platform_pose, tracker):
 
-    platform = Platform(platform_init)
-    target = Target(target_init)
+    platform = Platform(platform_pose)
+    target = Target(target_est)
     platform_state = platform.update_state(control_input)  
     target_state = target.update_state() 
 
@@ -101,10 +101,8 @@ def simulation(control_input, target_init, platform_init, tracker):
     
     tracker.processMeasurement(measures,target_state, sensor_pose1, sensor_pose2, tc)
     [state, P] = tracker.state
-    #print('traccia matrice:',np.trace(P))
-    #print('stato associato;',state)
     state = [state[0,0], state[1,0], state[2,0], state[3,0]]
-    return state, P, platform_state, target_state
+    return state, P, platform_state
 
 def compute_cost(P):
    
@@ -112,7 +110,7 @@ def compute_cost(P):
     return cost
 
 class Simple(pybnb.Problem):
-    def __init__(self, x_hat, s, P, initial_cost, tracker1, tracker2, tracker3):
+    def __init__(self, x_hat, s, P, initial_cost, tracker1, tracker2, tracker3, tracker4, tracker5, tracker6, tracker7):
         # aggiungi un livello per imporre un orizzonte finito 
         self._x_hat = x_hat
         self._s = s
@@ -124,6 +122,10 @@ class Simple(pybnb.Problem):
         self.tracker1 = tracker1
         self.tracker2 = tracker2
         self.tracker3 = tracker3
+        self.tracker4 = tracker4
+        self.tracker5 = tracker5
+        self.tracker6 = tracker6
+        self.tracker7 = tracker7
 
     # required methods
     def sense(self):
@@ -151,9 +153,13 @@ class Simple(pybnb.Problem):
         # anche le realizzazioni del trget e della piattaforma e P, non solo il costo.
         x_hat, s, P = self._x_hat, self._s, self._P
     
-        x1, P1, s1, x_real1 = simulation(ctrl_cmd[0], x_hat, s, self.tracker1)
-        x2, P2, s2, x_real2 = simulation(ctrl_cmd[1], x_hat, s, self.tracker2)#TODO tracker
-        x3, P3, s3, x_real3 = simulation(ctrl_cmd[2], x_hat, s, self.tracker3)
+        x1, P1, s1 = simulation(ctrl_cmd[0], x_hat, s, self.tracker1)
+        x2, P2, s2 = simulation(ctrl_cmd[1], x_hat, s, self.tracker2)
+        x3, P3, s3 = simulation(ctrl_cmd[2], x_hat, s, self.tracker3)
+        x4, P4, s4 = simulation(ctrl_cmd[3], x_hat, s, self.tracker4)
+        x5, P5, s5 = simulation(ctrl_cmd[4], x_hat, s, self.tracker5)
+        x6, P6, s6 = simulation(ctrl_cmd[5], x_hat, s, self.tracker6)
+        x7, P7, s7 = simulation(ctrl_cmd[6], x_hat, s, self.tracker7)
         
         child = pybnb.Node()
         cost1 = compute_cost(P1)
@@ -162,29 +168,60 @@ class Simple(pybnb.Problem):
         tmp1 = [ctrl_cmd[0]]
         tmp2 = [ctrl_cmd[1]]
         tmp3 = [ctrl_cmd[2]]
+        tmp4 = [ctrl_cmd[3]]
+        tmp5 = [ctrl_cmd[4]]
+        tmp6 = [ctrl_cmd[5]]
+        tmp7 = [ctrl_cmd[6]]
         choices1 = self.choices + tmp1
         choices2 = self.choices + tmp2
         choices3 = self.choices + tmp3
+        choices4 = self.choices + tmp4
+        choices5 = self.choices + tmp5
+        choices6 = self.choices + tmp6
+        choices7 = self.choices + tmp7
 
         if len(choices1) == 4 or len(choices2) == 4 or len(choices3) == 4:
-            rospy.loginfo('condition met')
-            self.value = self.value - DELTA #trick 
+            self.value = self.value - DELTA #trick#TODO
         father_value = self.value
 
         child1_value = father_value + cost1
-        child.state = (x_real1, s1, P1, child1_value, self.tmp_bound, choices1)
+        child.state = (x1, s1, P1, child1_value, self.tmp_bound, choices1)
         yield child
 
         cost2 = compute_cost(P2)
         child2_value = father_value + cost2
         child = pybnb.Node()
-        child.state = (x_real2, s2, P2, child2_value, self.tmp_bound, choices2)
+        child.state = (x2, s2, P2, child2_value, self.tmp_bound, choices2)
         yield child
 
         cost3 = compute_cost(P3)
         child3_value = father_value + cost3
         child = pybnb.Node()
-        child.state = (x_real3, s3, P3, child3_value, self.tmp_bound, choices3)
+        child.state = (x3, s3, P3, child3_value, self.tmp_bound, choices3)
+        yield child
+        
+        cost4 = compute_cost(P4)
+        child4_value = father_value + cost4
+        child = pybnb.Node()
+        child.state = (x4, s4, P4, child4_value, self.tmp_bound, choices4)
+        yield child
+
+        cost5 = compute_cost(P5)
+        child5_value = father_value + cost5
+        child = pybnb.Node()
+        child.state = (x5, s5, P5, child5_value, self.tmp_bound, choices5)
+        yield child
+
+        cost6 = compute_cost(P6)
+        child6_value = father_value + cost6
+        child = pybnb.Node()
+        child.state = (x6, s6, P6, child6_value, self.tmp_bound, choices6)
+        yield child
+        
+        cost7 = compute_cost(P7)
+        child7_value = father_value + cost7
+        child = pybnb.Node()
+        child.state = (x7, s7, P7, child7_value, self.tmp_bound, choices7)
         yield child
 
         print('depth:',child.tree_depth)
@@ -224,7 +261,7 @@ def main():
     ctrl_plot = []
     P = np.eye((4))
     rospy.loginfo('STARTED OPTIMIZATION')
-    
+
     while not rospy.is_shutdown():
         # INIT TARGET MODEL AND PLATFORM MODEL WITH THE LATEST ESTIMATION AND SENSOR POSITIONS 
 
@@ -233,20 +270,30 @@ def main():
 
         t_est = t_est.data
         s_state = s_state.data
+        # The init covariance is obtained frome the last estimation
+        # NB: Initialize correctly the P0 is fundamental, PUT in the DIAGONAL the uncertainties for each variable of the state 
+        # I NOTICED THAT WE NEED HIGH UNCERTAINTES (AT LEAST square OF THE MAGNIUTIDE OF THE X-Y POS) - for now don't change
+        P = np.matrix([[2*t_est[0]**2, 0, 0, 0], #TODO INITIAL COV VALUE AFTER LAST ESTIMATE - TO CHECK
+                        [0, 2*t_est[1]**2, 0, 0],
+                        [0, 0, 2*t_est[2]**2, 0],
+                        [0, 0, 0, 2*t_est[3]**2]])
 
-        P = np.matrix([[t_est[0]**2, 0, 0, 0],
-                        [0, t_est[1]**2, 0, 0],
-                        [0, 0, t_est[2]**2, 0],
-                        [0, 0, 0, t_est[3]**2]])
+        
         tracker1 = tracker.Tracker('1', True, P)
         tracker2 = tracker.Tracker('2', True, P)
         tracker3 = tracker.Tracker('3', True, P)
+        tracker4 = tracker.Tracker('4', True, P)
+        tracker5 = tracker.Tracker('5', True, P)
+        tracker6 = tracker.Tracker('6', True, P)
+        tracker7 = tracker.Tracker('7', True, P)
         rospy.sleep(TIME_STEP*10)
 
         # Compute the best solution solving the optimization with BnB or Greedy search
-        problem = Simple(t_est, s_state, P, DELTA, tracker1, tracker2, tracker3)
+        problem = Simple(t_est, s_state, P, DELTA, tracker1, tracker2, tracker3, tracker4, tracker5, tracker6, tracker7)
         solver = pybnb.Solver()
-        results = solver.solve(problem, node_limit=94) 
+        limit = len(ctrl_cmd)**4 + len(ctrl_cmd)**3 + len(ctrl_cmd)**2 + len(ctrl_cmd)**1 + 1
+        print(limit)
+        results = solver.solve(problem, node_limit=limit) #94 with U = 3 for having N = 4
         best_node_states = results.best_node.state
 
         # PRINT and PUBLISH results of optimization
@@ -254,7 +301,8 @@ def main():
         print(best_node_states[5])
         ctrl_opt = best_node_states[5]
         pub.publish(np.array(ctrl_opt,dtype=np.float32))
-        ctrl_plot.append(ctrl_opt)
+        for i in range(3):
+            ctrl_plot.append(ctrl_opt[i])
 
         #SAVE DATA FOR PLOT    
         np.savetxt(plot_path+'/plot_cmds.txt',ctrl_plot)

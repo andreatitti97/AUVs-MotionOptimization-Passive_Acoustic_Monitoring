@@ -17,6 +17,7 @@ class ExtendedKalmanFilter:
         self.__x = None
         self.__F = None
         self.__Q = None
+        
         if bool == True:
             self.__P = init_cov
             
@@ -28,10 +29,7 @@ class ExtendedKalmanFilter:
 
         self.__H = np.matlib.zeros((2,4))
 
-        if bool == True:
-            self.__R = np.matrix([[0.1,0],[0,0.1]])
-        else:
-            self.__R = np.matrix([[0.1,0],[0,0.1]])
+        self.__R = np.matrix([[0.1,0],[0,0.1]])
         
         #This is for adding disturbance on the target 
         # FOR NOW WHEN THE EKF IS CALLED DURING OPTIMIZATION THERE IS NO DISTURBANCE because we receive a corrpted state (both measurmane and state)
@@ -78,10 +76,11 @@ class ExtendedKalmanFilter:
         e42 = dt3 * self.__noise_ay / 2
         e44 = dt2 * self.__noise_ay
 
-        self.__Q = np.matrix([[e11, 0, e13, 0],
+        self.__Q = np.matrix([[e11, 0, e13, 0], 
                               [0, e22, 0, e24],
                               [e31, 0, e33, 0],
-                              [0, e42, 0, e44]])
+                              [0, e42, 0, e44]]) #Q matrix represents accelerations that allows 
+                              #the tracked object to deviate from constant velocity.
                               
     def recompute_H(self, s1, s2):
 
@@ -94,7 +93,7 @@ class ExtendedKalmanFilter:
 
         rx2 = px - s2[0]
         ry2 = py - s2[1]
-        #print(rx1,ry1)
+
         self.__H = np.matrix([[-ry1/(ry1**2+rx1**2), rx1/(rx1**2+ry1**2) , 0, 0],
                                 [-ry2/(ry2**2+rx2**2), rx2/(rx2**2+ry2**2) , 0, 0]])
                                 
@@ -127,7 +126,7 @@ class ExtendedKalmanFilter:
         self.recompute_H(sensor_state1,sensor_state2)
 
         # Pre compute for the kalman gain K
-        #TODO: this code is not DRY should refactor here.
+
         S = self.__H * self.__P * self.__H.T + self.__R
 
         K = self.__P*self.__H.T*np.linalg.inv(S)

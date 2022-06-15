@@ -42,11 +42,7 @@ auv1_x_off = np.loadtxt(lib_path+'/auv1_x_OFF.txt')
 auv1_y_off = np.loadtxt(lib_path+'/auv1_y_OFF.txt')
 auv2_x_off = np.loadtxt(lib_path+'/auv2_x_OFF.txt')
 auv2_y_off = np.loadtxt(lib_path+'/auv2_y_OFF.txt')
-# Optimization module data (ctrl_cmds, estimation ...) for DEBUGGING PURPOSE
-opt_est_x = np.loadtxt(lib_path+'/target_traj_est_x.txt')
-opt_est_y = np.loadtxt(lib_path+'/target_traj_est_y.txt')
-opt_real_x = np.loadtxt(lib_path+'/target_traj_real_x.txt')
-opt_real_y = np.loadtxt(lib_path+'/target_traj_real_y.txt')
+# Optimization CTRL_CMDS
 ctrl_cmds = np.loadtxt(lib_path+'/plot_cmds.txt')
 
 # Load temporal vaiables
@@ -153,15 +149,6 @@ plt.plot(t,y,'b--')
 plt.ylabel('Difference-Relative Bearing(deg)')
 plt.xlabel('Time (s)')
 plt.legend(['Angle Difference'])
-plt.grid()
-plt.show()
-# PLOT OPTIMIZATION TARGET PREDICTION 
-
-plt.plot(opt_real_x,opt_real_y,'o')
-plt.title(['TARGET PREDICTION DURING OPTIMIZATION'])
-plt.xlabel('x pos target (m)',fontsize=20)
-plt.ylabel('y pos target (m)',fontsize=20)
-plt.legend(['estimated','real'])
 plt.grid()
 plt.show()
 
