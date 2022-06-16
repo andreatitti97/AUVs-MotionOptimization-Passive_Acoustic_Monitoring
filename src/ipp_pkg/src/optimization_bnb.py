@@ -150,7 +150,7 @@ class Simple(pybnb.Problem):
         # qui carica lo stato del nodo padre e genera 3 figli a cui assegnare i vari costi e stati, ricorda che devi far ereditare
         # anche le realizzazioni del trget e della piattaforma e P, non solo il costo.
         x_hat, s, P = self._x_hat, self._s, self._P
-    
+        print('NODE STATE:',x_hat, s)
         x1, P1, s1 = simulation(ctrl_cmd[0], x_hat, s, P)
         x2, P2, s2 = simulation(ctrl_cmd[1], x_hat, s, P)
         x3, P3, s3 = simulation(ctrl_cmd[2], x_hat, s, P)
@@ -229,7 +229,7 @@ class Simple(pybnb.Problem):
         yield child'''
 
         print('depth:',child.tree_depth-1)
-
+        time.sleep(2)
 
     #
     # optional methods
