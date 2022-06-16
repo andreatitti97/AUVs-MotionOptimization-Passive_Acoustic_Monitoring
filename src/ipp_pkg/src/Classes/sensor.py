@@ -35,7 +35,7 @@ class Sensor:
             rel_bearing = self.abs_bearing - self.theta_v 
         else:
             rel_bearing = 2*pi - self.theta_v - self.abs_bearing
-
+        
         # Definiton of Signal of Noise Params
         A = 1
         epsi = 0.01 # TODO : TUNING CORRECTLY

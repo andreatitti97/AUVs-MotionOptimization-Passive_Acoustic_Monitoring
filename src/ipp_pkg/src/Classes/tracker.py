@@ -37,7 +37,7 @@ class Tracker:
             self.__is_initialized = True
             return
 
-        # Passo di campionamento streamer
+        # Passo di campionamento filtro
         dt = tc
         #2nd set new F and Q using new dt
         self.__ekf.recompute_F_and_Q(dt)

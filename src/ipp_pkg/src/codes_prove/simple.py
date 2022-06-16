@@ -63,7 +63,7 @@ key3 = pi/12
 key4 = -pi/15
 key5 = + pi/15
 DELTA = 10**9
-ctrl_cmd = [key1, key2, key3, key5, key5] #BUG 
+ctrl_cmd = [key1, key2, key3, key4, key5]  
 tc = 8
 
 class Platform():
@@ -72,7 +72,7 @@ class Platform():
         self.y = init_vector[1]
         self.theta = init_vector[2]
         self.vl = 1
-        self.dt = tc
+        self.dt = TIME_STEP*100
     def update_state(self, delta):
 
         self.theta = self.theta + delta
@@ -88,7 +88,7 @@ class Target():
         
         self.vlx = init_vector[2]
         self.vly = init_vector[3]
-        self.dt = tc
+        self.dt = TIME_STEP*100
 
     def update_state(self):
 
@@ -96,37 +96,42 @@ class Target():
         self.y = self.y + self.vly*self.dt
         return [self.x, self.y, self.vlx, self.vly]
 
-def simulation(control_input, target_est, platform_pose, tracker):
 
+def simulation(control_input, target_est, platform_pose, P):
+
+    tracker_ = tracker.Tracker('1', True, P)
     platform = Platform(platform_pose)
     target = Target(target_est)
-    platform_state = platform.update_state(control_input)  
-    target_state = target.update_state() 
+    
+    platform_state = platform.update_state(control_input) 
+    
+    for t in range(0,tc):
+        platform_state = platform.update_state(0)  #TODO: METTI CONTROLLO PLATFORM COME SU MAIN SICURO SBAGLIATO QUA
+        target_state = target.update_state()#TODO vedi come cazzo viene simulato il target
 
-    #update measurament
-    sensor1.vehiclePose(platform_state[0], platform_state[1], platform_state[2], tc)  
-    sensor1.targetPoseReal(target_state[0], target_state[1], target_theta)
-    
-    sensor2.vehiclePose(platform_state[0], platform_state[1], platform_state[2], tc)
-    sensor2.targetPoseReal(target_state[0], target_state[1], target_theta)
-    
-    [measure1,sensor_pose1, rel_bearing1] = sensor1.measureBearing()
-    [measure2,sensor_pose2, rel_bearing2] = sensor2.measureBearing()
-    measures = [measure1, measure2]
-    # update EKF
-    
-    tracker.processMeasurement(measures,target_state, sensor_pose1, sensor_pose2, tc)
-    [state, P] = tracker.state
+        #update measurament
+        sensor1.vehiclePose(platform_state[0], platform_state[1], platform_state[2], TIME_STEP*100)  
+        sensor1.targetPoseReal(target_state[0], target_state[1], target_theta)
+        
+        sensor2.vehiclePose(platform_state[0], platform_state[1], platform_state[2], TIME_STEP*100)
+        sensor2.targetPoseReal(target_state[0], target_state[1], target_theta)
+        
+        [measure1,sensor_pose1, rel_bearing1] = sensor1.measureBearing()
+        [measure2,sensor_pose2, rel_bearing2] = sensor2.measureBearing()
+        measures = [measure1, measure2]
+        # update EKF WITH NEW MEASURAMENT
+        tracker_.processMeasurement(measures,target_state, sensor_pose1, sensor_pose2, TIME_STEP*100)
+    [state, P] = tracker_.state
     state = [state[0,0], state[1,0], state[2,0], state[3,0]]
+    
     return state, P, platform_state
 
 def compute_cost(P):
-   
     cost = np.trace(P)
     return cost
 
 class Simple(pybnb.Problem):
-    def __init__(self, x_hat, s, P, initial_cost, tracker1, tracker2, tracker3, tracker4, tracker5):
+    def __init__(self, x_hat, s, P, initial_cost): #, tracker1, tracker2, tracker3, tracker4, tracker5
         # aggiungi un livello per imporre un orizzonte finito 
         self._x_hat = x_hat
         self._s = s
@@ -135,11 +140,6 @@ class Simple(pybnb.Problem):
         self._bound = 0 #lower bound 
         self._objective = 0 #real obj
         self.choices = []
-        self.tracker1 = tracker1
-        self.tracker2 = tracker2
-        self.tracker3 = tracker3
-        self.tracker4 = tracker4
-        self.tracker5 = tracker5
 
     # required methods
     def sense(self):
@@ -147,13 +147,13 @@ class Simple(pybnb.Problem):
 
     def objective(self):#TODO: L'OBJECTIVE E VALUE DEL NODO CHE È IL COSTO ACCUMULATO + IL NUOVO COSTO (vedi esempio knapsnack)
         #assert self.value is not None
-        print('obj',self.value)
+        #print('obj',self.value)
         return self.value
 
     def bound(self): # il bound è esclusivamente sull objective - CORRISPONDE AL COSTO ACCUMULATO FINO AL NODO IN ESAME
         #TODO il bound è dato dal solo costo accumulato, devi quindi calcolarlare il nuovo costo e fare  eventuali check 
         bound = self._bound
-        print('bound:',bound)
+        #print('bound:',bound)
         return bound
 
     def save_state(self, node):
@@ -164,14 +164,16 @@ class Simple(pybnb.Problem):
 
     def branch(self): #durante il branch devi calcolare le varie realizzazioni quindi simuli qua
         # qui carica lo stato del nodo padre e genera 3 figli a cui assegnare i vari costi e stati, ricorda che devi far ereditare
-        # anche le realizzazioni del trget e della piattaforma e P, non solo il costo.
-        x_hat, s, P = self._x_hat, self._s, self._P
-    
-        x1, P1, s1 = simulation(ctrl_cmd[0], x_hat, s, self.tracker1)
-        x2, P2, s2 = simulation(ctrl_cmd[1], x_hat, s, self.tracker2)
-        x3, P3, s3 = simulation(ctrl_cmd[2], x_hat, s, self.tracker3)
-        x4, P4, s4 = simulation(ctrl_cmd[3], x_hat, s, self.tracker4)
-        x5, P5, s5 = simulation(ctrl_cmd[4], x_hat, s, self.tracker5)
+        # anche le realizzazioni del target e della piattaforma e P, non solo il costo.
+        x_hat, s, P  = self._x_hat, self._s, self._P
+        
+        #print('NODE STATE (x_hat, s, P, old cost):', x_hat, s, self.value)
+        x1, P1, s1 = simulation(ctrl_cmd[0], x_hat, s,  P)
+        x2, P2, s2 = simulation(ctrl_cmd[1], x_hat, s,  P)
+        x3, P3, s3 = simulation(ctrl_cmd[2], x_hat, s,  P)
+        x4, P4, s4 = simulation(ctrl_cmd[3], x_hat, s,  P)
+        x5, P5, s5 = simulation(ctrl_cmd[4], x_hat, s,  P)
+
         
         child = pybnb.Node()
         cost1 = compute_cost(P1)
@@ -219,9 +221,9 @@ class Simple(pybnb.Problem):
         child = pybnb.Node()
         child.state = (x5, s5, P5, child5_value, self.tmp_bound, choices5)
         yield child
-        
-        print('depth:',child.tree_depth)
-
+        #print('target_realization:',x1)
+        print('depth:',child.tree_depth - 1 )
+        #time.sleep(2)
 
     #
     # optional methods
@@ -244,21 +246,14 @@ def compute_cost(P):
     return cost
 
 # init param (should be received from simulation)
-x_hat = [1,1,1,1]
+x_hat = [1,1,1.44,1.44]
 s = [5, 5, 0]
 P = np.matrix([[1,0,0,0],
-                              [0,1,0,0],
-                              [0,0,1,0],
-                              [0,0,0,1]])
-T = 1
-tracker1 = tracker.Tracker('1', True, P)
-tracker2 = tracker.Tracker('2', True, P)
-tracker3 = tracker.Tracker('3', True, P)
-tracker4 = tracker.Tracker('3', True, P)
-tracker5 = tracker.Tracker('3', True, P)
+                [0,1,0,0],
+                [0,0,1,0],
+                [0,0,0,1]])
 
-
-problem = Simple(x_hat, s, P, DELTA, tracker1, tracker2, tracker3, tracker4, tracker5)
+problem = Simple(x_hat, s, P, DELTA)
 solver = pybnb.Solver()
 limit = len(ctrl_cmd)**4 + len(ctrl_cmd)**3 + len(ctrl_cmd)**2 + len(ctrl_cmd)**1 + 1
 
@@ -270,3 +265,5 @@ print(best_node_states[5])
 #print(results.nodes)
 # node limit =94
 #absolute_gap=1e-9 #accettable gap between optimal objective and the found one.
+
+
