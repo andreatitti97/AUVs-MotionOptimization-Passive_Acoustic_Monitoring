@@ -11,20 +11,14 @@
 # $ mpiexec -n <n> python simple.py
 #
 # The mpi4py module is required.
-#
-from curses.ascii import ctrl
-from random import choices
+
 import pybnb
 #Import basic system modules
 import os
-import time
 # Import math modules
 import numpy as np
 from math import cos, pi, sin
 # Import ROS modules and Service
-import rospy
-from rospy_tutorials.msg import Floats
-from rospy.numpy_msg import numpy_msg
 # Import costum classes
 import importlib.util
 class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
@@ -261,9 +255,4 @@ results = solver.solve(problem, node_limit=limit)
 best_node_states = results.best_node.state
 print(results.best_node)
 print(best_node_states[5])
-
-#print(results.nodes)
-# node limit =94
-#absolute_gap=1e-9 #accettable gap between optimal objective and the found one.
-
 

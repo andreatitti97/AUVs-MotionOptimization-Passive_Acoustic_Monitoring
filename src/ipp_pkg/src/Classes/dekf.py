@@ -95,7 +95,7 @@ class ExtendedKalmanFilter:
         rx2 = px - s2[0]
         ry2 = py - s2[1]
 
-        self.__H = np.matrix([[-ry1/(ry1**2+rx1**2), rx1/(rx1**2+ry1**2) , 0, 0],
+        self.__H = np.matrix([[-ry1/(ry1**2+rx1**2), rx1/(rx1**2+ry1**2) , 0, 0],   #TODO vedi se si può far qualcosa per le vel
                                 [-ry2/(ry2**2+rx2**2), rx2/(rx2**2+ry2**2) , 0, 0]])
                                 
     def predict(self):
@@ -107,7 +107,7 @@ class ExtendedKalmanFilter:
         self.__P = (self.__F * self.__P * self.__F.T) + self.__Q
         
     def update(self,measures, sensor_state1, sensor_state2):
-        global count
+
         # Return state estimated
         [xt, yt, dotx, doty] = state_vector_to_scalars(self.__x)
         

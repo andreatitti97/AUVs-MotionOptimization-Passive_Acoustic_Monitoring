@@ -32,11 +32,11 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 TIME_DURATION = 1800 #seconds
 TIME_STEP = 0.01
 TIME_SCALER = 40 #max 20 for allow communication -> circa 9 minuti per simulare un ora 
-TARGET_INIT = [8000, 1000, pi/4+pi/2, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [10000, -5000, pi/2, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 MEAS_VARIANCE = 0.1
-OPTIMIZATION_ON = False
-OPTIMIZATION_TIME_STEP = 8 
+OPTIMIZATION_ON = True
+OPTIMIZATION_TIME_STEP = 32
 #GLOBAL VARIABLES
 t = 0
 N = 4 #planning horizon
@@ -64,6 +64,7 @@ auv2_y = []
 bearing1 = []
 bearing2 = []
 bearing3 = []
+tmp = 0
 
 class Pose:
     """2D pose"""
@@ -72,16 +73,6 @@ class Pose:
         self.x = x
         self.y = y
         self.theta = theta
-
-def wTv(x, y, theta):
-    ''' Funzione che ritorna la trasformate
-     tra il frame mondo e il veicolo
-    '''
-    return np.array([
-        [np.cos(theta), -np.sin(theta), x],
-        [np.sin(theta), np.cos(theta), y],
-        [0, 0, 1]
-    ])
 
 class Robot:
     """
@@ -141,8 +132,8 @@ class Robot:
         target_x_traj.append(self.pose_target.x)
         target_y_traj.append(self.pose_target.y)
 
-        # UNCOMMENT FOR CHANGE TARGET HEADING AFTER A WHILE
-        #if count1 == 3025:#for change target heading after a while
+        # UNCOMMENT FOR CHANGE TARGET HEADING AFTER A WHILE #TODO: Finish better this
+        # if count1 == 3025:#for change target heading after a while
          #   print('target heading change')
           #  self.pose_target =Pose(self.pose_target.x,self.pose_target.y,self.pose_target.theta + pi/4)
         
@@ -165,30 +156,37 @@ class Robot:
         heading_changes : (float)
             requested heading change
         """
-        global t, count2, prev_count, goal_theta, old_pose
+        global t, count2, prev_count, goal_theta, old_pose, tmp
         platform_x.append(self.pose.x)
         platform_y.append(self.pose.y)
-        t += 1
-        
+        t += 1 #TODO sostituisci con count 
+        flag = False
 
         if count2 == N: 
             count2 = 0
+            tmp = 0
 
-        if t%(OPTIMIZATION_TIME_STEP*100/TIME_SCALER) == 0:
+        if t%(OPTIMIZATION_TIME_STEP*100/TIME_SCALER) == 0 and t >= 320: #metti condizione di aspettare
+            print('PROVA ###############################################################################################')
+            tmp +=1 
             count2 = count2+1
         
 
-        if prev_count != count2:
+        if prev_count != count2 and OPTIMIZATION_ON == True:
+            print("RECEVEID NEW HEADING:",tmp)
             heading_change = heading_changes[count2-1]
+            if heading_change == 0:
+                flag = True
             if count2 > 0:
+   
                 goal_theta = heading_change + old_pose
-            else: 
-                goal_theta = heading_change
+
             linear_velocity, angular_velocity = \
             self.path_finder_controller.calc_control_command(
                 0,
                 0,
                 self.pose.theta, goal_theta)
+
 
         else:
         
@@ -197,21 +195,21 @@ class Robot:
             
 
         linear_velocity = 1
-
-        self.pose.theta = (self.pose.theta + angular_velocity * dt)
+        self.pose.theta = (self.pose.theta + angular_velocity)
         
         self.pose.x = self.pose.x + linear_velocity * \
             np.cos(self.pose.theta) * dt 
   
         self.pose.y = self.pose.y + linear_velocity * \
             np.sin(self.pose.theta) * dt
-
-        if 0.1 < np.abs(angular_velocity) < 0.2: #0.15 - 0.3
-            prev_count = count2
         
+        if (self.pose.theta == goal_theta or flag == True) and OPTIMIZATION_ON==True: #0.15 - 0.3
+            print('REACHED REQUESTED HEADING',t)
+            prev_count = count2
+        print(self.pose.theta)
 
 
-def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platform_state):
+def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platform_state, pub_covariance):
     """Simulate the sensor platform and the moving target"""
     global count1, opt_counter
     Hz = 1/(TIME_STEP) #NB: different from sampling rate for move things, this is ros rate
@@ -219,17 +217,19 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
     # Init Time Variables
     t = 0    
     count1 = 0
+    cmds = []
     while t <= TIME_DURATION:
-        rospy.loginfo(t)
+        rospy.loginfo(count1)
         t += TIME_STEP*TIME_SCALER
         count1 += 1
+
         for instance in robots:
         # SIMULATE SENSORS MEASURAMENTS
-            sensor1.vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta, TIME_STEP)
+            sensor1.vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta, TIME_STEP*TIME_SCALER)
             sensor1.targetPoseReal(instance.pose_target.x,instance.pose_target.y,instance.pose_target.theta)
             [measure1, vehicle_pose, rel_bearing1] = sensor1.measureBearing()
             
-            sensor2.vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta, TIME_STEP)
+            sensor2.vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta, TIME_STEP*TIME_SCALER)
             sensor2.targetPoseReal(instance.pose_target.x,instance.pose_target.y,instance.pose_target.theta)
             [measure2, vehicle_pose2, rel_bearing2] = sensor2.measureBearing()  
             measures = [measure1, measure2]
@@ -243,27 +243,32 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
                                 target_state_real[2] + initial_gaussian_noise*0.01, target_state_real[3] + initial_gaussian_noise *0.01]
         tracker1.processMeasurement(measures,initial_guess, vehicle_pose, vehicle_pose2, TIME_STEP*TIME_SCALER)
         [curr_est, P] = tracker1.state
-        print(curr_est)
         # PUBLISH INFORMATION FOR OPTIMIZATION
         # SEND LAST INFORMATIONS and LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
-        if count1 >= 100 and OPTIMIZATION_ON == True:
-            if count1%(N*OPTIMIZATION_TIME_STEP/(TIME_STEP*TIME_SCALER)) == 0:
-                
+        if count1 >= OPTIMIZATION_TIME_STEP*5 and OPTIMIZATION_ON == True: # initial waiting
+            if count1%(N*OPTIMIZATION_TIME_STEP/(TIME_STEP*TIME_SCALER)) == 0:#multiplo di 320 con OPT_dt = 32
+                #if count1 == 160:  #ecco perchè ieri non te partiva se non con 160#TODO be careful with the condition if is not working
+                cov_values = np.array([P[0,0],P[1,1],P[2,2],P[3,3]])
                 rospy.loginfo('SENDING DATA')
                 pub_estimation.publish(np.array(curr_est,dtype=np.float32))
                 rospy.sleep(TIME_STEP*5)
                 pub_platform_state.publish(np.array(vehicle_pose,dtype=np.float32))
                 rospy.sleep(TIME_STEP*5)
-                
+                pub_covariance.publish(np.array(cov_values, dtype=np.float32))
                 cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))
                 cmds = cmds.data
                 rospy.loginfo('RECEIVED CMDS')
                 opt_counter += 1
+                print(cmds)
+                #time.sleep(30)
             else: 
-                cmds = [0, 0, 0, 0]
+                b = 1
         else:
-            cmds = [0, 0, 0, 0]
+            b = 1
+
         # SAVE DATA FOR PLOT
+        print(cmds)
+
         target_est_y.append(curr_est[1,0])
         target_est_x.append(curr_est[0,0])
         err_x = np.sqrt(((target_state_real[0] - curr_est[0,0])**2))
@@ -314,7 +319,7 @@ def main():
     rospy.init_node('simulation')
     pub_estimation = rospy.Publisher('estimation', numpy_msg(Floats), queue_size=10)
     pub_platform_state = rospy.Publisher('platform_state', numpy_msg(Floats), queue_size=10)
-    
+    pub_covariance = rospy.Publisher('covariance_values', numpy_msg(Floats), queue_size=100)
     # Initial Conditions
     pose_target = Pose(TARGET_INIT[0], TARGET_INIT[1],  TARGET_INIT[2])
     pose_start_1 = Pose(PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1], PLATFORM_INIT_POSE[2])
@@ -340,10 +345,10 @@ def main():
     else:
         rospy.loginfo('STARTED SIMULATION - OPTIMIZATION OFF')
     start = time.time()
-    run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platform_state)
+    run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platform_state, pub_covariance)
     stop = time.time()
     if OPTIMIZATION_ON == True:
-        print('TOTAL SIMULATION TIME:',stop - start)
-        print('AVG OPTIMIZATION TIME:',((stop - start)-TIME_DURATION)/opt_counter)
+        print('TOTAL SIMULATION TIME:',start - stop*TIME_SCALER)
+        print('AVG OPTIMIZATION TIME:',(((start-stop)*TIME_SCALER)-TIME_DURATION)/opt_counter)
 if __name__ == '__main__':
     main()

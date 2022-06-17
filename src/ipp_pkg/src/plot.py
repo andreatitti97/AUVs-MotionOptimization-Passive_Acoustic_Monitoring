@@ -69,8 +69,9 @@ plt.gca().add_patch(circle2)
 plt.gca().add_patch(circle3)
 plt.gca().add_patch(circle5)
 plt.gca().add_patch(circle4)
+
 plt.legend(['Formation Reference Path','Target Path','Estimated Target Path','AUV1 path','AUV2 path','Boat',
-'Target Start','Formation Reference start','AUV1 start','AUV2 start'])
+'Target Start','Formation Reference start'])
 plt.grid()
 plt.show()
 
@@ -78,8 +79,8 @@ plt.show()
 plt.plot(s_x_on,s_y_on)
 plt.plot(real_x,real_y)
 plt.plot(ekf_x_on,ekf_y_on,'m')
-plt.plot(auv1_x_on,auv1_y_on,'r',linewidth=2)
-plt.plot(auv2_x_on,auv2_y_on,'g',linewidth=2)
+#plt.plot(auv1_x_on[],auv1_y_on,'r--', linewidth=0.5)
+#plt.plot(auv2_x_on,auv2_y_on,'g--',linewidth=0.5)
 
 plt.title('SIMULATION - OPTIMIZATION ON',fontsize=20)
 plt.xlabel('x (m)',fontsize=20)
@@ -87,22 +88,24 @@ plt.ylabel('y (m)',fontsize=20)
 circle1 = plt.Circle((2000,0),50,color='m')
 circle2 = plt.Circle((real_x[0],real_y[0]),30,color='y')
 circle3 = plt.Circle((s_x_on[0],s_y_on[0]),30,color='b')
-circle4 = plt.Circle((auv1_x_on[0],auv1_y_on[0]),30,color='r')
-circle5 = plt.Circle((auv2_x_on[0],auv2_y_on[0]),30,color='g')
+
 
 plt.gca().add_patch(circle1)
 plt.gca().add_patch(circle2)
 plt.gca().add_patch(circle3)
-plt.gca().add_patch(circle5)
-plt.gca().add_patch(circle4)
+
 plt.legend(['Formation Reference Path','Target Path','Estimated Target Path','AUV1 path','AUV2 path','Boat',
-'Target Start','Formation Reference start','AUV1 start','AUV2 start'])
+'Target Start','Formation Reference start'])
 for i in range(6):
     
     plt.plot([auv1_x_on[n_sample-(i+1)*500],
         ekf_x_on[n_sample-(i+1)*500]],[auv1_y_on[n_sample-(i+1)*500],ekf_y_on[n_sample-(i+1)*500]],'k--',linewidth=0.5)
     plt.plot([auv2_x_on[n_sample-(i+1)*500],ekf_x_on[n_sample-(i+1)*500]],[auv2_y_on[n_sample-(i+1)*500],
         ekf_y_on[n_sample-(i+1)*500]],'k--',linewidth=0.5)
+    plt.plot(auv1_x_on[n_sample-(i+1)*500],auv1_y_on[n_sample-(i+1)*500],'or')
+    plt.plot(auv2_x_on[n_sample-(i+1)*500],auv2_y_on[n_sample-(i+1)*500],'og')
+    plt.plot(s_x_on[n_sample-(i+1)*500],s_y_on[n_sample-(i+1)*500],'ob')  
+
 plt.grid()
 plt.show()
 
@@ -114,10 +117,10 @@ bearing2_on = bearing2_on *180/pi
 bearing_diff = []
 for i in range(len(bearing1_on)):
     diff = bearing1_on[i] - bearing2_on[i]
-    if diff < -90:
+    if diff < -350:
         diff = diff + 360
-    elif diff > 90:
-        diff = diff + 360
+    elif diff > 350:
+        diff = diff - 360
     bearing_diff.append(diff)
 
 plt.subplot(3,1,1)
@@ -172,7 +175,7 @@ plt.show()
 
 # PLOT ctrl cmds from optimization
 n_sample1 = np.size(ctrl_cmds)
-t1 = np.linspace(0,TIME_DURATION,n_sample1)
+t1 = np.linspace(320,TIME_DURATION,n_sample1)
 plt.plot(t1,ctrl_cmds*180/pi,'-ok',markerfacecolor='blue')
 plt.title('HEADING CHANGE COMMANDED',fontsize=20)
 plt.xlabel('Time (s)',fontsize=20)
