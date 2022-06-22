@@ -117,9 +117,9 @@ bearing2_on = bearing2_on *180/pi
 bearing_diff = []
 for i in range(len(bearing1_on)):
     diff = bearing1_on[i] - bearing2_on[i]
-    if diff < -350:
+    if diff < -180:
         diff = diff + 360
-    elif diff > 350:
+    elif diff > 180:
         diff = diff - 360
     bearing_diff.append(diff)
 
@@ -157,7 +157,6 @@ plt.plot(t,y,'b--')
 plt.legend(['AUV1','AUV2'])
 plt.grid()
 
-
 plt.subplot(3,1,3)
 plt.title('DIFFERENCE of BEARING MEASURED - OPTIMIZATION ON',fontsize=12)
 plt.plot(t,bearing_diff,'k',markerfacecolor='yellow')
@@ -175,13 +174,14 @@ plt.show()
 
 # PLOT ctrl cmds from optimization
 n_sample1 = np.size(ctrl_cmds)
-t1 = np.linspace(320,TIME_DURATION,n_sample1)
+t1 = np.linspace(256,TIME_DURATION,n_sample1)
 plt.plot(t1,ctrl_cmds*180/pi,'-ok',markerfacecolor='blue')
 plt.title('HEADING CHANGE COMMANDED',fontsize=20)
 plt.xlabel('Time (s)',fontsize=20)
 plt.ylabel('Heading Changes (deg)',fontsize=20)
 plt.grid()
 plt.show()
+
 
 # COMPARE RMSE 
 plt.plot(t,err_on[0:n_sample])

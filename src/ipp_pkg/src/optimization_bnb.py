@@ -28,19 +28,18 @@ TARGET_INIT = main2.TARGET_INIT
 tc = main2.OPTIMIZATION_TIME_STEP
 # FOLDER PATH DEFINITION
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
-SIMULATION_FACTOR = 800
+SIMULATION_FACTOR = 1600
 # Sensors
 sensor1 = sensor.Sensor('first_streamer',1,0,0,1)
 sensor2 = sensor.Sensor('seconda_streamer',1,0,0,-1)
 # Init global variables for callbacks
-platform_state = []
-target_est = []
+platform_state, target_est = [], []
 # OPTIMIZATION PARAMETERS
-key1 = -pi/12
-key2 = 0
-key3 = pi/12
-key4 = -pi/15
-key5 = + pi/15
+key1 = -pi/12 
+key2 = -pi/15
+key3 = 0
+key4 = pi/15
+key5 = + pi/12
 
 key6 = -pi/6 
 key7 = +pi/6
@@ -84,17 +83,18 @@ def simulation(control_input, target_est, platform_pose, P):
     platform = Platform(platform_pose)
     target = Target(target_est)
     
-    platform_state = platform.update_state(control_input) 
-    
-    for t in range(0,int(tc/8)):
-        platform_state = platform.update_state(0)  #TODO: METTI CONTROLLO PLATFORM COME SU MAIN SICURO SBAGLIATO QUA
-        target_state = target.update_state()#TODO vedi come cazzo viene simulato il target
+    for t in range(0,int(tc/16)):
+        if t == 0:
+            platform_state = platform.update_state(control_input) 
+        else:
+            platform_state = platform.update_state(0) 
+        target_state = target.update_state()
 
         #update measurament
-        sensor1.vehiclePose(platform_state[0], platform_state[1], platform_state[2], TIME_STEP*SIMULATION_FACTOR)  
+        sensor1.vehiclePose(platform_state[0], platform_state[1], platform_state[2])  
         sensor1.targetPoseReal(target_state[0], target_state[1], 0)
         
-        sensor2.vehiclePose(platform_state[0], platform_state[1], platform_state[2], TIME_STEP*SIMULATION_FACTOR)
+        sensor2.vehiclePose(platform_state[0], platform_state[1], platform_state[2])
         sensor2.targetPoseReal(target_state[0], target_state[1], 0)
         
         [measure1,sensor_pose1, rel_bearing1] = sensor1.measureBearing()
@@ -128,15 +128,11 @@ class Simple(pybnb.Problem):
         return pybnb.minimize
 
     def objective(self):#TODO: L'OBJECTIVE E VALUE DEL NODO CHE È IL COSTO ACCUMULATO + IL NUOVO COSTO (vedi esempio knapsnack)
-        #assert self.value is not None
-        #print('obj',self.value)
         return self.value
 
     def bound(self): # il bound è esclusivamente sull objective - CORRISPONDE AL COSTO ACCUMULATO FINO AL NODO IN ESAME
         #TODO il bound è dato dal solo costo accumulato, devi quindi calcolarlare il nuovo costo e fare  eventuali check 
-        bound = self._bound
-        #print('bound:',bound)
-        return bound
+        return self._bound
 
     def save_state(self, node):
         node.state = (self._x_hat, self._s, self._P, self.value, self._bound, self.choices)
@@ -145,10 +141,9 @@ class Simple(pybnb.Problem):
         (self._x_hat, self._s, self._P, self.value, self._bound, self.choices) = node.state
 
     def branch(self): #durante il branch devi calcolare le varie realizzazioni quindi simuli qua
-        # qui carica lo stato del nodo padre e genera 3 figli a cui assegnare i vari costi e stati, ricorda che devi far ereditare
-        # anche le realizzazioni del trget e della piattaforma e P, non solo il costo.
+
         x_hat, s, P = self._x_hat, self._s, self._P
-        #print('NODE STATE:',x_hat, s) #Print for debugging purpose
+        #print('NODE STATE:',x_hat, s, self.value) #Print for debugging purpose
         x1, P1, s1 = simulation(ctrl_cmd[0], x_hat, s, P)
         x2, P2, s2 = simulation(ctrl_cmd[1], x_hat, s, P)
         x3, P3, s3 = simulation(ctrl_cmd[2], x_hat, s, P)
@@ -201,29 +196,12 @@ class Simple(pybnb.Problem):
         child = pybnb.Node()
         child.state = (x5, s5, P5, child5_value, self.tmp_bound, choices5)
         yield child
-    
+        #print('childs costs:',cost1,cost2,cost3, cost4, cost5)
         #print('depth:',child.tree_depth-1)
-
-
-    #
-    # optional methods
-    #
-    def notify_solve_begins(self, comm, worker_comm, convergence_checker):
-        pass
-
-    def notify_new_best_node(self, node, current):
-        
-        pass
-
-    def notify_solve_finished(self, comm, worker_comm, results):
-        
-        pass
-
+        #time.sleep(2) #for debugging
 
 def compute_cost(P):
-   
-    cost = np.trace(P)
-    return cost
+    return np.trace(P)
 
 def main():
 
@@ -264,7 +242,7 @@ def main():
         limit = len(ctrl_cmd)**4 + len(ctrl_cmd)**3 + len(ctrl_cmd)**2 + len(ctrl_cmd)**1 + 1
         #print(limit)
 
-        results = solver.solve(problem, node_limit=limit) #94 with U = 3 for having N = 4
+        results = solver.solve(problem, node_limit=limit) 
         best_node_states = results.best_node.state
 
         # PRINT and PUBLISH results of optimization

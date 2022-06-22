@@ -1,12 +1,11 @@
 import numpy as np
 from math import atan2, pi
-import numpy.matlib
+from numpy import matlib
 
 def state_vector_to_scalars(state_vector):
     '''
     Returns the elements from the state_vector as a tuple of scalars.
     '''
-    
     return (state_vector[0][0,0],state_vector[1][0,0],state_vector[2][0,0],state_vector[3][0,0])    
     
 class ExtendedKalmanFilter:
@@ -14,23 +13,22 @@ class ExtendedKalmanFilter:
         '''
         Each object being tracked will result in the creation of a new ExtendedKalmanFilter instance.
         '''
-        self.__xI = np.matlib.identity(4)
+        self.__xI = matlib.identity(4)
         self.__x = None
         self.__F = None
         self.__Q = None
         
         if bool == True:
             self.__P = init_cov
-            
         else:
             self.__P = np.matrix([[1,0,0,0],
                               [0,1,0,0],
                               [0,0,1,0],
                               [0,0,0,1]])
 
-        self.__H = np.matlib.zeros((2,4))
+        self.__H = matlib.zeros((2,4))
 
-        self.__R = np.matrix([[0.1,0],[0,0.1]])
+        self.__R = np.matrix([[10,0],[0,10]]) #expected initial variance, quite large but works #TODO trova valori finali
         
         #This is for adding disturbance on the target 
         # FOR NOW WHEN THE EKF IS CALLED DURING OPTIMIZATION THERE IS NO DISTURBANCE because we receive a corrpted state (both measurmane and state)
@@ -40,8 +38,8 @@ class ExtendedKalmanFilter:
             self.__noise_ax = 0.0
             self.__noise_ay = 0.0
         else:
-            self.__noise_ax = 0.1
-            self.__noise_ay = 0.1
+            self.__noise_ax = 0.1 #1
+            self.__noise_ay = 0.1 #1
         self.trackingDataState = []
 
     @property
@@ -85,7 +83,6 @@ class ExtendedKalmanFilter:
                               
     def recompute_H(self, s1, s2):
 
-        
         px,py, vx, vy = state_vector_to_scalars(self.__x)
         #calculate_jacobian of the current state.
     
