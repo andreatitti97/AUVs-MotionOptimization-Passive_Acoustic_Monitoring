@@ -29,10 +29,10 @@ utils_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/log
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 
 # Simulation parameters
-TIME_DURATION = 2200 #seconds
+TIME_DURATION = 2600 #seconds
 TIME_STEP = 0.01
 TIME_SCALER = 40 #max 20 for allow communication -> circa 9 minuti per simulare un ora 
-TARGET_INIT = [-2000, -5000, pi/4, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [7600, 7600, -pi/4-pi/15, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 MEAS_VARIANCE = 0.1
 OPTIMIZATION_ON = False
@@ -116,9 +116,9 @@ class Robot:
         target_y_traj.append(self.pose_target.y)
 
         # UNCOMMENT FOR CHANGE TARGET HEADING AFTER A WHILE #TODO: Finish better this
-        # if count1 == 3025:#for change target heading after a while
+        #if count1 == 3150:#for change target heading after a while
          #   print('target heading change')
-          #  self.pose_target =Pose(self.pose_target.x,self.pose_target.y,self.pose_target.theta + pi/4)
+        #    self.pose_target =Pose(self.pose_target.x,self.pose_target.y,self.pose_target.theta - pi/2+pi/15)
         
         linear_velocity = self.vel_lin_target
         angular_velocity = self.vel_ang_target
@@ -209,15 +209,16 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
 
         # SIMULATE EKF
         if count1 == 1: #add distrubnace to th initial guess
-            initial_gaussian_noise = np.random.normal(0, 50)
+            initial_gaussian_noise = np.random.uniform(-5, 5)
+            initial_gaussian_noise_vel = np.random.uniform(-0.01, 0.01)
             initial_guess = [target_state_real[0] + initial_gaussian_noise, target_state_real[1] + initial_gaussian_noise,
-                                target_state_real[2] + initial_gaussian_noise*0.01, target_state_real[3] + initial_gaussian_noise *0.01]
+                                target_state_real[2] + initial_gaussian_noise_vel, target_state_real[3] + initial_gaussian_noise_vel]#target_state_real[3] + initial_gaussian_noise *0.01
         tracker1.processMeasurement(measures,initial_guess, vehicle_pose, vehicle_pose2, TIME_STEP*TIME_SCALER)
         [curr_est, P] = tracker1.state
         # PUBLISH INFORMATION FOR OPTIMIZATION
         # SEND LAST INFORMATIONS and LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
         if count1 >= OPTIMIZATION_TIME_STEP*5 and OPTIMIZATION_ON == True: # initial waiting
-            if count1%(N*OPTIMIZATION_TIME_STEP/(TIME_STEP*TIME_SCALER)) == 0:#multiplo di 320 con OPT_dt = 32
+            if count1%(N*OPTIMIZATION_TIME_STEP/(TIME_STEP*TIME_SCALER)) == 0:#multiplo di 640 con OPT_dt = 64
 
                 cov_values = np.array([P[0,0],P[1,1],P[2,2],P[3,3]])
                 rospy.loginfo('SENDING DATA')

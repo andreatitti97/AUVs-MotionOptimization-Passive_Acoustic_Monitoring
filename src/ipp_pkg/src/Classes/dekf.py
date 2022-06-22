@@ -28,7 +28,7 @@ class ExtendedKalmanFilter:
 
         self.__H = matlib.zeros((2,4))
 
-        self.__R = np.matrix([[10,0],[0,10]]) #expected initial variance, quite large but works #TODO trova valori finali
+        self.__R = np.matrix([[10,0],[0,10]]) #expected initial variance, quite large but works
         
         #This is for adding disturbance on the target 
         # FOR NOW WHEN THE EKF IS CALLED DURING OPTIMIZATION THERE IS NO DISTURBANCE because we receive a corrpted state (both measurmane and state)
