@@ -32,10 +32,10 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 TIME_DURATION = 2200 #seconds
 TIME_STEP = 0.01
 TIME_SCALER = 40 #max 20 for allow communication -> circa 9 minuti per simulare un ora 
-TARGET_INIT = [12000, 2000, -pi/2-pi/4-pi/15, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [-2000, -5000, pi/4, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 MEAS_VARIANCE = 0.1
-OPTIMIZATION_ON = True
+OPTIMIZATION_ON = False
 OPTIMIZATION_TIME_STEP = 64 #VA INTESO COME time between each command 
 #GLOBAL VARIABLES
 t = 0

@@ -38,8 +38,8 @@ class ExtendedKalmanFilter:
             self.__noise_ax = 0.0
             self.__noise_ay = 0.0
         else:
-            self.__noise_ax = 0.1 #1
-            self.__noise_ay = 0.1 #1
+            self.__noise_ax = 1 #1
+            self.__noise_ay = 1 #1
         self.trackingDataState = []
 
     @property
