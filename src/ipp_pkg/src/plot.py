@@ -1,3 +1,6 @@
+from ctypes import alignment
+from tkinter import CENTER
+from turtle import color, left
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -44,17 +47,17 @@ auv2_x_off = np.loadtxt(lib_path+'/auv2_x_OFF.txt')
 auv2_y_off = np.loadtxt(lib_path+'/auv2_y_OFF.txt')
 # Optimization CTRL_CMDS
 ctrl_cmds = np.loadtxt(lib_path+'/plot_cmds.txt')
-
+x_opt = np.loadtxt(lib_path+'/t_est_x_opt.txt')
+y_opt = np.loadtxt(lib_path+'/t_est_y_opt.txt')
 # Load temporal vaiables
 n_sample = np.size(ekf_y_on)
 t = np.linspace(0,TIME_DURATION,n_sample)
 # PLOT THE RESULT OF THE SIMULATION without OPTIMIZATION
 plt.plot(s_x_off,s_y_off)
 plt.plot(real_x,real_y)
-
 plt.plot(ekf_x_off,ekf_y_off)
-plt.plot(auv1_x_off,auv1_y_off,'r',linewidth=2)
-plt.plot(auv2_x_off,auv2_y_off,'g',linewidth=2)
+#plt.plot(auv1_x_off,auv1_y_off,'r',linewidth=2)
+#plt.plot(auv2_x_off,auv2_y_off,'g',linewidth=2)
 plt.title('SIMULATION - OPTIMIZATION OFF',fontsize=20)
 plt.xlabel('x (m)',fontsize=20)
 plt.ylabel('y (m)',fontsize=20)
@@ -70,8 +73,19 @@ plt.gca().add_patch(circle3)
 plt.gca().add_patch(circle5)
 plt.gca().add_patch(circle4)
 
-plt.legend(['Formation Reference Path','Target Path','Estimated Target Path','AUV1 path','AUV2 path','Boat',
-'Target Start','Formation Reference start'])
+plt.legend(['Formation Reference Path','Target Path','Estimated Target Path','Boat',
+'Target Start','Formation Reference Start','AUV1','AUV2'])
+
+for i in range(8):
+    
+    plt.plot([auv1_x_off[n_sample-(i+1)*500],
+        ekf_x_off[n_sample-(i+1)*500]],[auv1_y_off[n_sample-(i+1)*500],ekf_y_off[n_sample-(i+1)*500]],'k--',linewidth=0.5)
+    plt.plot([auv2_x_off[n_sample-(i+1)*500],ekf_x_off[n_sample-(i+1)*500]],[auv2_y_off[n_sample-(i+1)*500],
+        ekf_y_off[n_sample-(i+1)*500]],'k--',linewidth=0.5)
+    plt.plot(auv1_x_off[n_sample-(i+1)*500],auv1_y_off[n_sample-(i+1)*500],'or')
+    plt.plot(auv2_x_off[n_sample-(i+1)*500],auv2_y_off[n_sample-(i+1)*500],'og')
+    plt.plot(s_x_off[n_sample-(i+1)*500],s_y_off[n_sample-(i+1)*500],'ob') 
+#plt.xlim([0,12000])
 plt.grid()
 plt.show()
 
@@ -88,15 +102,19 @@ plt.ylabel('y (m)',fontsize=20)
 circle1 = plt.Circle((2000,0),50,color='m')
 circle2 = plt.Circle((real_x[0],real_y[0]),30,color='y')
 circle3 = plt.Circle((s_x_on[0],s_y_on[0]),30,color='b')
-
+circle4 = plt.Circle((auv1_x_on[0],auv1_y_on[0]),30,color='r')
+circle5 = plt.Circle((auv2_x_on[0],auv2_y_on[0]),30,color='g')
 
 plt.gca().add_patch(circle1)
 plt.gca().add_patch(circle2)
 plt.gca().add_patch(circle3)
+plt.gca().add_patch(circle5)
+plt.gca().add_patch(circle4)
 
-plt.legend(['Formation Reference Path','Target Path','Estimated Target Path','AUV1 path','AUV2 path','Boat',
-'Target Start','Formation Reference start'])
-for i in range(6):
+plt.legend(['Formation Reference Path','Target Path','Estimated Target Path','Boat',
+'Target Start','Formation Reference start','AUV1','AUV2'])
+
+for i in range(8):
     
     plt.plot([auv1_x_on[n_sample-(i+1)*500],
         ekf_x_on[n_sample-(i+1)*500]],[auv1_y_on[n_sample-(i+1)*500],ekf_y_on[n_sample-(i+1)*500]],'k--',linewidth=0.5)
@@ -105,7 +123,7 @@ for i in range(6):
     plt.plot(auv1_x_on[n_sample-(i+1)*500],auv1_y_on[n_sample-(i+1)*500],'or')
     plt.plot(auv2_x_on[n_sample-(i+1)*500],auv2_y_on[n_sample-(i+1)*500],'og')
     plt.plot(s_x_on[n_sample-(i+1)*500],s_y_on[n_sample-(i+1)*500],'ob')  
-
+#plt.xlim([0,12000])
 plt.grid()
 plt.show()
 
@@ -114,20 +132,29 @@ bearing2_off = bearing2_off *180/pi
 bearing1_on = bearing1_on *180/pi
 bearing2_on = bearing2_on *180/pi
 
-bearing_diff = []
-for i in range(len(bearing1_on)):
-    diff = bearing1_on[i] - bearing2_on[i]
-    if diff < -180:
-        diff = diff + 360
-    elif diff > 180:
-        diff = diff - 360
-    bearing_diff.append(diff)
+baseline_angle = []
+for i in range(len(auv1_x_on)):
+    tmp = (((real_x[i]-auv1_x_on[i])*(real_x[i]-auv2_x_on[i]))+((real_y[i]-auv1_y_on[i])*(real_y[i]-auv2_y_on[i])))/(np.sqrt((real_x[i]-auv1_x_on[i])**2+(real_y[i]-auv1_y_on[i])**2)*np.sqrt((real_x[i]-auv2_x_on[i])**2+(real_y[i]-auv2_y_on[i])**2))
 
-plt.subplot(3,1,1)
-plt.title('RELATIVE BEARING MEASURED - OPTIMIZATION ON',fontsize=12)
+    angle = np.arccos(tmp)
+    angle = angle*180/pi
+    baseline_angle.append(angle)
+
+
+baseline_angle_off = []
+for i in range(len(auv1_x_off)):
+    tmp = (((real_x[i]-auv1_x_off[i])*(real_x[i]-auv2_x_off[i]))+((real_y[i]-auv1_y_off[i])*(real_y[i]-auv2_y_off[i])))/(np.sqrt((real_x[i]-auv1_x_off[i])**2+(real_y[i]-auv1_y_off[i])**2)*np.sqrt((real_x[i]-auv2_x_off[i])**2+(real_y[i]-auv2_y_off[i])**2))
+
+    angle = np.arccos(tmp)
+    angle = angle*180/pi
+    baseline_angle_off.append(angle)
+
+
+plt.subplot(4,1,1)
+plt.title('OPTIMIZATION ON',fontsize=8)
 plt.plot(t,bearing1_on,'r')
 plt.plot(t,bearing2_on,'g')
-
+plt.ylabel('Relative Bearing (deg)',fontsize=20)
 y = np.zeros(n_sample)
 for i in range(n_sample): y[i] = 70
 plt.plot(t,y,'b--')
@@ -141,11 +168,11 @@ plt.legend(['AUV1','AUV2'])
 plt.grid()
 
 
-plt.subplot(3,1,2)
-plt.title('RELATIVE BEARING MEASURED - OPTIMIZATION OFF',fontsize=12)
+plt.subplot(4,1,2)
+plt.title('OPTIMIZATION OFF',fontsize=8)
 plt.plot(t,bearing1_off,'r')
 plt.plot(t,bearing2_off,'g')
-plt.ylabel('Relative Bearing (deg)',fontsize=20)
+
 for i in range(n_sample): y[i] = 70
 plt.plot(t,y,'b--')
 for i in range(n_sample): y[i] = 110
@@ -157,24 +184,40 @@ plt.plot(t,y,'b--')
 plt.legend(['AUV1','AUV2'])
 plt.grid()
 
-plt.subplot(3,1,3)
-plt.title('DIFFERENCE of BEARING MEASURED - OPTIMIZATION ON',fontsize=12)
-plt.plot(t,bearing_diff,'k',markerfacecolor='yellow')
+plt.subplot(4,1,3)
+plt.title('OPTIMIZATION ON',fontsize=8)
+plt.plot(t,baseline_angle,'k',markerfacecolor='yellow')
+plt.ylabel('Target Angle (deg)',fontsize=20)
 for i in range(n_sample): y[i] = 0
 plt.plot(t,y,'b--')
 for i in range(n_sample): y[i] = 10
 plt.plot(t,y,'b--')
 for i in range(n_sample): y[i] = -10
 plt.plot(t,y,'b--')
-#plt.ylabel('Difference - Relative Bearing(deg)')
+
+
+plt.legend(['Baseline Angle'])
+plt.grid()
+
+plt.subplot(4,1,4)
+plt.title('OPTIMIZATION OFF',fontsize=8)
+plt.plot(t,baseline_angle_off,'k',markerfacecolor='yellow')
+
+for i in range(n_sample): y[i] = 0
+plt.plot(t,y,'b--')
+for i in range(n_sample): y[i] = 10
+plt.plot(t,y,'b--')
+for i in range(n_sample): y[i] = -10
+plt.plot(t,y,'b--')
+
 plt.xlabel('Time (s)',fontsize=20)
-plt.legend(['Angle Difference'])
+plt.legend(['Baseline Angle'])
 plt.grid()
 plt.show()
 
 # PLOT ctrl cmds from optimization
 n_sample1 = np.size(ctrl_cmds)
-t1 = np.linspace(256,TIME_DURATION,n_sample1)
+t1 = np.linspace(640,TIME_DURATION,n_sample1)
 plt.plot(t1,ctrl_cmds*180/pi,'-ok',markerfacecolor='blue')
 plt.title('HEADING CHANGE COMMANDED',fontsize=20)
 plt.xlabel('Time (s)',fontsize=20)
@@ -182,15 +225,28 @@ plt.ylabel('Heading Changes (deg)',fontsize=20)
 plt.grid()
 plt.show()
 
-
+sum1 = 0
+sum2 = 0
+for i in range(len(err_off)):
+    tmp1 = err_off[i]
+    sum1 += tmp1
+    tmp2 = err_on[i]
+    sum2 += tmp2
+err_medio1 = sum1/n_sample
+err_medio2 = sum2/n_sample
+print('ERRORE MEDIO OFF:',err_medio1)
+print('ERRORE MEDIO ON:',err_medio2)
 # COMPARE RMSE 
-plt.plot(t,err_on[0:n_sample])
-plt.plot(t,err_off[0:n_sample])
-plt.legend(['optimization ON','optimization OFF'])
+plt.plot(t,err_off[0:n_sample],'y')
+plt.plot(t,err_on[0:n_sample],'b')
+plt.legend(['optimization OFF','optimization ON'])
 plt.title('ESTIMATION PERFORMANCES COMPARISON')
 plt.xlabel('Time (s)',fontsize=20)
 plt.ylabel('RMSE (m)',fontsize=20)
+plt.text(200, 250, 'ERRORE MEDIO OFF:'+str(err_medio1), fontsize=15, color='y')
+plt.text(200, 220, 'ERRORE MEDIO ON:'+str(err_medio2), fontsize=15, color='b')
 plt.grid()
 plt.show()
+
 
 

@@ -21,25 +21,27 @@ class ExtendedKalmanFilter:
         if bool == True:
             self.__P = init_cov
         else:
-            self.__P = np.matrix([[1,0,0,0],
-                              [0,1,0,0],
-                              [0,0,1,0],
-                              [0,0,0,1]])
+            self.__P = np.matrix([[10,0,0,0], # This are set according to the initial uncertainty choosen
+                              [0,10,0,0],     # if change init uncertainty change these
+                              [0,0,0.1,0],    
+                              [0,0,0,0.1]])   
 
         self.__H = matlib.zeros((2,4))
 
-        self.__R = np.matrix([[10,0],[0,10]]) #expected initial variance, quite large but works
-        
+        if bool == True:
+            self.__R = np.matrix([[200,0],[0,200]]) #expected initial variance
+        else:
+            self.__R = np.matrix([[100,0],[0,100]]) #expected initial variance
         #This is for adding disturbance on the target 
         # FOR NOW WHEN THE EKF IS CALLED DURING OPTIMIZATION THERE IS NO DISTURBANCE because we receive a corrpted state (both measurmane and state)
         # and from this state + cov we simply apply the linear model obtaining ONE realizatio of the target 
         # TODO this can improved by sampling from the input distribution (state+cov) other possible target realization, through #USCENTED TRANSORM
         if bool == True:
-            self.__noise_ax = 0.0
-            self.__noise_ay = 0.0
+            self.__noise_ax = 180 # if youn want adjust between 220 - 160 (for now 180)
+            self.__noise_ay = 180 
         else:
-            self.__noise_ax = 1 #1
-            self.__noise_ay = 1 #1
+            self.__noise_ax = 10 
+            self.__noise_ay = 10 
         self.trackingDataState = []
 
     @property

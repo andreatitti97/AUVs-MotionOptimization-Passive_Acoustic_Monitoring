@@ -5,7 +5,7 @@ import time
 import importlib.util
 # Import math modules
 from re import T
-from math import pi
+from math import atan2, pi
 import numpy as np
 import copy
 #Import ROS modules
@@ -29,14 +29,14 @@ utils_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/log
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 
 # Simulation parameters
-TIME_DURATION = 2600 #seconds
+TIME_DURATION = 3980 #seconds#2600
 TIME_STEP = 0.01
-TIME_SCALER = 40 #max 20 for allow communication -> circa 9 minuti per simulare un ora 
-TARGET_INIT = [7600, 7600, -pi/4-pi/15, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TIME_SCALER = 80 #max 20 for allow communication -> circa 9 minuti per simulare un ora 
+TARGET_INIT = [-2000, 5000, -pi/10, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
-MEAS_VARIANCE = 0.1
-OPTIMIZATION_ON = False
-OPTIMIZATION_TIME_STEP = 64 #VA INTESO COME time between each command 
+MEAS_VARIANCE = 0.01
+OPTIMIZATION_ON = True
+OPTIMIZATION_TIME_STEP = 128 #VA INTESO COME time between each command 
 #GLOBAL VARIABLES
 t = 0
 N = 4 #planning horizon
@@ -140,6 +140,7 @@ class Robot:
             requested heading change
         """
         global count2, prev_count, goal_theta, old_pose
+        
         platform_x.append(self.pose.x)
         platform_y.append(self.pose.y)
         flag = False
@@ -208,17 +209,22 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
           TARGET_INIT[3]*np.sin(instance.pose_target.theta)]
 
         # SIMULATE EKF
-        if count1 == 1: #add distrubnace to th initial guess
-            initial_gaussian_noise = np.random.uniform(-5, 5)
-            initial_gaussian_noise_vel = np.random.uniform(-0.01, 0.01)
+        if count1 == 1: #add distrubnace to th initial guess GAUSSIAN DISTURB TO INITIAL STATE
+            initial_gaussian_noise = np.random.normal(0,50) #DO NOT CHANGE (m) - ekf tunato con questi valori, se da alzare cambiare EKF
+            initial_gaussian_noise_vel = np.random.normal(0,0.1) #DO NOT CHANGE (m/s)
             initial_guess = [target_state_real[0] + initial_gaussian_noise, target_state_real[1] + initial_gaussian_noise,
                                 target_state_real[2] + initial_gaussian_noise_vel, target_state_real[3] + initial_gaussian_noise_vel]#target_state_real[3] + initial_gaussian_noise *0.01
-        tracker1.processMeasurement(measures,initial_guess, vehicle_pose, vehicle_pose2, TIME_STEP*TIME_SCALER)
-        [curr_est, P] = tracker1.state
+        
+        if count1 % 5 or count1 == 1: #TODO update EKF not always
+            if count1 == 1:
+                tracker1.processMeasurement(measures,initial_guess, vehicle_pose, vehicle_pose2, 0.8) #FIRST UPDATE
+            tracker1.processMeasurement(measures,initial_guess, vehicle_pose, vehicle_pose2, 4)#update EKF with a measurament each 2 sec
+            [curr_est, P] = tracker1.state
+        
         # PUBLISH INFORMATION FOR OPTIMIZATION
         # SEND LAST INFORMATIONS and LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
-        if count1 >= OPTIMIZATION_TIME_STEP*5 and OPTIMIZATION_ON == True: # initial waiting
-            if count1%(N*OPTIMIZATION_TIME_STEP/(TIME_STEP*TIME_SCALER)) == 0:#multiplo di 640 con OPT_dt = 64
+        if count1 >= OPTIMIZATION_TIME_STEP*4 and OPTIMIZATION_ON == True: # initial waiting
+            if count1%((N*OPTIMIZATION_TIME_STEP)/(TIME_STEP*TIME_SCALER)) == 0: #multiplo di 640 con OPT_dt = 128
 
                 cov_values = np.array([P[0,0],P[1,1],P[2,2],P[3,3]])
                 rospy.loginfo('SENDING DATA')
@@ -233,6 +239,7 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
                 print(cmds)
                 #time.sleep(30) #for debugging
         # SAVE DATA FOR PLOT
+        
         target_est_y.append(curr_est[1,0])
         target_est_x.append(curr_est[0,0])
         err_x = np.sqrt(((target_state_real[0] - curr_est[0,0])**2))

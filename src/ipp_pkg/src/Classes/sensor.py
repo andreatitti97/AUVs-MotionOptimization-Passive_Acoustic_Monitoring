@@ -9,7 +9,7 @@ class Sensor:
         self.f = f
         self.mean = mean
         self.variance = variance
-        d = 800
+        d = 1200
         self.baseline = sign*d 
         self.lin_vel = 1
         self.w_pose_t = []
@@ -42,12 +42,24 @@ class Sensor:
             rel_bearing = 2*pi - (theta_tmp - self.abs_bearing)
 
         # Create the noise according to the physics model
-        activation_function = np.cos(rel_bearing)
-        activation_function = np.abs(activation_function)
-        if activation_function == 0:
-            activation_function = 10**(-6)
-        self.noise = np.random.normal(self.mean, self.variance) #TODO ask for normal or gaussian
-        self.abs_bearing = self.abs_bearing + activation_function*self.noise #overwrite absolute bearing with the corrupted quantities
+        
+        '''if (pi/2 - pi/12 < rel_bearing < pi/2 + pi/12) or (3*pi/2 - pi/12 < rel_bearing < 3*pi/2 + pi/12):
+            activation_function = 5*np.cos(rel_bearing)
+        elif (pi - pi/12 < rel_bearing < pi + pi/12) or (0 - pi/12 < rel_bearing < 0 + pi/12) or (2*pi - pi/12 < rel_bearing < 2*pi + pi/12):
+            activation_function = 5*np.cos(rel_bearing)
+        else:
+            activation_function = 2*np.cos(rel_bearing) '''
+        #activation_function = np.cos(rel_bearing)
+        #activation_function = np.abs(activation_function) #TUNED CORRECTLY cos(89.5°) = 0.005 so if 90° a = 0.001 which filter the gaussian noise
+        #self.noise = np.random.normal(self.mean, self.variance) #TODO ask for normal or gaussian
+        np.random.seed(10)
+        self.noise = np.random.uniform(-self.variance, self.variance)
+        print(self.noise)
+        self.abs_bearing = self.abs_bearing + self.noise #overwrite absolute bearing with the corrupted quantities
+        
+        #TODO RICORDATI DEL DISCORSO DEL RUMORE UNIFORME
+        #self.noise = np.random.normal(self.mean, self.variance)
+        #self.abs_bearing = self.abs_bearing + self.noise
         #bearing measured w.r.t <w>, location of measurament, real real bearing
         return self.abs_bearing, self.w_pose_s, rel_bearing 
 

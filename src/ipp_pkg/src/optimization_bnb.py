@@ -28,24 +28,25 @@ TARGET_INIT = main2.TARGET_INIT
 tc = main2.OPTIMIZATION_TIME_STEP
 # FOLDER PATH DEFINITION
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
-SIMULATION_FACTOR = 1600
+SIMULATION_FACTOR = 3200
 # Sensors
-sensor1 = sensor.Sensor('first_streamer',1,0,0,1)
-sensor2 = sensor.Sensor('seconda_streamer',1,0,0,-1)
+sensor1 = sensor.Sensor('first_streamer',1,0,MEAS_VARIANCE,1)
+sensor2 = sensor.Sensor('seconda_streamer',1,0,MEAS_VARIANCE,-1)
 # Init global variables for callbacks
 platform_state, target_est = [], []
 # OPTIMIZATION PARAMETERS
-key1 = -pi/12 
-key2 = -pi/15
+key1 = - pi/15
+key2 = - pi/12
 key3 = 0
-key4 = pi/15
+key4 = + pi/15
 key5 = + pi/12
 
 key6 = -pi/6 
 key7 = +pi/6
-DELTA = 10**10
+DELTA = 10**15
 ctrl_cmd = [key1, key2, key3, key4, key5]
-
+t_est_x = []
+t_est_y = []
 
 class Platform():
     def __init__(self, init_vector):
@@ -83,7 +84,7 @@ def simulation(control_input, target_est, platform_pose, P):
     platform = Platform(platform_pose)
     target = Target(target_est)
     
-    for t in range(0,int(tc/16)):
+    for t in range(0,int(tc/32)):
         if t == 0:
             platform_state = platform.update_state(control_input) 
         else:
@@ -104,7 +105,11 @@ def simulation(control_input, target_est, platform_pose, P):
         tracker_.processMeasurement(measures,target_state, sensor_pose1, sensor_pose2, TIME_STEP*SIMULATION_FACTOR)
     [state, P] = tracker_.state
     state = [state[0,0], state[1,0], state[2,0], state[3,0]]
+    #t_est_x.append(state[0])
+    #t_est_y.append(state[1])
     
+    #np.savetxt(plot_path+'t_est_x_opt.txt',t_est_x)
+    #np.savetxt(plot_path+'t_est_y_opt.txt',t_est_y)
     return state, P, platform_state
 
 def compute_cost(P):
@@ -196,6 +201,13 @@ class Simple(pybnb.Problem):
         child = pybnb.Node()
         child.state = (x5, s5, P5, child5_value, self.tmp_bound, choices5)
         yield child
+
+        #t_est_x.append(x1[0])
+        #t_est_y.append(x1[1])
+    
+        #np.savetxt(plot_path+'/t_est_x_opt.txt',t_est_x)
+        #np.savetxt(plot_path+'/t_est_y_opt.txt',t_est_y)
+
         #print('childs costs:',cost1,cost2,cost3, cost4, cost5)
         #print('depth:',child.tree_depth-1)
         #time.sleep(2) #for debugging
@@ -231,10 +243,10 @@ def main():
         # The init covariance is obtained frome the last estimation
         # NB: Initialize correctly the P0 is fundamental, PUT in the DIAGONAL the uncertainties for each variable of the state 
         # I NOTICED THAT WE NEED HIGH UNCERTAINTES (AT LEAST square OF THE MAGNIUTIDE OF THE X-Y POS) - for now don't change
-        P = np.matrix([[covariance_values[0], 0, 0, 0], #TODO INITIAL COV VALUE AFTER LAST ESTIMATE - TO CHECK
-                        [0, covariance_values[1], 0, 0],
-                        [0, 0, covariance_values[2], 0],
-                        [0, 0, 0, covariance_values[3]]])
+        P = np.matrix([[np.sqrt(covariance_values[0])/10, 0, 0, 0], #TODO INITIAL COV VALUE AFTER LAST ESTIMATE - TO CHECK
+                        [0, np.sqrt(covariance_values[1])/10, 0, 0],
+                        [0, 0, np.sqrt(covariance_values[2])/10, 0],
+                        [0, 0, 0, np.sqrt(covariance_values[3])/10]])
 
         # Compute the best solution solving the optimization with BnB or Greedy search
         problem = Simple(t_est, s_state, P, DELTA)
@@ -246,7 +258,7 @@ def main():
         best_node_states = results.best_node.state
 
         # PRINT and PUBLISH results of optimization
-
+        print(results.best_node)
         print('NODE CHOICHES',best_node_states[5])
         ctrl_opt = best_node_states[5]
         pub.publish(np.array(ctrl_opt,dtype=np.float32))
