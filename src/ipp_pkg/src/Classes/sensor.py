@@ -4,12 +4,12 @@ import numpy as np
 class Sensor:
     """ Simulate Streamer """
     
-    def __init__(self, name, f, mean, variance, sign):
+    def __init__(self, name, f, mean, variance, sign, baseline):
         self.name = name
         self.f = f
         self.mean = mean
         self.variance = variance
-        d = 1200
+        d = baseline
         self.baseline = sign*d 
         self.lin_vel = 1
         self.w_pose_t = []
@@ -41,26 +41,12 @@ class Sensor:
         else:
             rel_bearing = 2*pi - (theta_tmp - self.abs_bearing)
 
-        # Create the noise according to the physics model
-        
-        '''if (pi/2 - pi/12 < rel_bearing < pi/2 + pi/12) or (3*pi/2 - pi/12 < rel_bearing < 3*pi/2 + pi/12):
-            activation_function = 5*np.cos(rel_bearing)
-        elif (pi - pi/12 < rel_bearing < pi + pi/12) or (0 - pi/12 < rel_bearing < 0 + pi/12) or (2*pi - pi/12 < rel_bearing < 2*pi + pi/12):
-            activation_function = 5*np.cos(rel_bearing)
-        else:
-            activation_function = 2*np.cos(rel_bearing) '''
-        #activation_function = np.cos(rel_bearing)
-        #activation_function = np.abs(activation_function) #TUNED CORRECTLY cos(89.5°) = 0.005 so if 90° a = 0.001 which filter the gaussian noise
-        #self.noise = np.random.normal(self.mean, self.variance) #TODO ask for normal or gaussian
-        np.random.seed(10)
-        self.noise = np.random.uniform(-self.variance, self.variance)
-        print(self.noise)
-        self.abs_bearing = self.abs_bearing + self.noise #overwrite absolute bearing with the corrupted quantities
-        
-        #TODO RICORDATI DEL DISCORSO DEL RUMORE UNIFORME
-        #self.noise = np.random.normal(self.mean, self.variance)
-        #self.abs_bearing = self.abs_bearing + self.noise
-        #bearing measured w.r.t <w>, location of measurament, real real bearing
+        # Create the noise and add the noise to the measurament #TODO UNIFORM NOISE AS DAMPS, chiedi se ok
+
+        self.noise = np.random.uniform(0, self.variance)
+
+        self.abs_bearing = self.abs_bearing + self.noise #+ activation_function*self.noise2 #overwrite absolute bearing with the corrupted quantities
+    
         return self.abs_bearing, self.w_pose_s, rel_bearing 
 
     

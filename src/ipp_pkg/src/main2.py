@@ -32,11 +32,12 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 TIME_DURATION = 3980 #seconds#2600
 TIME_STEP = 0.01
 TIME_SCALER = 80 #max 20 for allow communication -> circa 9 minuti per simulare un ora 
-TARGET_INIT = [-2000, 5000, -pi/10, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [-4000, 8000, 0, 10] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 MEAS_VARIANCE = 0.01
 OPTIMIZATION_ON = True
 OPTIMIZATION_TIME_STEP = 128 #VA INTESO COME time between each command 
+BASELINE = 2200
 #GLOBAL VARIABLES
 t = 0
 N = 4 #planning horizon
@@ -301,8 +302,8 @@ def main():
     robot_1 = Robot("platoform_center", "y", controller1)
     
     # Sensor Initialization
-    sensor1 = sensor.Sensor('first_streamer',1,0,MEAS_VARIANCE,1)#freq,mean,variance,displachement
-    sensor2 = sensor.Sensor('seconda_streamer',1,0,MEAS_VARIANCE,-1)
+    sensor1 = sensor.Sensor('first_streamer',1,0,MEAS_VARIANCE,1,BASELINE)#freq,mean,variance,displachement
+    sensor2 = sensor.Sensor('seconda_streamer',1,0,MEAS_VARIANCE,-1,BASELINE)
     
     # Set the AUV and the TARGET to the initial conditions
     robot_1.set_start_target_poses(pose_start_1, pose_target)

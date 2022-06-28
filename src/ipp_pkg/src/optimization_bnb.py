@@ -1,5 +1,6 @@
 #Import basic system modules
 import os
+from tkinter import BASELINE
 import pybnb
 # Import math modules
 import numpy as np
@@ -25,13 +26,14 @@ TIME_SCALER = main2.TIME_SCALER
 TIME_STEP = main2.TIME_STEP
 MEAS_VARIANCE = main2.MEAS_VARIANCE
 TARGET_INIT = main2.TARGET_INIT
+BASELINE = main2.BASELINE
 tc = main2.OPTIMIZATION_TIME_STEP
 # FOLDER PATH DEFINITION
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 SIMULATION_FACTOR = 3200
 # Sensors
-sensor1 = sensor.Sensor('first_streamer',1,0,MEAS_VARIANCE,1)
-sensor2 = sensor.Sensor('seconda_streamer',1,0,MEAS_VARIANCE,-1)
+sensor1 = sensor.Sensor('first_streamer',1,0,MEAS_VARIANCE,1,BASELINE)
+sensor2 = sensor.Sensor('seconda_streamer',1,0,MEAS_VARIANCE,-1,BASELINE)
 # Init global variables for callbacks
 platform_state, target_est = [], []
 # OPTIMIZATION PARAMETERS
@@ -105,6 +107,7 @@ def simulation(control_input, target_est, platform_pose, P):
         tracker_.processMeasurement(measures,target_state, sensor_pose1, sensor_pose2, TIME_STEP*SIMULATION_FACTOR)
     [state, P] = tracker_.state
     state = [state[0,0], state[1,0], state[2,0], state[3,0]]
+    # PRINT FOR DEBUGGING
     #t_est_x.append(state[0])
     #t_est_y.append(state[1])
     

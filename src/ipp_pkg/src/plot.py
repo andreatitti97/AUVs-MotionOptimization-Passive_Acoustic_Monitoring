@@ -85,7 +85,7 @@ for i in range(8):
     plt.plot(auv1_x_off[n_sample-(i+1)*500],auv1_y_off[n_sample-(i+1)*500],'or')
     plt.plot(auv2_x_off[n_sample-(i+1)*500],auv2_y_off[n_sample-(i+1)*500],'og')
     plt.plot(s_x_off[n_sample-(i+1)*500],s_y_off[n_sample-(i+1)*500],'ob') 
-#plt.xlim([0,12000])
+plt.axis('square')
 plt.grid()
 plt.show()
 
@@ -123,7 +123,7 @@ for i in range(8):
     plt.plot(auv1_x_on[n_sample-(i+1)*500],auv1_y_on[n_sample-(i+1)*500],'or')
     plt.plot(auv2_x_on[n_sample-(i+1)*500],auv2_y_on[n_sample-(i+1)*500],'og')
     plt.plot(s_x_on[n_sample-(i+1)*500],s_y_on[n_sample-(i+1)*500],'ob')  
-#plt.xlim([0,12000])
+plt.axis('square')
 plt.grid()
 plt.show()
 
@@ -243,8 +243,8 @@ plt.legend(['optimization OFF','optimization ON'])
 plt.title('ESTIMATION PERFORMANCES COMPARISON')
 plt.xlabel('Time (s)',fontsize=20)
 plt.ylabel('RMSE (m)',fontsize=20)
-plt.text(200, 250, 'ERRORE MEDIO OFF:'+str(err_medio1), fontsize=15, color='y')
-plt.text(200, 220, 'ERRORE MEDIO ON:'+str(err_medio2), fontsize=15, color='b')
+plt.text(400, 225, 'ERRORE MEDIO OFF:'+str(err_medio1), fontsize=15, color='y')
+plt.text(400, 175, 'ERRORE MEDIO ON:'+str(err_medio2), fontsize=15, color='b')
 plt.grid()
 plt.show()
 

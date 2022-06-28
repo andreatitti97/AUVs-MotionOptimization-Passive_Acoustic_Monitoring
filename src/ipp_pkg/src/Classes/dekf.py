@@ -37,11 +37,11 @@ class ExtendedKalmanFilter:
         # and from this state + cov we simply apply the linear model obtaining ONE realizatio of the target 
         # TODO this can improved by sampling from the input distribution (state+cov) other possible target realization, through #USCENTED TRANSORM
         if bool == True:
-            self.__noise_ax = 180 # if youn want adjust between 220 - 160 (for now 180)
-            self.__noise_ay = 180 
+            self.__noise_ax = 600 # if youn want adjust between 220 - 160 (for now 180)
+            self.__noise_ay = 600 
         else:
-            self.__noise_ax = 10 
-            self.__noise_ay = 10 
+            self.__noise_ax = 300
+            self.__noise_ay = 300
         self.trackingDataState = []
 
     @property
