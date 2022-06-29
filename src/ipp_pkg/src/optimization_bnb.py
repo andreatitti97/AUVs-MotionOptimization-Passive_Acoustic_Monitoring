@@ -30,7 +30,6 @@ BASELINE = main2.BASELINE
 tc = main2.OPTIMIZATION_TIME_STEP
 # FOLDER PATH DEFINITION
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
-SIMULATION_FACTOR = 3200
 # Sensors
 sensor1 = sensor.Sensor('first_streamer',1,0,MEAS_VARIANCE,1,BASELINE)
 sensor2 = sensor.Sensor('seconda_streamer',1,0,MEAS_VARIANCE,-1,BASELINE)
@@ -56,7 +55,7 @@ class Platform():
         self.y = init_vector[1]
         self.theta = init_vector[2]
         self.vl = 1
-        self.dt = TIME_STEP*SIMULATION_FACTOR
+        self.dt = tc/4
     def update_state(self, delta):
 
         self.theta = self.theta + delta
@@ -72,7 +71,7 @@ class Target():
         
         self.vlx = init_vector[2]
         self.vly = init_vector[3]
-        self.dt = TIME_STEP*SIMULATION_FACTOR
+        self.dt = tc/4
 
     def update_state(self):
 
@@ -86,7 +85,7 @@ def simulation(control_input, target_est, platform_pose, P):
     platform = Platform(platform_pose)
     target = Target(target_est)
     
-    for t in range(0,int(tc/32)):
+    for t in range(0,4):
         if t == 0:
             platform_state = platform.update_state(control_input) 
         else:
@@ -104,7 +103,7 @@ def simulation(control_input, target_est, platform_pose, P):
         [measure2,sensor_pose2, rel_bearing2] = sensor2.measureBearing()
         measures = [measure1, measure2]
         # update EKF WITH NEW MEASURAMENT
-        tracker_.processMeasurement(measures,target_state, sensor_pose1, sensor_pose2, TIME_STEP*SIMULATION_FACTOR)
+        tracker_.processMeasurement(measures,target_state, sensor_pose1, sensor_pose2, tc/4)
     [state, P] = tracker_.state
     state = [state[0,0], state[1,0], state[2,0], state[3,0]]
     # PRINT FOR DEBUGGING
@@ -227,7 +226,7 @@ def main():
     Hz = 1/(TIME_STEP)
     rate = rospy.Rate(Hz)
 
-    # Init array
+    # Init array and cov matrix
     ctrl_opt = []
     ctrl_plot = []
     P = np.eye((4))
@@ -246,23 +245,23 @@ def main():
         # The init covariance is obtained frome the last estimation
         # NB: Initialize correctly the P0 is fundamental, PUT in the DIAGONAL the uncertainties for each variable of the state 
         # I NOTICED THAT WE NEED HIGH UNCERTAINTES (AT LEAST square OF THE MAGNIUTIDE OF THE X-Y POS) - for now don't change
-        P = np.matrix([[np.sqrt(covariance_values[0])/10, 0, 0, 0], #TODO INITIAL COV VALUE AFTER LAST ESTIMATE - TO CHECK
-                        [0, np.sqrt(covariance_values[1])/10, 0, 0],
-                        [0, 0, np.sqrt(covariance_values[2])/10, 0],
-                        [0, 0, 0, np.sqrt(covariance_values[3])/10]])
+        
+        P = np.matrix([[covariance_values[0], 0, 0, 0], #TODO INITIAL COV VALUE AFTER LAST ESTIMATE - TO CHECK
+                        [0, covariance_values[1], 0, 0],
+                        [0, 0,covariance_values[2], 0],
+                        [0, 0, 0, covariance_values[3]]])
 
         # Compute the best solution solving the optimization with BnB or Greedy search
         problem = Simple(t_est, s_state, P, DELTA)
         solver = pybnb.Solver()
         limit = len(ctrl_cmd)**4 + len(ctrl_cmd)**3 + len(ctrl_cmd)**2 + len(ctrl_cmd)**1 + 1
-        #print(limit)
 
         results = solver.solve(problem, node_limit=limit) 
         best_node_states = results.best_node.state
 
         # PRINT and PUBLISH results of optimization
         print(results.best_node)
-        print('NODE CHOICHES',best_node_states[5])
+        print('NODE CHOICHES:',best_node_states[5])
         ctrl_opt = best_node_states[5]
         pub.publish(np.array(ctrl_opt,dtype=np.float32))
         for i in range(4):

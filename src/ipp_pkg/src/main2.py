@@ -31,13 +31,16 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 # Simulation parameters
 TIME_DURATION = 3980 #seconds#2600
 TIME_STEP = 0.01
-TIME_SCALER = 80 #max 20 for allow communication -> circa 9 minuti per simulare un ora 
+TIME_SCALER = 80 # MAX for communication purpose 
 TARGET_INIT = [-1000, 4000, 0, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
-MEAS_VARIANCE = 0.01
-OPTIMIZATION_ON =   False
+MEAS_VARIANCE = 0.01 #already al quadrato -> 2° incertezza -> sigma^2 = (2*pi/180)^2
+OPTIMIZATION_ON = True
 OPTIMIZATION_TIME_STEP = 128 #VA INTESO COME time between each command 
-BASELINE = 2200
+BASELINE = 1200
+INIT_POSE_UNCERTAINTY = 50 #(m)
+INIT_VEL_UNCERTAINTY = 0.1 #(m/s)
+EKF_MEAS_UPDATE = 5 #(s) delta time tra le misure
 #GLOBAL VARIABLES
 t = 0
 N = 4 #planning horizon
@@ -192,6 +195,7 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
     count1 = 0
     cmds = []
     while t <= TIME_DURATION:
+        rospy.loginfo('SIMULATION TIME(s)')
         rospy.loginfo(t)
         t += TIME_STEP*TIME_SCALER
         count1 += 1
@@ -211,15 +215,15 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
 
         # SIMULATE EKF
         if count1 == 1: #add distrubnace to th initial guess GAUSSIAN DISTURB TO INITIAL STATE
-            initial_gaussian_noise = np.random.normal(0,50) #DO NOT CHANGE (m) - ekf tunato con questi valori, se da alzare cambiare EKF
-            initial_gaussian_noise_vel = np.random.normal(0,0.1) #DO NOT CHANGE (m/s)
+            initial_gaussian_noise = np.random.normal(0,INIT_POSE_UNCERTAINTY) #DO NOT CHANGE (m) - ekf tunato con questi valori, se da alzare cambiare EKF
+            initial_gaussian_noise_vel = np.random.normal(0,INIT_VEL_UNCERTAINTY) #DO NOT CHANGE (m/s)
             initial_guess = [target_state_real[0] + initial_gaussian_noise, target_state_real[1] + initial_gaussian_noise,
                                 target_state_real[2] + initial_gaussian_noise_vel, target_state_real[3] + initial_gaussian_noise_vel]#target_state_real[3] + initial_gaussian_noise *0.01
         
         if count1 % 5 or count1 == 1: #TODO update EKF not always
             if count1 == 1:
-                tracker1.processMeasurement(measures,initial_guess, vehicle_pose, vehicle_pose2, 0.8) #FIRST UPDATE
-            tracker1.processMeasurement(measures,initial_guess, vehicle_pose, vehicle_pose2, 4)#update EKF with a measurament each 2 sec
+                tracker1.processMeasurement(measures,initial_guess, vehicle_pose, vehicle_pose2, TIME_SCALER*TIME_STEP) #FIRST UPDATE
+            tracker1.processMeasurement(measures,initial_guess, vehicle_pose, vehicle_pose2, EKF_MEAS_UPDATE*TIME_SCALER*TIME_STEP)#update EKF with a measurament each 2 sec
             [curr_est, P] = tracker1.state
         
         # PUBLISH INFORMATION FOR OPTIMIZATION
@@ -298,7 +302,7 @@ def main():
     
     # Init tracker controller and robots
     tracker1 = tracker.Tracker('first_observer',False)
-    controller1 = controller.Controller(5, 1) # controller parameters  (rho,alpha -> gain linear and angul vel) DO NOT CHANGE
+    controller1 = controller.Controller(1, 1) # controller parameters  (rho,alpha -> gain linear and angul vel) DO NOT CHANGE
     robot_1 = Robot("platoform_center", "y", controller1)
     
     # Sensor Initialization
