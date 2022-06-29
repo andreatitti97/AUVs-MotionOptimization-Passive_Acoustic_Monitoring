@@ -20,11 +20,10 @@ ekf_y_off = np.loadtxt(lib_path+'/target_est_y_OFF.txt')
 ekf_x_off = np.loadtxt(lib_path+'/target_est_x_OFF.txt')
 
 # RMSE optimization ON vs OFF
-err_y_on = np.loadtxt(lib_path+'/rmse_y_ON.txt')
-err_x_on = np.loadtxt(lib_path+'/rmse_x_ON.txt')
+
+
 err_on = np.loadtxt(lib_path+'/rmse_ON.txt')
-err_y_off = np.loadtxt(lib_path+'/rmse_y_OFF.txt')
-err_x_off = np.loadtxt(lib_path+'/rmse_x_OFF.txt')
+
 err_off = np.loadtxt(lib_path+'/rmse_OFF.txt')
 # LOAD bearing during sim
 bearing1_on = np.loadtxt(lib_path+'/bearing1_ON.txt')
@@ -47,8 +46,7 @@ auv2_x_off = np.loadtxt(lib_path+'/auv2_x_OFF.txt')
 auv2_y_off = np.loadtxt(lib_path+'/auv2_y_OFF.txt')
 # Optimization CTRL_CMDS
 ctrl_cmds = np.loadtxt(lib_path+'/plot_cmds.txt')
-x_opt = np.loadtxt(lib_path+'/t_est_x_opt.txt')
-y_opt = np.loadtxt(lib_path+'/t_est_y_opt.txt')
+
 # Load temporal vaiables
 n_sample = np.size(ekf_y_on)
 t = np.linspace(0,TIME_DURATION,n_sample)
