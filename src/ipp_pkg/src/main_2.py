@@ -14,7 +14,7 @@ from rospy_tutorials.msg import Floats
 from rospy.numpy_msg import numpy_msg
 
 # Import Costum classes
-class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
+class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes/2_AUV')
 spec = importlib.util.spec_from_file_location("module.tracker", class_path+"/tracker.py")
 tracker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tracker)
@@ -35,7 +35,7 @@ TIME_SCALER = 80 # MAX for communication purpose
 TARGET_INIT = [-2000, -15000, +pi/4-pi/10, 5] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 MEAS_VARIANCE = 0.01 #already al quadrato -> 2° incertezza -> sigma^2 = (2*pi/180)^2
-OPTIMIZATION_ON = True
+OPTIMIZATION_ON = False
 OPTIMIZATION_TIME_STEP = 128 #VA INTESO COME time between each command 
 BASELINE = 1200
 INIT_POSE_UNCERTAINTY = 50 #(m)

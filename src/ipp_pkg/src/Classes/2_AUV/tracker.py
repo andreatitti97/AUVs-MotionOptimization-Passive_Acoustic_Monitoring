@@ -1,6 +1,6 @@
 import os
 import importlib.util
-spec = importlib.util.spec_from_file_location("module.dekf", "/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes/dekf.py")
+spec = importlib.util.spec_from_file_location("module.dekf", "/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes/2_AUV/dekf.py")
 dekf = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(dekf)
 lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs')

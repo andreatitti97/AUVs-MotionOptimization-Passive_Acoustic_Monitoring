@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-from main2 import TIME_DURATION
+from main_4 import TIME_DURATION
 from math import pi
 lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 
@@ -35,12 +35,21 @@ auv1_y_on = np.loadtxt(lib_path+'/auv1_y_ON.txt')
 auv2_x_on = np.loadtxt(lib_path+'/auv2_x_ON.txt')
 auv2_y_on = np.loadtxt(lib_path+'/auv2_y_ON.txt')
 
+auv3_x_on = np.loadtxt(lib_path+'/auv3_x_ON.txt')
+auv3_y_on = np.loadtxt(lib_path+'/auv3_y_ON.txt')
+auv4_x_on = np.loadtxt(lib_path+'/auv4_x_ON.txt')
+auv4_y_on = np.loadtxt(lib_path+'/auv4_y_ON.txt')
+
 s_x_off = np.loadtxt(lib_path+'/x_platform_OFF.txt')
 s_y_off = np.loadtxt(lib_path+'/y_platform_OFF.txt')
 auv1_x_off = np.loadtxt(lib_path+'/auv1_x_OFF.txt')
 auv1_y_off = np.loadtxt(lib_path+'/auv1_y_OFF.txt')
 auv2_x_off = np.loadtxt(lib_path+'/auv2_x_OFF.txt')
 auv2_y_off = np.loadtxt(lib_path+'/auv2_y_OFF.txt')
+auv3_x_off = np.loadtxt(lib_path+'/auv3_x_OFF.txt')
+auv3_y_off = np.loadtxt(lib_path+'/auv3_y_OFF.txt')
+auv4_x_off = np.loadtxt(lib_path+'/auv4_x_OFF.txt')
+auv4_y_off = np.loadtxt(lib_path+'/auv4_y_OFF.txt')
 # Optimization CTRL_CMDS
 ctrl_cmds = np.loadtxt(lib_path+'/plot_cmds.txt')
 
@@ -59,14 +68,18 @@ plt.ylabel('y (m)',fontsize=20)
 circle1 = plt.Circle((2000,0),50,color='m')
 circle2 = plt.Circle((real_x[0],real_y[0]),30,color='y')
 circle3 = plt.Circle((s_x_off[0],s_y_off[0]),30,color='b')
-circle4 = plt.Circle((auv1_x_off[0],auv1_y_off[0]),30,color='r')
-circle5 = plt.Circle((auv2_x_off[0],auv2_y_off[0]),30,color='g')
+circle4 = plt.Circle((auv1_x_off[0],auv1_y_off[0]),50,color='r')
+circle5 = plt.Circle((auv2_x_off[0],auv2_y_off[0]),50,color='g')
+circle6 = plt.Circle((auv3_x_off[0],auv3_y_off[0]),50,color='m')
+circle7 = plt.Circle((auv4_x_off[0],auv4_y_off[0]),50,color='k')
 
 plt.gca().add_patch(circle1)
 plt.gca().add_patch(circle2)
 plt.gca().add_patch(circle3)
-plt.gca().add_patch(circle5)
 plt.gca().add_patch(circle4)
+plt.gca().add_patch(circle5)
+plt.gca().add_patch(circle6)
+plt.gca().add_patch(circle7)
 
 plt.legend(['Formation Reference Path','Target Path','Estimated Target Path','Boat',
 'Target Start','Formation Reference Start','AUV1','AUV2'])
@@ -79,6 +92,8 @@ for i in range(8):
         ekf_y_off[n_sample-(i+1)*500]],'k--',linewidth=0.5)
     plt.plot(auv1_x_off[n_sample-(i+1)*500],auv1_y_off[n_sample-(i+1)*500],'or')
     plt.plot(auv2_x_off[n_sample-(i+1)*500],auv2_y_off[n_sample-(i+1)*500],'og')
+    plt.plot(auv3_x_off[n_sample-(i+1)*500],auv3_y_off[n_sample-(i+1)*500],'om')
+    plt.plot(auv4_x_off[n_sample-(i+1)*500],auv4_y_off[n_sample-(i+1)*500],'ok')
     plt.plot(s_x_off[n_sample-(i+1)*500],s_y_off[n_sample-(i+1)*500],'ob') 
 plt.axis('equal')
 plt.grid()
@@ -97,19 +112,23 @@ plt.ylabel('y (m)',fontsize=20)
 circle1 = plt.Circle((2000,0),50,color='m')
 circle2 = plt.Circle((real_x[0],real_y[0]),30,color='y')
 circle3 = plt.Circle((s_x_on[0],s_y_on[0]),30,color='b')
-circle4 = plt.Circle((auv1_x_on[0],auv1_y_on[0]),30,color='r')
-circle5 = plt.Circle((auv2_x_on[0],auv2_y_on[0]),30,color='g')
+circle4 = plt.Circle((auv1_x_on[0],auv1_y_on[0]),50,color='r')
+circle5 = plt.Circle((auv2_x_on[0],auv2_y_on[0]),50,color='g')
+circle6 = plt.Circle((auv3_x_on[0],auv3_y_on[0]),50,color='m')
+circle7 = plt.Circle((auv4_x_on[0],auv4_y_on[0]),50,color='k')
 
 plt.gca().add_patch(circle1)
 plt.gca().add_patch(circle2)
 plt.gca().add_patch(circle3)
-plt.gca().add_patch(circle5)
 plt.gca().add_patch(circle4)
+plt.gca().add_patch(circle5)
+plt.gca().add_patch(circle6)
+plt.gca().add_patch(circle7)
 
 plt.legend(['Formation Reference Path','Target Path','Estimated Target Path','Boat',
 'Target Start','Formation Reference start','AUV1','AUV2'])
 
-for i in range(8):
+for i in range(10):
     
     plt.plot([auv1_x_on[n_sample-(i+1)*500],
         ekf_x_on[n_sample-(i+1)*500]],[auv1_y_on[n_sample-(i+1)*500],ekf_y_on[n_sample-(i+1)*500]],'k--',linewidth=0.5)
@@ -117,6 +136,8 @@ for i in range(8):
         ekf_y_on[n_sample-(i+1)*500]],'k--',linewidth=0.5)
     plt.plot(auv1_x_on[n_sample-(i+1)*500],auv1_y_on[n_sample-(i+1)*500],'or')
     plt.plot(auv2_x_on[n_sample-(i+1)*500],auv2_y_on[n_sample-(i+1)*500],'og')
+    plt.plot(auv3_x_on[n_sample-(i+1)*500],auv3_y_on[n_sample-(i+1)*500],'om')
+    plt.plot(auv4_x_on[n_sample-(i+1)*500],auv4_y_on[n_sample-(i+1)*500],'ok')
     plt.plot(s_x_on[n_sample-(i+1)*500],s_y_on[n_sample-(i+1)*500],'ob')  
 plt.axis('equal')
 plt.grid()
