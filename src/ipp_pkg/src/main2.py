@@ -32,7 +32,7 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 TIME_DURATION = 3980 #seconds#2600
 TIME_STEP = 0.01
 TIME_SCALER = 80 # MAX for communication purpose 
-TARGET_INIT = [-1000, 4000, 0, 3] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [-2000, -15000, +pi/4-pi/10, 5] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 MEAS_VARIANCE = 0.01 #already al quadrato -> 2° incertezza -> sigma^2 = (2*pi/180)^2
 OPTIMIZATION_ON = True
@@ -151,9 +151,9 @@ class Robot:
 
         if count2 == N: 
             count2 = 0
-
-        if count1%(OPTIMIZATION_TIME_STEP/(TIME_STEP*TIME_SCALER)) == 0 and count1 >= 640: #metti condizione di aspettare
-            count2 = count2+1
+        if count1 >= 256:
+            if count1%(OPTIMIZATION_TIME_STEP/(TIME_STEP*TIME_SCALER)) == 0 or count1==256: #metti condizione di aspettare
+                count2 = count2+1
         
 
         if prev_count != count2 and OPTIMIZATION_ON == True:
@@ -228,8 +228,8 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         
         # PUBLISH INFORMATION FOR OPTIMIZATION
         # SEND LAST INFORMATIONS and LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
-        if count1 >= OPTIMIZATION_TIME_STEP*4 and OPTIMIZATION_ON == True: # initial waiting
-            if count1%((N*OPTIMIZATION_TIME_STEP)/(TIME_STEP*TIME_SCALER)) == 0: #multiplo di 640 con OPT_dt = 128
+        if count1 >= 2*OPTIMIZATION_TIME_STEP and OPTIMIZATION_ON == True: # initial waiting
+            if count1%((N*OPTIMIZATION_TIME_STEP)/(TIME_STEP*TIME_SCALER)) == 0 or count1 == 256: #multiplo di 640 con OPT_dt = 128
 
                 cov_values = np.array([P[0,0],P[1,1],P[2,2],P[3,3]])
                 rospy.loginfo('SENDING DATA')

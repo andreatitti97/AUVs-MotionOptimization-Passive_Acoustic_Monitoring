@@ -1,6 +1,3 @@
-from ctypes import alignment
-from tkinter import CENTER
-from turtle import color, left
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -83,7 +80,7 @@ for i in range(8):
     plt.plot(auv1_x_off[n_sample-(i+1)*500],auv1_y_off[n_sample-(i+1)*500],'or')
     plt.plot(auv2_x_off[n_sample-(i+1)*500],auv2_y_off[n_sample-(i+1)*500],'og')
     plt.plot(s_x_off[n_sample-(i+1)*500],s_y_off[n_sample-(i+1)*500],'ob') 
-plt.axis('square')
+plt.axis('equal')
 plt.grid()
 plt.show()
 
@@ -121,7 +118,7 @@ for i in range(8):
     plt.plot(auv1_x_on[n_sample-(i+1)*500],auv1_y_on[n_sample-(i+1)*500],'or')
     plt.plot(auv2_x_on[n_sample-(i+1)*500],auv2_y_on[n_sample-(i+1)*500],'og')
     plt.plot(s_x_on[n_sample-(i+1)*500],s_y_on[n_sample-(i+1)*500],'ob')  
-plt.axis('square')
+plt.axis('equal')
 plt.grid()
 plt.show()
 
@@ -148,7 +145,7 @@ for i in range(len(auv1_x_off)):
     baseline_angle_off.append(angle)
 
 
-plt.subplot(4,1,1)
+'''plt.subplot(4,1,1)
 plt.title('OPTIMIZATION ON',fontsize=8)
 plt.plot(t,bearing1_on,'r')
 plt.plot(t,bearing2_on,'g')
@@ -180,36 +177,48 @@ plt.plot(t,y,'b--')
 for i in range(n_sample): y[i] = 290
 plt.plot(t,y,'b--')
 plt.legend(['AUV1','AUV2'])
-plt.grid()
+plt.grid()'''
 
-plt.subplot(4,1,3)
-plt.title('OPTIMIZATION ON',fontsize=8)
+y = np.zeros(n_sample)
+plt.subplot(2,1,1)
+
+plt.title('OPTIMIZATION ON',fontsize=15)
 plt.plot(t,baseline_angle,'k',markerfacecolor='yellow')
-plt.ylabel('Target Angle (deg)',fontsize=20)
+plt.ylabel('Angle FORMATION-TARGET(deg)',fontsize=15)
 for i in range(n_sample): y[i] = 0
-plt.plot(t,y,'b--')
+plt.plot(t,y,'r--',linewidth=2)
+for i in range(n_sample): y[i] = 5
+plt.plot(t,y,'y--',linewidth=2)
 for i in range(n_sample): y[i] = 10
-plt.plot(t,y,'b--')
+plt.plot(t,y,'g--',linewidth=2)
+
+for i in range(n_sample): y[i] = -5
+plt.plot(t,y,'y--',linewidth=2)
+
 for i in range(n_sample): y[i] = -10
-plt.plot(t,y,'b--')
+plt.plot(t,y,'g--',linewidth=2)
+plt.legend(['Angle','No Baseline','Critical Baseline','Good Baseline'])
 
-
-plt.legend(['Baseline Angle'])
 plt.grid()
 
-plt.subplot(4,1,4)
-plt.title('OPTIMIZATION OFF',fontsize=8)
+plt.subplot(2,1,2)
+plt.title('OPTIMIZATION OFF',fontsize=15)
 plt.plot(t,baseline_angle_off,'k',markerfacecolor='yellow')
-
+plt.ylabel('Angle FORMATION-TARGET(deg)',fontsize=15)
 for i in range(n_sample): y[i] = 0
-plt.plot(t,y,'b--')
+plt.plot(t,y,'r--',linewidth=2)
+for i in range(n_sample): y[i] = 5
+plt.plot(t,y,'y--',linewidth=2)
 for i in range(n_sample): y[i] = 10
-plt.plot(t,y,'b--')
+plt.plot(t,y,'g--',linewidth=2)
+for i in range(n_sample): y[i] = -5
+plt.plot(t,y,'y--',linewidth=2)
+
 for i in range(n_sample): y[i] = -10
-plt.plot(t,y,'b--')
+plt.plot(t,y,'g--',linewidth=2)
 
 plt.xlabel('Time (s)',fontsize=20)
-plt.legend(['Baseline Angle'])
+plt.legend(['Angle','No Baseline','Critical Baseline','Good Baseline'])
 plt.grid()
 plt.show()
 

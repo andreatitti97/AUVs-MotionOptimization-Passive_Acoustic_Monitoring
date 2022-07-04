@@ -39,8 +39,8 @@ platform_state, target_est = [], []
 key1 = - pi/15
 key2 = - pi/12
 key3 = 0
-key4 = + pi/15
-key5 = + pi/12
+key4 = + pi/12
+key5 = + pi/15
 
 key6 = -pi/6 
 key7 = +pi/6

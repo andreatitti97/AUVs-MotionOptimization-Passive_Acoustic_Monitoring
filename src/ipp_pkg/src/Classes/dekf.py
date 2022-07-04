@@ -21,10 +21,10 @@ class ExtendedKalmanFilter:
         if bool == True:
             self.__P = init_cov
         else:
-            self.__P = np.matrix([[50,0,0,0], # This are set according to the initial uncertainty choosen
-                              [0,50,0,0],     # if change init uncertainty change these
-                              [0,0,0.1,0],    
-                              [0,0,0,0.1]])   
+            self.__P = np.matrix([[1000,0,0,0], # This are set according to the initial uncertainty choosen
+                              [0,1000,0,0],     # if change init uncertainty change these
+                              [0,0,100,0],    
+                              [0,0,0,100]])   
 
         self.__H = matlib.zeros((2,4))
 
