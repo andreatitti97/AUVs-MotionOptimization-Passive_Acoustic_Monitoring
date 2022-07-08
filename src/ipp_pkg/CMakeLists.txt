@@ -161,8 +161,7 @@ include_directories(
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
-   src/main_2.py src/plot_2.py src/optimization_2.py
-   src/main_4.py src/plot_4.py src/optimization_4.py 
+   src/main.py src/optimization.py
    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
  )
 

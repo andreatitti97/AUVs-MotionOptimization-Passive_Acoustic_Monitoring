@@ -1,6 +1,6 @@
 import numpy as np
 from math import atan2, pi
-from numpy import matlib
+from numpy import append, matlib
 
 def state_vector_to_scalars(state_vector):
     '''
@@ -9,7 +9,7 @@ def state_vector_to_scalars(state_vector):
     return (state_vector[0][0,0],state_vector[1][0,0],state_vector[2][0,0],state_vector[3][0,0])    
     
 class ExtendedKalmanFilter:
-    def __init__(self,bool,init_cov=[]):
+    def __init__(self,n_auv,bool,init_cov=[]):
         '''
         Each object being tracked will result in the creation of a new ExtendedKalmanFilter instance.
         '''
@@ -17,7 +17,7 @@ class ExtendedKalmanFilter:
         self.__x = None
         self.__F = None
         self.__Q = None
-        
+        self.n_auv = n_auv
         if bool == True:
             self.__P = init_cov
         else:
@@ -25,23 +25,22 @@ class ExtendedKalmanFilter:
                               [0,1000,0,0],     # if change init uncertainty change these
                               [0,0,100,0],    
                               [0,0,0,100]])   
-
-        self.__H = matlib.zeros((4,4))
-
-        if bool == True:
-            self.__R = np.matrix([[0.01,0,0,0],[0,0.01,0,0],[0,0,0.01,0],[0,0,0,0.01]])
+        if self.n_auv == 2:
+            self.__H = matlib.zeros((2,4))
+            self.__R = np.matrix([[0.01,0],[0,0.01]])
         else:
-            self.__R = np.matrix([[0.01,0,0,0],[0,0.01,0,0],[0,0,0.01,0],[0,0,0,0.01]]) #expected meas noise variance
+            self.__H = matlib.zeros((4,4))
+            self.__R = np.matrix([[0.01,0,0,0],[0,0.01,0,0],[0,0,0.01,0],[0,0,0,0.01]])
+        
+            
+
         #This is for adding disturbance on the target 
         # FOR NOW WHEN THE EKF IS CALLED DURING OPTIMIZATION THERE IS NO DISTURBANCE because we receive a corrpted state (both measurmane and state)
         # and from this state + cov we simply apply the linear model obtaining ONE realizatio of the target 
         # TODO this can improved by sampling from the input distribution (state+cov) other possible target realization, through #USCENTED TRANSORM
-        if bool == True:
-            self.__noise_ax = 0.001 
-            self.__noise_ay = 0.001
-        else:
-            self.__noise_ax = 0.001
-            self.__noise_ay = 0.001 #0.0001
+
+        self.__noise_ax = 0.001 
+        self.__noise_ay = 0.001
         self.trackingDataState = []
 
     @property
@@ -83,27 +82,25 @@ class ExtendedKalmanFilter:
                               [0, e42, 0, e44]]) #Q matrix represents accelerations that allows 
                               #the tracked object to deviate from constant velocity.
                               
-    def recompute_H(self, s1, s2, s3, s4):
+    def recompute_H(self, auv_positions):
 
         px,py, vx, vy = state_vector_to_scalars(self.__x)
         #calculate_jacobian of the current state.
-    
-        rx1 = px - s1[0]
-        ry1 = py - s1[1]
+        rx = []
+        ry = []
+        for i in range(len(auv_positions)):
+            tmp = auv_positions[i]
+            rx.append(px - tmp[0])
+            ry.append(py - tmp[1])
 
-        rx2 = px - s2[0]
-        ry2 = py - s2[1]
-
-        rx3 = px - s3[0]
-        ry3 = py - s3[1]
-
-        rx4 = px - s4[0]
-        ry4 = py - s4[1]
-
-        self.__H = np.matrix([[-ry1/(ry1**2+rx1**2), rx1/(rx1**2+ry1**2) , 0, 0],   #TODO vedi se si può far qualcosa per le vel
-                                [-ry2/(ry2**2+rx2**2), rx2/(rx2**2+ry2**2) , 0, 0],
-                                [-ry3/(ry3**2+rx3**2), rx3/(rx3**2+ry3**2) , 0, 0],
-                                [-ry4/(ry4**2+rx4**2), rx4/(rx4**2+ry4**2) , 0, 0]])
+        if self.n_auv == 4:
+            self.__H = np.matrix([[-ry[0]/(ry[0]**2+rx[0]**2), rx[0]/(rx[0]**2+ry[0]**2) , 0, 0],   #TODO vedi se si può far qualcosa per le vel
+                                    [-ry[1]/(ry[1]**2+rx[1]**2), rx[1]/(rx[1]**2+ry[1]**2) , 0, 0],
+                                    [-ry[0]/(ry[2]**2+rx[2]**2), rx[2]/(rx[2]**2+ry[2]**2) , 0, 0],
+                                    [-ry[3]/(ry[3]**2+rx[3]**2), rx[3]/(rx[3]**2+ry[3]**2) , 0, 0]])
+        else:
+            self.__H = np.matrix([[-ry[0]/(ry[0]**2+rx[0]**2), rx[0]/(rx[0]**2+ry[0]**2) , 0, 0],   #TODO vedi se si può far qualcosa per le vel
+                                    [-ry[1]/(ry[1]**2+rx[1]**2), rx[1]/(rx[1]**2+ry[1]**2) , 0, 0]])
                                 
     def predict(self):
         '''
@@ -113,35 +110,30 @@ class ExtendedKalmanFilter:
         self.__x = self.__F * self.__x
         self.__P = (self.__F * self.__P * self.__F.T) + self.__Q
         
-    def update(self,measures, sensor_state1, sensor_state2, sensor_state3, sensor_state4):
+    def update(self,measures, auv_positions):
+
+
 
         # Return state estimated
         [xt, yt, dotx, doty] = state_vector_to_scalars(self.__x)
-        
+        y_tilde = []
         # Compute the output error for both measuraments.
-        y_tilde1 = measures[0] - atan2(yt - sensor_state1[1],xt - sensor_state1[0])
-        if y_tilde1 >= pi:
-            y_tilde1 = y_tilde1 - 2*pi
-        if y_tilde1 < -pi:
-            y_tilde1 = y_tilde1 + 2*pi
-        y_tilde2 = measures[1] - atan2(yt - sensor_state2[1],xt - sensor_state2[0])
-        if y_tilde2 >= pi:
-            y_tilde2 = y_tilde2 - 2*pi
-        if y_tilde2 < -pi:
-            y_tilde2 = y_tilde2 + 2*pi
-        y_tilde3 = measures[2] - atan2(yt - sensor_state3[1],xt - sensor_state3[0])
-        if y_tilde3 >= pi:
-            y_tilde3 = y_tilde3 - 2*pi
-        if y_tilde2 < -pi:
-            y_tilde3 = y_tilde3 + 2*pi
-        y_tilde4 = measures[3] - atan2(yt - sensor_state4[1],xt - sensor_state4[0])
-        if y_tilde4 >= pi:
-            y_tilde4 = y_tilde4 - 2*pi
-        if y_tilde4 < -pi:
-            y_tilde4 = y_tilde4 + 2*pi
-        y_tilde = np.array([[y_tilde1], [y_tilde2],[y_tilde3],[y_tilde4]])
+        
+        for i in range(len(auv_positions)):
+            tmp = auv_positions[i]
 
-        self.recompute_H(sensor_state1,sensor_state2,sensor_state3, sensor_state4)
+            y_tilde1 = measures[i] - atan2(yt - tmp[1],xt - tmp[0])
+            if y_tilde1 >= pi:
+                y_tilde1 = y_tilde1 - 2*pi
+            if y_tilde1 < -pi:
+                y_tilde1 = y_tilde1 + 2*pi
+            y_tilde.append(y_tilde1)
+        if len(auv_positions) > 2:
+            y_tilde = np.array([[y_tilde[0]], [y_tilde[1]],[y_tilde[2]],[y_tilde[3]]]) # TODO make iterative
+        else:
+            y_tilde = np.array([[y_tilde[0]], [y_tilde[1]]])
+    
+        self.recompute_H(auv_positions)
 
         # Pre compute for the kalman gain K
 

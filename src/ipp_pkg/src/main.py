@@ -8,13 +8,14 @@ from re import T
 from math import atan2, pi
 import numpy as np
 import copy
+
 #Import ROS modules
 import rospy
 from rospy_tutorials.msg import Floats
 from rospy.numpy_msg import numpy_msg
 
 # Import Costum classes
-class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes/2_AUV')
+class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
 spec = importlib.util.spec_from_file_location("module.tracker", class_path+"/tracker.py")
 tracker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tracker)
@@ -32,15 +33,17 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 TIME_DURATION = 3980 #seconds#2600
 TIME_STEP = 0.01
 TIME_SCALER = 80 # MAX for communication purpose 
-TARGET_INIT = [-2000, -15000, +pi/4-pi/10, 5] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [-2000, -22000, +pi/4-pi/10, 5] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 MEAS_VARIANCE = 0.01 #already al quadrato -> 2° incertezza -> sigma^2 = (2*pi/180)^2
-OPTIMIZATION_ON = False
+OPTIMIZATION_ON = True
 OPTIMIZATION_TIME_STEP = 128 #VA INTESO COME time between each command 
-BASELINE = 1200
+BASELINE_Y = 1000
+BASELINE_X = 500
 INIT_POSE_UNCERTAINTY = 50 #(m)
 INIT_VEL_UNCERTAINTY = 0.1 #(m/s)
 EKF_MEAS_UPDATE = 5 #(s) delta time tra le misure
+N_AUV = 2
 #GLOBAL VARIABLES
 t = 0
 N = 4 #planning horizon
@@ -50,8 +53,22 @@ goal_theta, old_pose = 0, 0
 # INIT lists for plot
 target_x_traj, target_y_traj, platform_x, platform_y = [], [], [], []
 target_est_x, target_est_y, rmse = [], [], []
-auv1_x, auv1_y, auv2_x, auv2_y  = [], [], [], []
+auv1_x, auv1_y, auv2_x, auv2_y,auv3_x,auv3_y,auv4_x,auv4_y  = [], [], [], [], [], [], [], []
 bearing1, bearing2 = [], []
+
+def sensorPlacement(auv):
+    for i in range(N_AUV): #TODO: AUV up to 6 consider
+            if (i+1) % 2 == 0:
+                if i+1 > 3:
+                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,-1,BASELINE_X, BASELINE_Y))#freq,mean,variance,displachement
+                else:   
+                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,-1,0,BASELINE_Y))#freq,mean,variance,displachement
+            if (i+1) % 2 == 1:
+                if i+1 > 2:
+                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,1,BASELINE_X, BASELINE_Y))#freq,mean,variance,displachement
+                else:   
+                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,1,0,BASELINE_Y))#freq,mean,variance,displachement
+    return auv
 
 class Pose:
     """2D pose"""
@@ -185,7 +202,7 @@ class Robot:
         if (self.pose.theta == goal_theta or flag == True) and OPTIMIZATION_ON==True:         
             prev_count = count2
 
-def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platform_state, pub_covariance):
+def run_simulation(robots, tracker1, auv, pub_estimation, pub_platform_state, pub_covariance):
     """Simulate the sensor platform and the moving target"""
     global count1
     Hz = 1/(TIME_STEP) #NB: different from sampling rate for move things, this is ros rate
@@ -199,17 +216,20 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         rospy.loginfo(t)
         t += TIME_STEP*TIME_SCALER
         count1 += 1
-
+        measures = []
+        vehicle_pose = []
+        rel_bearing = []
         for instance in robots:
         # SIMULATE SENSORS MEASURAMENTS
-            sensor1.vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta)
-            sensor1.targetPoseReal(instance.pose_target.x,instance.pose_target.y,instance.pose_target.theta)
-            [measure1, vehicle_pose, rel_bearing1] = sensor1.measureBearing()
-            
-            sensor2.vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta)
-            sensor2.targetPoseReal(instance.pose_target.x,instance.pose_target.y,instance.pose_target.theta)
-            [measure2, vehicle_pose2, rel_bearing2] = sensor2.measureBearing()  
-            measures = [measure1, measure2]
+            for i in range(len(auv)):
+                auv[i].vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta)
+                auv[i].targetPoseReal(instance.pose_target.x,instance.pose_target.y,instance.pose_target.theta)
+                [measure1, vehicle_pose1, rel_bearing1] = auv[i].measureBearing()
+                measures.append(measure1)
+                vehicle_pose.append(vehicle_pose1)
+                rel_bearing.append(rel_bearing1)
+    
+            platform_pose = np.array([instance.pose.x,instance.pose.y,instance.pose.theta])
             target_state_real = [instance.pose_target.x,instance.pose_target.y, TARGET_INIT[3]*np.cos(instance.pose_target.theta),
           TARGET_INIT[3]*np.sin(instance.pose_target.theta)]
 
@@ -222,8 +242,8 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         
         if count1 % 5 or count1 == 1: #TODO update EKF not always
             if count1 == 1:
-                tracker1.processMeasurement(measures,initial_guess, vehicle_pose, vehicle_pose2, TIME_SCALER*TIME_STEP) #FIRST UPDATE
-            tracker1.processMeasurement(measures,initial_guess, vehicle_pose, vehicle_pose2, EKF_MEAS_UPDATE*TIME_SCALER*TIME_STEP)#update EKF with a measurament each 2 sec
+                tracker1.processMeasurement(measures,initial_guess, vehicle_pose, TIME_SCALER*TIME_STEP) #FIRST UPDATE
+            tracker1.processMeasurement(measures,initial_guess, vehicle_pose, EKF_MEAS_UPDATE*TIME_SCALER*TIME_STEP)#update EKF with a measurament each 2 sec
             [curr_est, P] = tracker1.state
         
         # PUBLISH INFORMATION FOR OPTIMIZATION
@@ -235,7 +255,9 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
                 rospy.loginfo('SENDING DATA')
                 pub_estimation.publish(np.array(curr_est,dtype=np.float32))
                 rospy.sleep(TIME_STEP*5)
-                pub_platform_state.publish(np.array(vehicle_pose,dtype=np.float32))
+#               
+                #platform_pose = np.array([])
+                pub_platform_state.publish(np.array(platform_pose,dtype=np.float32))
                 rospy.sleep(TIME_STEP*5)
                 pub_covariance.publish(np.array(cov_values, dtype=np.float32))
                 cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))
@@ -250,13 +272,24 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
         err_x = np.sqrt(((target_state_real[0] - curr_est[0,0])**2))
         err_y = np.sqrt(((target_state_real[1] - curr_est[1,0])**2))
         norma_err = np.sqrt(err_x**2+err_y**2)
-        auv1_x.append(vehicle_pose[0])
-        auv1_y.append(vehicle_pose[1])
-        auv2_x.append(vehicle_pose2[0])
-        auv2_y.append(vehicle_pose2[1])
+        for i in range(len(vehicle_pose)):  
+            tmp = vehicle_pose[i]
+            if i == 0:
+                auv1_x.append(tmp[0])
+                auv1_y.append(tmp[1])
+            if i == 1:
+                auv2_x.append(tmp[0])
+                auv2_y.append(tmp[1])
+            if i == 2:
+                auv3_x.append(tmp[0])
+                auv3_y.append(tmp[1])
+            if i == 3:
+                auv4_x.append(tmp[0])
+                auv4_y.append(tmp[1])
+
         rmse.append(norma_err)
         bearing1.append(rel_bearing1)
-        bearing2.append(rel_bearing2)
+        #bearing2.append(rel_bearing2)
         instance.move(TIME_STEP*TIME_SCALER, cmds, count1)
         instance.move_target(TIME_STEP*TIME_SCALER)
         if int(t) == (TIME_DURATION-1):
@@ -274,6 +307,10 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
                 np.savetxt(plot_path+'/auv1_y_ON.txt',auv1_y)
                 np.savetxt(plot_path+'/auv2_x_ON.txt',auv2_x)
                 np.savetxt(plot_path+'/auv2_y_ON.txt',auv2_y)
+                np.savetxt(plot_path+'/auv3_x_ON.txt',auv3_x)
+                np.savetxt(plot_path+'/auv3_y_ON.txt',auv3_y)
+                np.savetxt(plot_path+'/auv4_x_ON.txt',auv4_x)
+                np.savetxt(plot_path+'/auv4_y_ON.txt',auv4_y)
                 np.savetxt(plot_path+'/bearing1_ON.txt',bearing1)
                 np.savetxt(plot_path+'/bearing2_ON.txt',bearing2)
             else:
@@ -286,6 +323,10 @@ def run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platf
                 np.savetxt(plot_path+'/auv1_y_OFF.txt',auv1_y)
                 np.savetxt(plot_path+'/auv2_x_OFF.txt',auv2_x)
                 np.savetxt(plot_path+'/auv2_y_OFF.txt',auv2_y)
+                np.savetxt(plot_path+'/auv3_x_OFF.txt',auv3_x)
+                np.savetxt(plot_path+'/auv3_y_OFF.txt',auv3_y)
+                np.savetxt(plot_path+'/auv4_x_OFF.txt',auv4_x)
+                np.savetxt(plot_path+'/auv4_y_OFF.txt',auv4_y)
                 np.savetxt(plot_path+'/bearing1_OFF.txt',bearing1)
                 np.savetxt(plot_path+'/bearing2_OFF.txt',bearing2)
         rate.sleep()
@@ -294,21 +335,19 @@ def main():
     # ROS INIT
     rospy.init_node('simulation')
     pub_estimation = rospy.Publisher('estimation', numpy_msg(Floats), queue_size=10)
-    pub_platform_state = rospy.Publisher('platform_state', numpy_msg(Floats), queue_size=10)
+    pub_platform_state = rospy.Publisher('platform_state', numpy_msg(Floats), queue_size=100)
     pub_covariance = rospy.Publisher('covariance_values', numpy_msg(Floats), queue_size=100)
     # Initial Conditions
     pose_target = Pose(TARGET_INIT[0], TARGET_INIT[1],  TARGET_INIT[2])
     pose_start_1 = Pose(PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1], PLATFORM_INIT_POSE[2])
     
     # Init tracker controller and robots
-    tracker1 = tracker.Tracker('first_observer',False)
+    tracker1 = tracker.Tracker('first_observer',False, N_AUV)
     controller1 = controller.Controller(1, 1) # controller parameters  (rho,alpha -> gain linear and angul vel) DO NOT CHANGE
     robot_1 = Robot("platoform_center", "y", controller1)
-    
+    auv = []
     # Sensor Initialization
-    sensor1 = sensor.Sensor('first_streamer',1,0,MEAS_VARIANCE,1,BASELINE)#freq,mean,variance,displachement
-    sensor2 = sensor.Sensor('seconda_streamer',1,0,MEAS_VARIANCE,-1,BASELINE)
-    
+    auv = sensorPlacement(auv)
     # Set the AUV and the TARGET to the initial conditions
     robot_1.set_start_target_poses(pose_start_1, pose_target)
     # Instantiate the object Robot 
@@ -321,7 +360,7 @@ def main():
     else:
         rospy.loginfo('STARTED SIMULATION - OPTIMIZATION OFF')
 
-    run_simulation(robots, tracker1, sensor1, sensor2, pub_estimation, pub_platform_state, pub_covariance)
+    run_simulation(robots, tracker1, auv, pub_estimation, pub_platform_state, pub_covariance)
 
 if __name__ == '__main__':
     main()

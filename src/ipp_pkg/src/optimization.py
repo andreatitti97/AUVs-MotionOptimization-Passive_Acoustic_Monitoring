@@ -11,7 +11,7 @@ from rospy_tutorials.msg import Floats
 from rospy.numpy_msg import numpy_msg
 # Import costum classes
 import importlib.util
-class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes/4_AUV')
+class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
 spec = importlib.util.spec_from_file_location("module.tracker_optimization", class_path+"/tracker.py")
 tracker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tracker)
@@ -19,23 +19,21 @@ spec = importlib.util.spec_from_file_location("module.sensor", class_path+"/sens
 sensor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sensor)
 # IMPORT GLOBAL VARIABLES FOR SIMULATION
-spec = importlib.util.spec_from_file_location("module.main2", "/home/andrea/ros_simulation_ws/src/ipp_pkg/src/main_4.py")
-main2 = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(main2)
-TIME_SCALER = main2.TIME_SCALER
-TIME_STEP = main2.TIME_STEP
-MEAS_VARIANCE = main2.MEAS_VARIANCE
-TARGET_INIT = main2.TARGET_INIT
-BASELINE_X = main2.BASELINE_X
-BASELINE_Y = main2.BASELINE_Y
-tc = main2.OPTIMIZATION_TIME_STEP
+spec = importlib.util.spec_from_file_location("module.main2", "/home/andrea/ros_simulation_ws/src/ipp_pkg/src/main.py")
+main = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(main)
+TIME_SCALER = main.TIME_SCALER
+TIME_STEP = main.TIME_STEP
+MEAS_VARIANCE = main.MEAS_VARIANCE
+TARGET_INIT = main.TARGET_INIT
+BASELINE_X = main.BASELINE_X
+BASELINE_Y = main.BASELINE_Y
+tc = main.OPTIMIZATION_TIME_STEP
+N_AUV = main.N_AUV
 # FOLDER PATH DEFINITION
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
-# Sensors
-sensor1 = sensor.Sensor('first_streamer',1,0,MEAS_VARIANCE,1,0,BASELINE_Y)
-sensor2 = sensor.Sensor('seconda_streamer',1,0,MEAS_VARIANCE,-1,0,BASELINE_Y)
-sensor3 = sensor.Sensor('first_streamer',1,0,MEAS_VARIANCE,1,BASELINE_X,BASELINE_Y)
-sensor4 = sensor.Sensor('seconda_streamer',1,0,MEAS_VARIANCE,-1,BASELINE_X,BASELINE_Y)
+# Sensors #TODO iterative come su main
+
 # Init global variables for callbacks
 platform_state, target_est = [], []
 # OPTIMIZATION PARAMETERS
@@ -52,8 +50,29 @@ ctrl_cmd = [key1, key2, key3, key4, key5]
 t_est_x = []
 t_est_y = []
 
+auv = []
+
+def sensorPlacement():
+    for i in range(N_AUV): #TODO: AUV up to 6 consider
+            
+            if (i+1) % 2 == 0:
+                if i+1 > 3:
+                    
+                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,-1,BASELINE_X, BASELINE_Y))#freq,mean,variance,displachement
+                else:   
+                    
+                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,-1,0,BASELINE_Y))#freq,mean,variance,displachement
+            if (i+1) % 2 == 1:
+                if i+1 > 2:
+                    
+                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,1,BASELINE_X, BASELINE_Y))#freq,mean,variance,displachement
+                else:   
+                    
+                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,1,0,BASELINE_Y))#freq,mean,variance,displachement
+
 class Platform():
     def __init__(self, init_vector):
+        
         self.x = init_vector[0]
         self.y = init_vector[1]
         self.theta = init_vector[2]
@@ -84,37 +103,33 @@ class Target():
 
 def simulation(control_input, target_est, platform_pose, P):
 
-    tracker_ = tracker.Tracker('1', True, P)
+    tracker_ = tracker.Tracker('1', True, N_AUV, P)
     platform = Platform(platform_pose)
     target = Target(target_est)
     
     for t in range(0,4):
+        vehicle_pose = []
+        rel_bearing = []
+        measures = []
         if t == 0:
             platform_state = platform.update_state(control_input) 
         else:
             platform_state = platform.update_state(0) 
         target_state = target.update_state()
 
+        
+        for i in range(len(auv)):
+
+            auv[i].vehiclePose(platform_state[0], platform_state[1], platform_state[2])
+            auv[i].targetPoseReal(target_state[0], target_state[1], 0)
+            [measure1, vehicle_pose1, rel_bearing1] = auv[i].measureBearing()
+            measures.append(measure1)
+            vehicle_pose.append(vehicle_pose1)
+            rel_bearing.append(rel_bearing1)
         #update measurament
-        sensor1.vehiclePose(platform_state[0], platform_state[1], platform_state[2])  
-        sensor1.targetPoseReal(target_state[0], target_state[1], 0)
         
-        sensor2.vehiclePose(platform_state[0], platform_state[1], platform_state[2])
-        sensor2.targetPoseReal(target_state[0], target_state[1], 0)
-
-        sensor3.vehiclePose(platform_state[0], platform_state[1], platform_state[2])
-        sensor3.targetPoseReal(target_state[0], target_state[1], 0)
-
-        sensor4.vehiclePose(platform_state[0], platform_state[1], platform_state[2])
-        sensor4.targetPoseReal(target_state[0], target_state[1], 0)
-        
-        [measure1,sensor_pose1, rel_bearing1] = sensor1.measureBearing()
-        [measure2,sensor_pose2, rel_bearing2] = sensor2.measureBearing()
-        [measure3,sensor_pose3, rel_bearing2] = sensor3.measureBearing()
-        [measure4,sensor_pose4, rel_bearing2] = sensor4.measureBearing()
-        measures = [measure1, measure2,measure3,measure4]
         # update EKF WITH NEW MEASURAMENT
-        tracker_.processMeasurement(measures,target_state, sensor_pose1, sensor_pose2, sensor_pose3,sensor_pose4, tc/4)
+        tracker_.processMeasurement(measures,target_state, vehicle_pose, tc/4)
     [state, P] = tracker_.state
     state = [state[0,0], state[1,0], state[2,0], state[3,0]]
     # PRINT FOR DEBUGGING
@@ -185,6 +200,7 @@ class Simple(pybnb.Problem):
 
         if len(choices1) == 4 or len(choices2) == 4 or len(choices3) == 4:
             self.value = self.value - DELTA #trick#TODO
+            # AGGIUNGI CHE CONDIZIONE PER NODO CON COVARIANZA FINALE SINGOLA, NON DELLA SEQUENZA
         father_value = self.value
 
         child1_value = father_value + cost1
@@ -236,13 +252,15 @@ def main():
     pub = rospy.Publisher("ctrl_cmd",numpy_msg(Floats),queue_size=100)
     Hz = 1/(TIME_STEP)
     rate = rospy.Rate(Hz)
+    # Init AUV sensors
+    
 
     # Init array and cov matrix
     ctrl_opt = []
     ctrl_plot = []
     P = np.eye((4))
     rospy.loginfo('STARTED OPTIMIZATION')
-
+    sensorPlacement()
     while not rospy.is_shutdown():
         # INIT TARGET MODEL AND PLATFORM MODEL WITH THE LATEST ESTIMATION AND SENSOR POSITIONS 
 
