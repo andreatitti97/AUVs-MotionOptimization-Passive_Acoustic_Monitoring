@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-from main_2 import TIME_DURATION
+from main import TIME_DURATION
 from math import pi
 lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 
@@ -47,20 +47,19 @@ ctrl_cmds = np.loadtxt(lib_path+'/plot_cmds.txt')
 # Load temporal vaiables
 n_sample = np.size(ekf_y_on)
 t = np.linspace(0,TIME_DURATION,n_sample)
+print(len(t))
 # PLOT THE RESULT OF THE SIMULATION without OPTIMIZATION
 plt.plot(s_x_off,s_y_off)
 plt.plot(real_x,real_y)
 plt.plot(ekf_x_off,ekf_y_off)
-#plt.plot(auv1_x_off,auv1_y_off,'r',linewidth=2)
-#plt.plot(auv2_x_off,auv2_y_off,'g',linewidth=2)
 plt.title('SIMULATION - OPTIMIZATION OFF',fontsize=20)
 plt.xlabel('x (m)',fontsize=20)
 plt.ylabel('y (m)',fontsize=20)
-circle1 = plt.Circle((2000,0),50,color='m')
-circle2 = plt.Circle((real_x[0],real_y[0]),30,color='y')
-circle3 = plt.Circle((s_x_off[0],s_y_off[0]),30,color='b')
-circle4 = plt.Circle((auv1_x_off[0],auv1_y_off[0]),30,color='r')
-circle5 = plt.Circle((auv2_x_off[0],auv2_y_off[0]),30,color='g')
+circle1 = plt.Circle((2000,0),100,color='m')
+circle2 = plt.Circle((real_x[0],real_y[0]),100,color='y')
+circle3 = plt.Circle((s_x_off[0],s_y_off[0]),100,color='b')
+circle4 = plt.Circle((auv1_x_off[0],auv1_y_off[0]),100,color='r')
+circle5 = plt.Circle((auv2_x_off[0],auv2_y_off[0]),100,color='g')
 
 plt.gca().add_patch(circle1)
 plt.gca().add_patch(circle2)
@@ -69,7 +68,7 @@ plt.gca().add_patch(circle5)
 plt.gca().add_patch(circle4)
 
 plt.legend(['Formation Reference Path','Target Path','Estimated Target Path','Boat',
-'Target Start','Formation Reference Start','AUV1','AUV2'])
+'Target Start','Formation Reference','AUV1','AUV2'])
 
 for i in range(8):
     
@@ -88,17 +87,14 @@ plt.show()
 plt.plot(s_x_on,s_y_on)
 plt.plot(real_x,real_y)
 plt.plot(ekf_x_on,ekf_y_on,'m')
-#plt.plot(auv1_x_on[],auv1_y_on,'r--', linewidth=0.5)
-#plt.plot(auv2_x_on,auv2_y_on,'g--',linewidth=0.5)
-
 plt.title('SIMULATION - OPTIMIZATION ON',fontsize=20)
 plt.xlabel('x (m)',fontsize=20)
 plt.ylabel('y (m)',fontsize=20)
-circle1 = plt.Circle((2000,0),50,color='m')
-circle2 = plt.Circle((real_x[0],real_y[0]),30,color='y')
-circle3 = plt.Circle((s_x_on[0],s_y_on[0]),30,color='b')
-circle4 = plt.Circle((auv1_x_on[0],auv1_y_on[0]),30,color='r')
-circle5 = plt.Circle((auv2_x_on[0],auv2_y_on[0]),30,color='g')
+circle1 = plt.Circle((2000,0),100,color='m')
+circle2 = plt.Circle((real_x[0],real_y[0]),100,color='y')
+circle3 = plt.Circle((s_x_on[0],s_y_on[0]),100,color='b')
+circle4 = plt.Circle((auv1_x_on[0],auv1_y_on[0]),100,color='r')
+circle5 = plt.Circle((auv2_x_on[0],auv2_y_on[0]),100,color='g')
 
 plt.gca().add_patch(circle1)
 plt.gca().add_patch(circle2)
@@ -107,7 +103,7 @@ plt.gca().add_patch(circle5)
 plt.gca().add_patch(circle4)
 
 plt.legend(['Formation Reference Path','Target Path','Estimated Target Path','Boat',
-'Target Start','Formation Reference start','AUV1','AUV2'])
+'Target Start','Formation Reference','AUV1','AUV2'])
 
 for i in range(8):
     
@@ -129,55 +125,23 @@ bearing2_on = bearing2_on *180/pi
 
 baseline_angle = []
 for i in range(len(auv1_x_on)):
-    tmp = (((real_x[i]-auv1_x_on[i])*(real_x[i]-auv2_x_on[i]))+((real_y[i]-auv1_y_on[i])*(real_y[i]-auv2_y_on[i])))/(np.sqrt((real_x[i]-auv1_x_on[i])**2+(real_y[i]-auv1_y_on[i])**2)*np.sqrt((real_x[i]-auv2_x_on[i])**2+(real_y[i]-auv2_y_on[i])**2))
+    tmp = (((real_x[i]-auv1_x_on[i])*(real_x[i]-auv2_x_on[i]))+((real_y[i]-auv1_y_on[i])*(real_y[i]-auv2_y_on[i]))
+    )/(np.sqrt((real_x[i]-auv1_x_on[i])**2+(real_y[i]-auv1_y_on[i])**2)*np.sqrt((real_x[i]-auv2_x_on[i])**2+(
+        real_y[i]-auv2_y_on[i])**2))
 
     angle = np.arccos(tmp)
     angle = angle*180/pi
     baseline_angle.append(angle)
 
-
 baseline_angle_off = []
 for i in range(len(auv1_x_off)):
-    tmp = (((real_x[i]-auv1_x_off[i])*(real_x[i]-auv2_x_off[i]))+((real_y[i]-auv1_y_off[i])*(real_y[i]-auv2_y_off[i])))/(np.sqrt((real_x[i]-auv1_x_off[i])**2+(real_y[i]-auv1_y_off[i])**2)*np.sqrt((real_x[i]-auv2_x_off[i])**2+(real_y[i]-auv2_y_off[i])**2))
+    tmp = (((real_x[i]-auv1_x_off[i])*(real_x[i]-auv2_x_off[i]))+((real_y[i]-auv1_y_off[i])*(real_y[i]-auv2_y_off[i]))
+    )/(np.sqrt((real_x[i]-auv1_x_off[i])**2+(real_y[i]-auv1_y_off[i])**2)*np.sqrt((real_x[i]-auv2_x_off[i])**2+(
+        real_y[i]-auv2_y_off[i])**2))
 
     angle = np.arccos(tmp)
     angle = angle*180/pi
     baseline_angle_off.append(angle)
-
-
-'''plt.subplot(4,1,1)
-plt.title('OPTIMIZATION ON',fontsize=8)
-plt.plot(t,bearing1_on,'r')
-plt.plot(t,bearing2_on,'g')
-plt.ylabel('Relative Bearing (deg)',fontsize=20)
-y = np.zeros(n_sample)
-for i in range(n_sample): y[i] = 70
-plt.plot(t,y,'b--')
-for i in range(n_sample): y[i] = 110
-plt.plot(t,y,'b--')
-for i in range(n_sample): y[i] = 250
-plt.plot(t,y,'b--')
-for i in range(n_sample): y[i] = 290
-plt.plot(t,y,'b--')
-plt.legend(['AUV1','AUV2'])
-plt.grid()
-
-
-plt.subplot(4,1,2)
-plt.title('OPTIMIZATION OFF',fontsize=8)
-plt.plot(t,bearing1_off,'r')
-plt.plot(t,bearing2_off,'g')
-
-for i in range(n_sample): y[i] = 70
-plt.plot(t,y,'b--')
-for i in range(n_sample): y[i] = 110
-plt.plot(t,y,'b--')
-for i in range(n_sample): y[i] = 250
-plt.plot(t,y,'b--')
-for i in range(n_sample): y[i] = 290
-plt.plot(t,y,'b--')
-plt.legend(['AUV1','AUV2'])
-plt.grid()'''
 
 y = np.zeros(n_sample)
 plt.subplot(2,1,1)

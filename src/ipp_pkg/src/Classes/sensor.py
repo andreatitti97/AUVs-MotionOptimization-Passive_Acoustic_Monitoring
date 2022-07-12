@@ -44,10 +44,8 @@ class Sensor:
         else:
             rel_bearing = 2*pi - (theta_tmp - self.abs_bearing)
 
-        # Create the noise and add the noise to the measurament #TODO UNIFORM NOISE AS DAMPS, chiedi se ok
-        func = np.cos(rel_bearing)
+        # Create the noise and add the noise to the measurament
         self.noise = np.random.uniform(0, self.variance) #can be also normal
-
         self.abs_bearing = self.abs_bearing + self.noise #overwrite absolute bearing with the corrupted quantities
     
         return self.abs_bearing, self.w_pose_s, rel_bearing 

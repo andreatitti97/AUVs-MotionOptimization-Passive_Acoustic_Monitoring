@@ -31,13 +31,6 @@ class ExtendedKalmanFilter:
         else:
             self.__H = matlib.zeros((4,4))
             self.__R = np.matrix([[0.01,0,0,0],[0,0.01,0,0],[0,0,0.01,0],[0,0,0,0.01]])
-        
-            
-
-        #This is for adding disturbance on the target 
-        # FOR NOW WHEN THE EKF IS CALLED DURING OPTIMIZATION THERE IS NO DISTURBANCE because we receive a corrpted state (both measurmane and state)
-        # and from this state + cov we simply apply the linear model obtaining ONE realizatio of the target 
-        # TODO this can improved by sampling from the input distribution (state+cov) other possible target realization, through #USCENTED TRANSORM
 
         self.__noise_ax = 0.001 
         self.__noise_ay = 0.001
@@ -94,12 +87,12 @@ class ExtendedKalmanFilter:
             ry.append(py - tmp[1])
 
         if self.n_auv == 4:
-            self.__H = np.matrix([[-ry[0]/(ry[0]**2+rx[0]**2), rx[0]/(rx[0]**2+ry[0]**2) , 0, 0],   #TODO vedi se si può far qualcosa per le vel
+            self.__H = np.matrix([[-ry[0]/(ry[0]**2+rx[0]**2), rx[0]/(rx[0]**2+ry[0]**2) , 0, 0], 
                                     [-ry[1]/(ry[1]**2+rx[1]**2), rx[1]/(rx[1]**2+ry[1]**2) , 0, 0],
                                     [-ry[0]/(ry[2]**2+rx[2]**2), rx[2]/(rx[2]**2+ry[2]**2) , 0, 0],
                                     [-ry[3]/(ry[3]**2+rx[3]**2), rx[3]/(rx[3]**2+ry[3]**2) , 0, 0]])
         else:
-            self.__H = np.matrix([[-ry[0]/(ry[0]**2+rx[0]**2), rx[0]/(rx[0]**2+ry[0]**2) , 0, 0],   #TODO vedi se si può far qualcosa per le vel
+            self.__H = np.matrix([[-ry[0]/(ry[0]**2+rx[0]**2), rx[0]/(rx[0]**2+ry[0]**2) , 0, 0],
                                     [-ry[1]/(ry[1]**2+rx[1]**2), rx[1]/(rx[1]**2+ry[1]**2) , 0, 0]])
                                 
     def predict(self):
@@ -112,13 +105,11 @@ class ExtendedKalmanFilter:
         
     def update(self,measures, auv_positions):
 
-
-
         # Return state estimated
         [xt, yt, dotx, doty] = state_vector_to_scalars(self.__x)
         y_tilde = []
         # Compute the output error for both measuraments.
-        
+    
         for i in range(len(auv_positions)):
             tmp = auv_positions[i]
 

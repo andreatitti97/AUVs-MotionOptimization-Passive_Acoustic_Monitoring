@@ -4,8 +4,7 @@ import os
 import time
 import importlib.util
 # Import math modules
-from re import T
-from math import atan2, pi
+from math import pi
 import numpy as np
 import copy
 
@@ -33,7 +32,7 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 TIME_DURATION = 3980 #seconds#2600
 TIME_STEP = 0.01
 TIME_SCALER = 80 # MAX for communication purpose 
-TARGET_INIT = [-2000, -22000, +pi/4-pi/10, 5] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [-4000, -22000, 0, 5] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 MEAS_VARIANCE = 0.01 #already al quadrato -> 2° incertezza -> sigma^2 = (2*pi/180)^2
 OPTIMIZATION_ON = True
@@ -41,9 +40,11 @@ OPTIMIZATION_TIME_STEP = 128 #VA INTESO COME time between each command
 BASELINE_Y = 1000
 BASELINE_X = 500
 INIT_POSE_UNCERTAINTY = 50 #(m)
-INIT_VEL_UNCERTAINTY = 0.1 #(m/s)
-EKF_MEAS_UPDATE = 5 #(s) delta time tra le misure
-N_AUV = 2
+INIT_VEL_UNCERTAINTY = 0.01 #(m/s)
+EKF_MEAS_UPDATE = 10 #(s) delta time tra le misure
+N_AUV = 4
+MAX_TARGET_VEL = 6 #(m/s)
+MIN_TARGET_VEL = 3 #(m/s)
 #GLOBAL VARIABLES
 t = 0
 N = 4 #planning horizon
@@ -55,6 +56,36 @@ target_x_traj, target_y_traj, platform_x, platform_y = [], [], [], []
 target_est_x, target_est_y, rmse = [], [], []
 auv1_x, auv1_y, auv2_x, auv2_y,auv3_x,auv3_y,auv4_x,auv4_y  = [], [], [], [], [], [], [], []
 bearing1, bearing2 = [], []
+
+
+def generatePolynomialTrajectory(ts, y_from, yd_from, ydd_from, y_to, yd_to, ydd_to):
+        
+        a0 = y_from
+        a1 = yd_from
+        a2 = ydd_from / 2
+
+        a3 = -10 * y_from - 6 * yd_from - 2.5 * ydd_from + 10 * y_to - 4 * yd_to + 0.5 * ydd_to
+        a4 = 15 * y_from + 8 * yd_from + 2 * ydd_from - 15  * y_to  + 7 * yd_to - ydd_to
+        a5 = -6 * y_from - 3 * yd_from - 0.5 * ydd_from  + 6 * y_to  - 3 * yd_to + 0.5 * ydd_to
+
+        n_time_steps = ts.size
+        n_dims = y_from.size
+  
+        ys = np.zeros([n_time_steps,n_dims])
+        yds = np.zeros([n_time_steps,n_dims])
+        ydds = np.zeros([n_time_steps,n_dims])
+
+        for i in range(n_time_steps):
+            t = (ts[i] - ts[0]) / (ts[n_time_steps - 1] - ts[0])
+            ys[i,:] = a0 + a1 * t + a2 * pow(t, 2) + a3 * pow(t, 3) + a4 * pow(t, 4) + a5 * pow(t, 5)
+            yds[i,:] = a1 + 2 * a2 * t + 3 * a3 * pow(t, 2) + 4 * a4 * pow(t, 3) + 5 * a5 * pow(t, 4)
+            ydds[i,:] = 2 * a2 + 6 * a3 * t + 12 * a4 * pow(t, 2) + 20 * a5 * pow(t, 3)
+
+        yds /= (ts[n_time_steps - 1] - ts[0])
+        ydds /= pow(ts[n_time_steps - 1] - ts[0], 2)
+
+        return ts, ys, yds, ydds
+
 
 def sensorPlacement(auv):
     for i in range(N_AUV): #TODO: AUV up to 6 consider
@@ -69,6 +100,13 @@ def sensorPlacement(auv):
                 else:   
                     auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,1,0,BASELINE_Y))#freq,mean,variance,displachement
     return auv
+
+def saturateVel(linear_velocity):
+    if -MIN_TARGET_VEL < linear_velocity < MIN_TARGET_VEL:
+        linear_velocity = MIN_TARGET_VEL
+    if linear_velocity >= MAX_TARGET_VEL or linear_velocity <= -MAX_TARGET_VEL:
+        linear_velocity = MAX_TARGET_VEL
+    return np.abs(linear_velocity)
 
 class Pose:
     """2D pose"""
@@ -98,15 +136,15 @@ class Robot:
         linear and angular velocities. 
     """
 
-    def __init__(self, name, color, path_finder_controller):
+    def __init__(self, name, color, path_finder_controller_auv,path_finder_controller_target):
         self.name = name
         self.color = color
-        self.path_finder_controller = path_finder_controller
+        self.auv_controller = path_finder_controller_auv
+        self.target_controller = path_finder_controller_target
         self.pose = Pose(0,0,0)
         self.pose_start = Pose(0,0,0)
         self.pose_target =Pose(0,0,0)
-        self.vel_lin_target = TARGET_INIT[3]
-        self.vel_ang_target = 0
+        self.waypoints = []
 
     def set_start_target_poses(self, pose_start, pose_target):
         """
@@ -123,7 +161,7 @@ class Robot:
         self.pose_target = pose_target
         self.pose = pose_start
 
-    def move_target(self, dt):
+    def move_target(self, dt, curr_goal):
         """
         Moves the target for one time step increment
 
@@ -136,13 +174,13 @@ class Robot:
         target_x_traj.append(self.pose_target.x)
         target_y_traj.append(self.pose_target.y)
 
-        # UNCOMMENT FOR CHANGE TARGET HEADING AFTER A WHILE #TODO: Finish better this
-        #if count1 == 3150:#for change target heading after a while
-         #   print('target heading change')
-        #    self.pose_target =Pose(self.pose_target.x,self.pose_target.y,self.pose_target.theta - pi/2+pi/15)
-        
-        linear_velocity = self.vel_lin_target
-        angular_velocity = self.vel_ang_target
+        linear_velocity, angular_velocity = \
+            self.target_controller .calc_control_command(
+                curr_goal[0] - self.pose_target.x,
+                curr_goal[1] - self.pose_target.y,
+                self.pose_target.theta, curr_goal[2])
+
+        linear_velocity = saturateVel(linear_velocity)
         self.pose_target.theta = self.pose_target.theta + angular_velocity * dt
         self.pose_target.x = self.pose_target.x + linear_velocity * \
             np.cos(self.pose_target.theta) * dt
@@ -152,7 +190,6 @@ class Robot:
     def move(self, dt, heading_changes, count1):
         """
         Moves the platform for one time step increment
-
         Parameters
         ----------
         dt : (float)
@@ -168,11 +205,10 @@ class Robot:
 
         if count2 == N: 
             count2 = 0
-        if count1 >= 256:
-            if count1%(OPTIMIZATION_TIME_STEP/(TIME_STEP*TIME_SCALER)) == 0 or count1==256: #metti condizione di aspettare
+        if count1 >= (N*OPTIMIZATION_TIME_STEP/(TIME_STEP*TIME_SCALER)):
+            if count1%(OPTIMIZATION_TIME_STEP/(TIME_STEP*TIME_SCALER)) == 0: #metti condizione di aspettare
                 count2 = count2+1
         
-
         if prev_count != count2 and OPTIMIZATION_ON == True:
             print("RECEVEID NEW HEADING:*******************************************************************************", count2)
             heading_change = heading_changes[count2-1]
@@ -181,7 +217,7 @@ class Robot:
             if count2 > 0:
                 goal_theta = heading_change + old_pose
             linear_velocity, angular_velocity = \
-            self.path_finder_controller.calc_control_command(
+            self.auv_controller.calc_control_command(
                 0,
                 0,
                 self.pose.theta, goal_theta)
@@ -195,14 +231,14 @@ class Robot:
         
         self.pose.x = self.pose.x + linear_velocity * \
             np.cos(self.pose.theta) * dt 
-  
+
         self.pose.y = self.pose.y + linear_velocity * \
             np.sin(self.pose.theta) * dt
         # If theta reached be ready for the new cmd
         if (self.pose.theta == goal_theta or flag == True) and OPTIMIZATION_ON==True:         
             prev_count = count2
 
-def run_simulation(robots, tracker1, auv, pub_estimation, pub_platform_state, pub_covariance):
+def run_simulation(robots, tracker1, auv, pub_estimation, pub_platform_state, pub_covariance, poly_traj):
     """Simulate the sensor platform and the moving target"""
     global count1
     Hz = 1/(TIME_STEP) #NB: different from sampling rate for move things, this is ros rate
@@ -240,7 +276,7 @@ def run_simulation(robots, tracker1, auv, pub_estimation, pub_platform_state, pu
             initial_guess = [target_state_real[0] + initial_gaussian_noise, target_state_real[1] + initial_gaussian_noise,
                                 target_state_real[2] + initial_gaussian_noise_vel, target_state_real[3] + initial_gaussian_noise_vel]#target_state_real[3] + initial_gaussian_noise *0.01
         
-        if count1 % 5 or count1 == 1: #TODO update EKF not always
+        if count1 % 10 or count1 == 1: #TODO update EKF not always
             if count1 == 1:
                 tracker1.processMeasurement(measures,initial_guess, vehicle_pose, TIME_SCALER*TIME_STEP) #FIRST UPDATE
             tracker1.processMeasurement(measures,initial_guess, vehicle_pose, EKF_MEAS_UPDATE*TIME_SCALER*TIME_STEP)#update EKF with a measurament each 2 sec
@@ -248,23 +284,21 @@ def run_simulation(robots, tracker1, auv, pub_estimation, pub_platform_state, pu
         
         # PUBLISH INFORMATION FOR OPTIMIZATION
         # SEND LAST INFORMATIONS and LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
-        if count1 >= 2*OPTIMIZATION_TIME_STEP and OPTIMIZATION_ON == True: # initial waiting
-            if count1%((N*OPTIMIZATION_TIME_STEP)/(TIME_STEP*TIME_SCALER)) == 0 or count1 == 256: #multiplo di 640 con OPT_dt = 128
 
-                cov_values = np.array([P[0,0],P[1,1],P[2,2],P[3,3]])
-                rospy.loginfo('SENDING DATA')
-                pub_estimation.publish(np.array(curr_est,dtype=np.float32))
-                rospy.sleep(TIME_STEP*5)
-#               
-                #platform_pose = np.array([])
-                pub_platform_state.publish(np.array(platform_pose,dtype=np.float32))
-                rospy.sleep(TIME_STEP*5)
-                pub_covariance.publish(np.array(cov_values, dtype=np.float32))
-                cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))
-                cmds = cmds.data
-                rospy.loginfo('RECEIVED CMDS')
-                print(cmds)
-                #time.sleep(30) #for debugging
+        if count1%((N*OPTIMIZATION_TIME_STEP)/(TIME_STEP*TIME_SCALER)) == 0 and OPTIMIZATION_ON == True: #multiplo di 640 con OPT_dt = 128
+
+            cov_values = np.array([P[0,0],P[1,1],P[2,2],P[3,3]])
+            rospy.loginfo('SENDING DATA')
+            pub_estimation.publish(np.array(curr_est,dtype=np.float32))
+            rospy.sleep(TIME_STEP*5)
+            pub_platform_state.publish(np.array(platform_pose,dtype=np.float32))
+            rospy.sleep(TIME_STEP*5)
+            pub_covariance.publish(np.array(cov_values, dtype=np.float32))
+            cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))
+            cmds = cmds.data
+            rospy.loginfo('RECEIVED CMDS')
+            print(cmds)
+            #time.sleep(30) #for debugging
         # SAVE DATA FOR PLOT
         
         target_est_y.append(curr_est[1,0])
@@ -289,9 +323,10 @@ def run_simulation(robots, tracker1, auv, pub_estimation, pub_platform_state, pu
 
         rmse.append(norma_err)
         bearing1.append(rel_bearing1)
-        #bearing2.append(rel_bearing2)
+        ######################################### MOVE THE ROBOTS #######################################################
         instance.move(TIME_STEP*TIME_SCALER, cmds, count1)
-        instance.move_target(TIME_STEP*TIME_SCALER)
+        instance.move_target(TIME_STEP*TIME_SCALER,poly_traj[count1])
+        #################################################################################################################
         if int(t) == (TIME_DURATION-1):
             rospy.loginfo('saving data for plot')
             np.savetxt(plot_path+'/target_x_traj.txt',target_x_traj)
@@ -340,11 +375,13 @@ def main():
     # Initial Conditions
     pose_target = Pose(TARGET_INIT[0], TARGET_INIT[1],  TARGET_INIT[2])
     pose_start_1 = Pose(PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1], PLATFORM_INIT_POSE[2])
-    
+    target_start = np.array([TARGET_INIT[0],TARGET_INIT[1], TARGET_INIT[2]])
+    target_goal = np.array([5000, 4000,TARGET_INIT[2]+pi/10])
     # Init tracker controller and robots
     tracker1 = tracker.Tracker('first_observer',False, N_AUV)
-    controller1 = controller.Controller(1, 1) # controller parameters  (rho,alpha -> gain linear and angul vel) DO NOT CHANGE
-    robot_1 = Robot("platoform_center", "y", controller1)
+    controller1_target = controller.Controller(0.01, 0.1) # controller parameters  (rho,alpha -> gain linear and angul vel) DO NOT CHANGE
+    controller1_auv = controller.Controller(1, 1)
+    robot_1 = Robot("platoform_center", "y", controller1_auv, controller1_target)
     auv = []
     # Sensor Initialization
     auv = sensorPlacement(auv)
@@ -352,6 +389,12 @@ def main():
     robot_1.set_start_target_poses(pose_start_1, pose_target)
     # Instantiate the object Robot 
     robots: list[Robot] = [robot_1]
+    # Generate Trajectory given the target start pos and waypoints
+    ts = np.linspace(0,TIME_DURATION+1000,round(TIME_DURATION+1000/(TIME_SCALER*TIME_STEP)))
+
+    #poly_traj = traj_generator.Trajectory(ts, target_start)
+    [ts, poly_traj, vel, acc] = generatePolynomialTrajectory(ts, target_start, 0, 0, target_goal, 0, 0)
+
     # Run The Simulation
     if OPTIMIZATION_ON == True:
         rospy.loginfo('LAUNCH THE OPTIMIZATION')
@@ -360,7 +403,7 @@ def main():
     else:
         rospy.loginfo('STARTED SIMULATION - OPTIMIZATION OFF')
 
-    run_simulation(robots, tracker1, auv, pub_estimation, pub_platform_state, pub_covariance)
+    run_simulation(robots, tracker1, auv, pub_estimation, pub_platform_state, pub_covariance, poly_traj)
 
 if __name__ == '__main__':
     main()

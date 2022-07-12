@@ -1,5 +1,5 @@
 #Import basic system modules
-import os
+import os, time
 from tkinter import BASELINE
 import pybnb
 # Import math modules
@@ -32,42 +32,25 @@ tc = main.OPTIMIZATION_TIME_STEP
 N_AUV = main.N_AUV
 # FOLDER PATH DEFINITION
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
-# Sensors #TODO iterative come su main
-
 # Init global variables for callbacks
 platform_state, target_est = [], []
+t_est_x, t_est_y, auv = [], [], []
 # OPTIMIZATION PARAMETERS
-key1 = - pi/15
-key2 = - pi/12
-key3 = 0
-key4 = + pi/12
-key5 = + pi/15
-
-key6 = -pi/6 
-key7 = +pi/6
+key1, key2, key3, key4, key5 = -pi/12, -pi/15, 0, +pi/15, +pi/12
 DELTA = 10**15
 ctrl_cmd = [key1, key2, key3, key4, key5]
-t_est_x = []
-t_est_y = []
-
-auv = []
 
 def sensorPlacement():
     for i in range(N_AUV): #TODO: AUV up to 6 consider
-            
             if (i+1) % 2 == 0:
-                if i+1 > 3:
-                    
+                if i+1 > 3:                    
                     auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,-1,BASELINE_X, BASELINE_Y))#freq,mean,variance,displachement
-                else:   
-                    
+                else:                 
                     auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,-1,0,BASELINE_Y))#freq,mean,variance,displachement
             if (i+1) % 2 == 1:
                 if i+1 > 2:
-                    
                     auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,1,BASELINE_X, BASELINE_Y))#freq,mean,variance,displachement
                 else:   
-                    
                     auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,1,0,BASELINE_Y))#freq,mean,variance,displachement
 
 class Platform():
@@ -117,7 +100,6 @@ def simulation(control_input, target_est, platform_pose, P):
             platform_state = platform.update_state(0) 
         target_state = target.update_state()
 
-        
         for i in range(len(auv)):
 
             auv[i].vehiclePose(platform_state[0], platform_state[1], platform_state[2])
@@ -126,18 +108,11 @@ def simulation(control_input, target_est, platform_pose, P):
             measures.append(measure1)
             vehicle_pose.append(vehicle_pose1)
             rel_bearing.append(rel_bearing1)
-        #update measurament
-        
+    
         # update EKF WITH NEW MEASURAMENT
         tracker_.processMeasurement(measures,target_state, vehicle_pose, tc/4)
     [state, P] = tracker_.state
     state = [state[0,0], state[1,0], state[2,0], state[3,0]]
-    # PRINT FOR DEBUGGING
-    #t_est_x.append(state[0])
-    #t_est_y.append(state[1])
-    
-    #np.savetxt(plot_path+'t_est_x_opt.txt',t_est_x)
-    #np.savetxt(plot_path+'t_est_y_opt.txt',t_est_y)
     return state, P, platform_state
 
 def compute_cost(P):
@@ -146,7 +121,7 @@ def compute_cost(P):
     return cost
 
 class Simple(pybnb.Problem):
-    def __init__(self, x_hat, s, P, initial_cost): #, tracker1, tracker2, tracker3, tracker4, tracker5
+    def __init__(self, x_hat, s, P, initial_cost):
         # aggiungi un livello per imporre un orizzonte finito 
         self._x_hat = x_hat
         self._s = s
@@ -176,7 +151,7 @@ class Simple(pybnb.Problem):
     def branch(self): #durante il branch devi calcolare le varie realizzazioni quindi simuli qua
 
         x_hat, s, P = self._x_hat, self._s, self._P
-        #print('NODE STATE:',x_hat, s, self.value) #Print for debugging purpose
+        
         x1, P1, s1 = simulation(ctrl_cmd[0], x_hat, s, P)
         x2, P2, s2 = simulation(ctrl_cmd[1], x_hat, s, P)
         x3, P3, s3 = simulation(ctrl_cmd[2], x_hat, s, P)
@@ -200,6 +175,7 @@ class Simple(pybnb.Problem):
 
         if len(choices1) == 4 or len(choices2) == 4 or len(choices3) == 4:
             self.value = self.value - DELTA #trick#TODO
+            #self.value = 0 #UNCOMMENT IF YO WANT THE LAST BEST NODE WITHOUT CONSIDERING COST 
             # AGGIUNGI CHE CONDIZIONE PER NODO CON COVARIANZA FINALE SINGOLA, NON DELLA SEQUENZA
         father_value = self.value
 
@@ -231,15 +207,11 @@ class Simple(pybnb.Problem):
         child.state = (x5, s5, P5, child5_value, self.tmp_bound, choices5)
         yield child
 
-        #t_est_x.append(x1[0])
-        #t_est_y.append(x1[1])
+        t_est_x.append(x1[0])
+        t_est_y.append(x1[1])
     
-        #np.savetxt(plot_path+'/t_est_x_opt.txt',t_est_x)
-        #np.savetxt(plot_path+'/t_est_y_opt.txt',t_est_y)
-
-        #print('childs costs:',cost1,cost2,cost3, cost4, cost5)
-        #print('depth:',child.tree_depth-1)
-        #time.sleep(2) #for debugging
+        np.savetxt(plot_path+'/t_est_x_opt.txt',t_est_x)
+        np.savetxt(plot_path+'/t_est_y_opt.txt',t_est_y)
 
 def compute_cost(P):
     return np.trace(P)
@@ -247,23 +219,21 @@ def compute_cost(P):
 def main():
 
     global covariance, target_est, platform_state
-    # Sensor Initialization
+    # Ros Initialization
     rospy.init_node('optimization')
     pub = rospy.Publisher("ctrl_cmd",numpy_msg(Floats),queue_size=100)
     Hz = 1/(TIME_STEP)
     rate = rospy.Rate(Hz)
-    # Init AUV sensors
-    
-
     # Init array and cov matrix
     ctrl_opt = []
     ctrl_plot = []
     P = np.eye((4))
+    sensorPlacement() #recreate the AUV displachment
     rospy.loginfo('STARTED OPTIMIZATION')
-    sensorPlacement()
+    
     while not rospy.is_shutdown():
-        # INIT TARGET MODEL AND PLATFORM MODEL WITH THE LATEST ESTIMATION AND SENSOR POSITIONS 
 
+        # INIT TARGET MODEL AND PLATFORM MODEL WITH THE LATEST ESTIMATION AND SENSOR POSITIONS 
         t_est = rospy.wait_for_message('/estimation',numpy_msg(Floats))
         s_state = rospy.wait_for_message('/platform_state',numpy_msg(Floats))
         covariance_values = rospy.wait_for_message('/covariance_values', numpy_msg(Floats))
@@ -271,10 +241,6 @@ def main():
         s_state = s_state.data
         covariance_values = covariance_values.data
 
-        # The init covariance is obtained frome the last estimation
-        # NB: Initialize correctly the P0 is fundamental, PUT in the DIAGONAL the uncertainties for each variable of the state 
-        # I NOTICED THAT WE NEED HIGH UNCERTAINTES (AT LEAST square OF THE MAGNIUTIDE OF THE X-Y POS) - for now don't change
-        
         P = np.matrix([[covariance_values[0], 0, 0, 0], #TODO INITIAL COV VALUE AFTER LAST ESTIMATE - TO CHECK
                         [0, covariance_values[1], 0, 0],
                         [0, 0,covariance_values[2], 0],
