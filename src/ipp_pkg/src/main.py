@@ -32,18 +32,18 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 TIME_DURATION = 3980 #seconds#2600
 TIME_STEP = 0.01
 TIME_SCALER = 80 # MAX for communication purpose 
-TARGET_INIT = [-4000, -22000, 0, 5] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [-3000, -3000, 0, 5] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 MEAS_VARIANCE = 0.01 #already al quadrato -> 2° incertezza -> sigma^2 = (2*pi/180)^2
-OPTIMIZATION_ON = True
+OPTIMIZATION_ON = False
 OPTIMIZATION_TIME_STEP = 128 #VA INTESO COME time between each command 
-BASELINE_Y = 1000
-BASELINE_X = 500
+BASELINE_Y = 200
+BASELINE_X = 100
 INIT_POSE_UNCERTAINTY = 50 #(m)
 INIT_VEL_UNCERTAINTY = 0.01 #(m/s)
 EKF_MEAS_UPDATE = 10 #(s) delta time tra le misure
 N_AUV = 4
-MAX_TARGET_VEL = 6 #(m/s)
+MAX_TARGET_VEL = 3 #(m/s)
 MIN_TARGET_VEL = 3 #(m/s)
 #GLOBAL VARIABLES
 t = 0
