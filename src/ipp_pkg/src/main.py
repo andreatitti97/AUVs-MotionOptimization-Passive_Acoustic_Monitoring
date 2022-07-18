@@ -15,7 +15,7 @@ from rospy.numpy_msg import numpy_msg
 
 # Import Costum classes
 class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
-spec = importlib.util.spec_from_file_location("module.tracker", class_path+"/TRACKER_distributed.py")
+spec = importlib.util.spec_from_file_location("module.tracker", class_path+"/tracker.py")
 tracker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tracker)
 spec = importlib.util.spec_from_file_location("module.controller", class_path+"/controller.py")
@@ -25,7 +25,6 @@ spec = importlib.util.spec_from_file_location("module.sensor", class_path+"/sens
 sensor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sensor)
 # PATH DEFINITON
-utils_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/utils')
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 
 # Simulation parameters
@@ -47,7 +46,7 @@ MAX_TARGET_VEL = 8 #(m/s)
 MIN_TARGET_VEL = 3 #(m/s)
 #GLOBAL VARIABLES
 t = 0
-N = 4 #planning horizon
+N = 1 #planning horizon
 # Internal counters
 count2, count1, prev_count  = 0, 0, 0
 goal_theta, old_pose = 0, 0

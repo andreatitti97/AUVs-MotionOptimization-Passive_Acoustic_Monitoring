@@ -12,7 +12,7 @@ from rospy.numpy_msg import numpy_msg
 # Import costum classes
 import importlib.util
 class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
-spec = importlib.util.spec_from_file_location("module.tracker_optimization", class_path+"/TRACKER_distributed.py")
+spec = importlib.util.spec_from_file_location("module.tracker_optimization", class_path+"/tracker.py")
 tracker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tracker)
 spec = importlib.util.spec_from_file_location("module.sensor", class_path+"/sensor.py")

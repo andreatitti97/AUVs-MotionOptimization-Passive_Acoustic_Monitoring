@@ -26,7 +26,7 @@ class Tracker:
     def state(self):
         return self.__ekf.current_estimate
 
-    def processMeasurement(self,measures, target_init, auv_positions, tc):
+    def processMeasurement(self,measures, target_init, auv_positions, tc, bool):
         # if this is initialization with the first measurament for setup state vector.
         if not self.__is_initialized:
           
@@ -45,7 +45,7 @@ class Tracker:
         #3rd make a prediction
         self.__ekf.predict()
         #4th Update the observation matrix and the target state
-        self.__ekf.update(measures, auv_positions)
+        self.__ekf.update(measures, auv_positions, bool)
         #5th COMMUNICATION 
         #TODO SPLIT THE KALMAN FILTER
 
