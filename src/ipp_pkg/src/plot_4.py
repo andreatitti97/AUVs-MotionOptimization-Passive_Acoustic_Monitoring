@@ -22,11 +22,7 @@ ekf_x_off = np.loadtxt(lib_path+'/target_est_x_OFF.txt')
 err_on = np.loadtxt(lib_path+'/rmse_ON.txt')
 
 err_off = np.loadtxt(lib_path+'/rmse_OFF.txt')
-# LOAD bearing during sim
-bearing1_on = np.loadtxt(lib_path+'/bearing1_ON.txt')
-bearing2_on = np.loadtxt(lib_path+'/bearing2_ON.txt')
-bearing1_off = np.loadtxt(lib_path+'/bearing1_OFF.txt')
-bearing2_off = np.loadtxt(lib_path+'/bearing2_OFF.txt')
+
 # Platform and AUV path OFF vs ON
 s_x_on = np.loadtxt(lib_path+'/x_platform_ON.txt')
 s_y_on = np.loadtxt(lib_path+'/y_platform_ON.txt')
@@ -52,7 +48,8 @@ auv4_x_off = np.loadtxt(lib_path+'/auv4_x_OFF.txt')
 auv4_y_off = np.loadtxt(lib_path+'/auv4_y_OFF.txt')
 # Optimization CTRL_CMDS
 ctrl_cmds = np.loadtxt(lib_path+'/plot_cmds.txt')
-
+opt_x = np.loadtxt(lib_path+'/t_est_x_opt.txt')
+opt_y = np.loadtxt(lib_path+'/t_est_y_opt.txt')
 # Load temporal vaiables
 n_sample = np.size(ekf_y_on)
 t = np.linspace(0,TIME_DURATION,n_sample)
@@ -82,7 +79,7 @@ plt.gca().add_patch(circle7)
 plt.legend(['Formation Reference Path','Target Path','Estimated Target Path','Boat',
 'Target Start','Formation Reference','AUV1','AUV2','AUV3','AUV4'])
 
-for i in range(8):
+for i in range(5):
     
     plt.plot([auv1_x_off[n_sample-(i+1)*500],
         ekf_x_off[n_sample-(i+1)*500]],[auv1_y_off[n_sample-(i+1)*500],ekf_y_off[n_sample-(i+1)*500]],'k--',linewidth=0.5)
@@ -123,7 +120,7 @@ plt.gca().add_patch(circle7)
 plt.legend(['Formation Reference Path','Target Path','Estimated Target Path','Boat',
 'Target Start','Formation Reference start','AUV1','AUV2','AUV3','AUV4'])
 
-for i in range(10):
+for i in range(5):
     
     plt.plot([auv1_x_on[n_sample-(i+1)*500],
         ekf_x_on[n_sample-(i+1)*500]],[auv1_y_on[n_sample-(i+1)*500],ekf_y_on[n_sample-(i+1)*500]],'k--',linewidth=0.5)
@@ -137,11 +134,6 @@ for i in range(10):
 plt.axis('equal')
 plt.grid()
 plt.show()
-
-bearing1_off = bearing1_off *180/pi
-bearing2_off = bearing2_off *180/pi
-bearing1_on = bearing1_on *180/pi
-bearing2_on = bearing2_on *180/pi
 
 baseline_angle = []
 for i in range(len(auv1_x_on)):
@@ -240,5 +232,17 @@ plt.text(400, 575, 'ERRORE MEDIO ON:'+str(err_medio2), fontsize=15, color='b')
 plt.grid()
 plt.show()
 
+plt.plot(real_x, real_y)
+plt.plot(opt_x,opt_y)
+plt.grid()
+plt.show()
 
-
+# LOAD bearing during sim
+#bearing1_on = np.loadtxt(lib_path+'/bearing1_ON.txt')
+#bearing2_on = np.loadtxt(lib_path+'/bearing2_ON.txt')
+#bearing1_off = np.loadtxt(lib_path+'/bearing1_OFF.txt')
+#bearing2_off = np.loadtxt(lib_path+'/bearing2_OFF.txt')
+#bearing1_off = bearing1_off *180/pi
+#bearing2_off = bearing2_off *180/pi
+#bearing1_on = bearing1_on *180/pi
+#bearing2_on = bearing2_on *180/pi

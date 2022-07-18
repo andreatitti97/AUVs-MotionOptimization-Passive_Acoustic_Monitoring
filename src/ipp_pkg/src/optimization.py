@@ -12,7 +12,7 @@ from rospy.numpy_msg import numpy_msg
 # Import costum classes
 import importlib.util
 class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
-spec = importlib.util.spec_from_file_location("module.tracker_optimization", class_path+"/tracker.py")
+spec = importlib.util.spec_from_file_location("module.tracker_optimization", class_path+"/TRACKER_distributed.py")
 tracker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tracker)
 spec = importlib.util.spec_from_file_location("module.sensor", class_path+"/sensor.py")
@@ -36,7 +36,7 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 platform_state, target_est = [], []
 t_est_x, t_est_y, auv = [], [], []
 # OPTIMIZATION PARAMETERS
-key1, key2, key3, key4, key5 = -pi/12, -pi/15, 0, +pi/15, +pi/12 #before 15 and 18
+key1, key2, key3, key4, key5 = -pi/10, -pi/12, 0, +pi/12, +pi/10 #before 15 and 18
 DELTA = 10**15
 ctrl_cmd = [key1, key2, key3, key4, key5]
 
@@ -110,7 +110,7 @@ def simulation(control_input, target_est, platform_pose, P):
             rel_bearing.append(rel_bearing1)
     
         # update EKF WITH NEW MEASURAMENT
-        tracker_.processMeasurement(measures,target_state, vehicle_pose, tc/4)
+        tracker_.processMeasurement(measures,target_state, vehicle_pose, tc/4, True)
     [state, P] = tracker_.state
     state = [state[0,0], state[1,0], state[2,0], state[3,0]]
     return state, P, platform_state
