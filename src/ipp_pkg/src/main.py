@@ -28,25 +28,25 @@ spec.loader.exec_module(sensor)
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 
 # Simulation parameters
-TIME_DURATION = 2900 #seconds#2600
+TIME_DURATION = 2900 # (s) c.a. 45 min
 TIME_STEP = 0.01
 TIME_SCALER = 80 # MAX for communication purpose 
-TARGET_INIT = [-4000, -3500, 0, 5] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [-2000, -2000, pi/12, 5] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
-MEAS_VARIANCE = 0.01 #already al quadrato -> 2° incertezza -> sigma^2 = (2*pi/180)^2
+MEAS_VARIANCE = 0.01 #already al quadrato -> 3° incertezza -> sigma^2 = (3*2*pi/180)^2
 OPTIMIZATION_ON = True
 OPTIMIZATION_TIME_STEP = 128 #VA INTESO COME time between each command 
 BASELINE_Y = 1200
-BASELINE_X = 200
+BASELINE_X = 400 #lower in realta is bettter for opt (fake tests)
 INIT_POSE_UNCERTAINTY = 50 #(m)
 INIT_VEL_UNCERTAINTY = 0.01 #(m/s)
-EKF_MEAS_UPDATE = 10 #(s) delta time tra le misure
-N_AUV = 2
+EKF_MEAS_UPDATE = 4 #(s) delta time tra le misure
+N_AUV = 4
 MAX_TARGET_VEL = 8 #(m/s)
 MIN_TARGET_VEL = 3 #(m/s)
 #GLOBAL VARIABLES
 t = 0
-N = 4 #planning horizon
+N = 1 #planning horizon
 # Internal counters
 count2, count1, prev_count  = 0, 0, 0
 goal_theta, old_pose = 0, 0
@@ -91,14 +91,14 @@ def sensorPlacement(auv):
             if (i+1) % 2 == 0:
                 if i+1 > 3:
                     auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
-                        -1,BASELINE_X, BASELINE_Y))#freq,mean,variance,displachement
+                        -1,BASELINE_X, BASELINE_Y-BASELINE_Y/2))#freq,mean,variance,displachement
                 else:   
                     auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
                         -1,0,BASELINE_Y))#freq,mean,variance,displachement
             if (i+1) % 2 == 1:
                 if i+1 > 2:
                     auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,1,
-                        BASELINE_X, BASELINE_Y))#freq,mean,variance,displachement
+                        BASELINE_X, BASELINE_Y-BASELINE_Y/2))#freq,mean,variance,displachement
                 else:   
                     auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
                         1,0,BASELINE_Y))#freq,mean,variance,displachement
@@ -280,20 +280,19 @@ def run_simulation(robots, obs, auv, pub_estimation, pub_platform_state, pub_cov
                                 target_state_real[2] + initial_gaussian_noise_vel,
                                     target_state_real[3] + initial_gaussian_noise_vel]
         
-        if count1 == 1:
-            for i in range(len(auv)):
-                obs[i].processMeasurement(measures,initial_guess, vehicle_pose,
-                    TIME_SCALER*TIME_STEP, True) #FIRST UPDATE
-
-        if count1 % 10:
+        if count1 % 5 or count1 == 1: # each (12 s) and at (0.8 s) first update
+            if count1 == 1:
+                delta_meas = TIME_SCALER*TIME_STEP
+            else:
+                delta_meas = EKF_MEAS_UPDATE*TIME_SCALER*TIME_STEP
             for i in range(len(auv)):
                 obs[i].processMeasurement(measures[i],initial_guess, vehicle_pose[i],
-                    2*TIME_SCALER*TIME_STEP, False)#LOCAL UPDATE
+                    delta_meas, False) #LOCAL UPDATE
                 
-        if count1 % 120: #TODO update EKF not always
+        if count1 % 50: #TODO update EKF not always
             for i in range(len(auv)):
                 obs[i].processMeasurement(measures,initial_guess, vehicle_pose, 
-                    2*EKF_MEAS_UPDATE*TIME_SCALER*TIME_STEP, True)#DISTRIBUTED UPDATE
+                    10*EKF_MEAS_UPDATE*TIME_SCALER*TIME_STEP, True) #DISTRIBUTED UPDATE
             
          #TODO considera covarianze di tutti e stato di tutti pre ottimizzazione
         [curr_est1, P1] = obs[0].state
@@ -302,9 +301,7 @@ def run_simulation(robots, obs, auv, pub_estimation, pub_platform_state, pub_cov
             [curr_est3, P3] = obs[2].state
             [curr_est4, P4] = obs[3].state
         
-        # PUBLISH INFORMATION FOR OPTIMIZATION
         # SEND LAST INFORMATIONS and LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
-
         if count1%((N*OPTIMIZATION_TIME_STEP)/(TIME_STEP*TIME_SCALER)) == 0 and OPTIMIZATION_ON == True: 
 
             cov_values = np.array([P1[0,0],P1[1,1],P1[2,2],P1[3,3]])
@@ -418,7 +415,7 @@ def main():
     pose_target = Pose(TARGET_INIT[0], TARGET_INIT[1],  TARGET_INIT[2])
     pose_start_1 = Pose(PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1], PLATFORM_INIT_POSE[2])
     target_start = np.array([TARGET_INIT[0],TARGET_INIT[1], TARGET_INIT[2]])
-    target_goal = np.array([4500, 3500,TARGET_INIT[2]+pi/10])
+    target_goal = np.array([2000, 2500,TARGET_INIT[2]+pi/6])
     # Init tracker controller and robots
     tr = []
     tracker1 = tracker.Tracker('first_observer',False, N_AUV)

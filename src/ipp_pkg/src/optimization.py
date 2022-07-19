@@ -45,14 +45,14 @@ def sensorPlacement():
             if (i+1) % 2 == 0:
                 if i+1 > 3:                    
                     auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
-                        -1,BASELINE_X, BASELINE_Y))#freq,mean,variance,displachement
+                        -1,BASELINE_X, BASELINE_Y-BASELINE_Y/2))#freq,mean,variance,displachement
                 else:                 
                     auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
                         -1,0,BASELINE_Y))#freq,mean,variance,displachement
             if (i+1) % 2 == 1:
                 if i+1 > 2:
                     auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
-                        1,BASELINE_X, BASELINE_Y))#freq,mean,variance,displachement
+                        1,BASELINE_X, BASELINE_Y-BASELINE_Y/2))#freq,mean,variance,displachement
                 else:   
                     auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
                         1,0,BASELINE_Y))#freq,mean,variance,displachement
@@ -213,9 +213,6 @@ class Simple(pybnb.Problem):
 
         t_est_x.append(x1[0])
         t_est_y.append(x1[1])
-    
-        np.savetxt(plot_path+'/t_est_x_opt.txt',t_est_x)
-        np.savetxt(plot_path+'/t_est_y_opt.txt',t_est_y)
 
 def compute_cost(P):
     return np.trace(P)
@@ -247,8 +244,12 @@ def main():
 
         P = np.matrix([[covariance_values[0], 0, 0, 0], #TODO INITIAL COV VALUE AFTER LAST ESTIMATE - TO CHECK
                         [0, covariance_values[1], 0, 0],
-                        [0, 0,covariance_values[2], 0],
+                        [0, 0,covariance_values[2],0],
                         [0, 0, 0, covariance_values[3]]])
+        P = np.matrix([[0.01, 0, 0, 0], #TODO INITIAL COV VALUE AFTER LAST ESTIMATE - TO CHECK
+                        [0, 0.1, 0, 0],
+                        [0, 0, 0.01, 0],
+                        [0, 0, 0, 0.01]])
 
         # Compute the best solution solving the optimization with BnB or Greedy search
         problem = Simple(t_est, s_state, P, DELTA)
@@ -268,10 +269,12 @@ def main():
         print('SAVED CMDS',ctrl_plot)
         #SAVE DATA FOR PLOT    
         np.savetxt(plot_path+'/plot_cmds.txt',ctrl_plot)
-        
+        np.savetxt(plot_path+'/t_est_x_opt.txt',t_est_x)
+        np.savetxt(plot_path+'/t_est_y_opt.txt',t_est_y)
         ctrl_opt = []
         rate.sleep()
- 
+    
 if __name__ == '__main__':
     
     main()
+    
