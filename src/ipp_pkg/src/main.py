@@ -41,20 +41,20 @@ BASELINE_X = 200
 INIT_POSE_UNCERTAINTY = 50 #(m)
 INIT_VEL_UNCERTAINTY = 0.01 #(m/s)
 EKF_MEAS_UPDATE = 10 #(s) delta time tra le misure
-N_AUV = 4
+N_AUV = 2
 MAX_TARGET_VEL = 8 #(m/s)
 MIN_TARGET_VEL = 3 #(m/s)
 #GLOBAL VARIABLES
 t = 0
-N = 1 #planning horizon
+N = 4 #planning horizon
 # Internal counters
 count2, count1, prev_count  = 0, 0, 0
 goal_theta, old_pose = 0, 0
 # INIT lists for plot
 target_x_traj, target_y_traj, platform_x, platform_y = [], [], [], []
-target_est_x, target_est_y,target_est_x2, target_est_y2, rmse = [], [], [], [], []
+est1_x, est1_y, est2_x, est2_y,est3_x, est3_y,est4_x, est4_y = [], [], [], [], [], [], [], []
 auv1_x, auv1_y, auv2_x, auv2_y,auv3_x,auv3_y,auv4_x,auv4_y  = [], [], [], [], [], [], [], []
-bearing1, bearing2 = [], []
+rmse, bearing1, bearing2 = [], [], []
 
 
 def generatePolynomialTrajectory(ts, y_from, yd_from, ydd_from, y_to, yd_to, ydd_to):
@@ -90,14 +90,18 @@ def sensorPlacement(auv):
     for i in range(N_AUV): #TODO: AUV up to 6 consider
             if (i+1) % 2 == 0:
                 if i+1 > 3:
-                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,-1,BASELINE_X, BASELINE_Y))#freq,mean,variance,displachement
+                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
+                        -1,BASELINE_X, BASELINE_Y))#freq,mean,variance,displachement
                 else:   
-                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,-1,0,BASELINE_Y))#freq,mean,variance,displachement
+                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
+                        -1,0,BASELINE_Y))#freq,mean,variance,displachement
             if (i+1) % 2 == 1:
                 if i+1 > 2:
-                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,1,BASELINE_X, BASELINE_Y))#freq,mean,variance,displachement
+                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,1,
+                        BASELINE_X, BASELINE_Y))#freq,mean,variance,displachement
                 else:   
-                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,1,0,BASELINE_Y))#freq,mean,variance,displachement
+                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
+                        1,0,BASELINE_Y))#freq,mean,variance,displachement
     return auv
 
 def saturateVel(linear_velocity):
@@ -270,22 +274,26 @@ def run_simulation(robots, obs, auv, pub_estimation, pub_platform_state, pub_cov
 
         # SIMULATE EKF
         if count1 == 1: #add distrubnace to th initial guess GAUSSIAN DISTURB TO INITIAL STATE
-            initial_gaussian_noise = np.random.normal(0,INIT_POSE_UNCERTAINTY) #DO NOT CHANGE (m) - ekf tunato con questi valori, se da alzare cambiare EKF
+            initial_gaussian_noise = np.random.normal(0,INIT_POSE_UNCERTAINTY) #DO NOT CHANGE (m) 
             initial_gaussian_noise_vel = np.random.normal(0,INIT_VEL_UNCERTAINTY) #DO NOT CHANGE (m/s)
             initial_guess = [target_state_real[0] + initial_gaussian_noise, target_state_real[1] + initial_gaussian_noise,
-                                target_state_real[2] + initial_gaussian_noise_vel, target_state_real[3] + initial_gaussian_noise_vel]#target_state_real[3] + initial_gaussian_noise *0.01
+                                target_state_real[2] + initial_gaussian_noise_vel,
+                                    target_state_real[3] + initial_gaussian_noise_vel]
         
         if count1 == 1:
             for i in range(len(auv)):
-                obs[i].processMeasurement(measures,initial_guess, vehicle_pose, TIME_SCALER*TIME_STEP, True) #FIRST UPDATE
+                obs[i].processMeasurement(measures,initial_guess, vehicle_pose,
+                    TIME_SCALER*TIME_STEP, True) #FIRST UPDATE
 
         if count1 % 10:
             for i in range(len(auv)):
-                obs[i].processMeasurement(measures[i],initial_guess, vehicle_pose[i], 2*TIME_SCALER*TIME_STEP, False)#LOCAL UPDATE
+                obs[i].processMeasurement(measures[i],initial_guess, vehicle_pose[i],
+                    2*TIME_SCALER*TIME_STEP, False)#LOCAL UPDATE
                 
         if count1 % 120: #TODO update EKF not always
             for i in range(len(auv)):
-                obs[i].processMeasurement(measures,initial_guess, vehicle_pose, 2*EKF_MEAS_UPDATE*TIME_SCALER*TIME_STEP, True)#DISTRIBUTED UPDATE
+                obs[i].processMeasurement(measures,initial_guess, vehicle_pose, 
+                    2*EKF_MEAS_UPDATE*TIME_SCALER*TIME_STEP, True)#DISTRIBUTED UPDATE
             
          #TODO considera covarianze di tutti e stato di tutti pre ottimizzazione
         [curr_est1, P1] = obs[0].state
@@ -297,7 +305,7 @@ def run_simulation(robots, obs, auv, pub_estimation, pub_platform_state, pub_cov
         # PUBLISH INFORMATION FOR OPTIMIZATION
         # SEND LAST INFORMATIONS and LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
 
-        if count1%((N*OPTIMIZATION_TIME_STEP)/(TIME_STEP*TIME_SCALER)) == 0 and OPTIMIZATION_ON == True: #multiplo di 640 con OPT_dt = 128
+        if count1%((N*OPTIMIZATION_TIME_STEP)/(TIME_STEP*TIME_SCALER)) == 0 and OPTIMIZATION_ON == True: 
 
             cov_values = np.array([P1[0,0],P1[1,1],P1[2,2],P1[3,3]])
             rospy.loginfo('SENDING DATA')
@@ -312,9 +320,16 @@ def run_simulation(robots, obs, auv, pub_estimation, pub_platform_state, pub_cov
             print(cmds)
 
         # SAVE DATA FOR PLOT
-        target_est_y.append(curr_est1[1,0])
-        target_est_x.append(curr_est1[0,0])
-        
+        est1_x.append(curr_est1[0,0])
+        est1_y.append(curr_est1[1,0])
+        est2_x.append(curr_est2[0,0])
+        est2_y.append(curr_est2[1,0])
+        if N_AUV > 2:
+            est3_x.append(curr_est3[0,0])
+            est3_y.append(curr_est3[1,0])
+            est4_x.append(curr_est4[0,0])
+            est4_y.append(curr_est4[1,0])    
+
         err_x = np.sqrt(((target_state_real[0] - curr_est1[0,0])**2))
         err_y = np.sqrt(((target_state_real[1] - curr_est1[1,0])**2))
         norma_err = np.sqrt(err_x**2+err_y**2)
@@ -345,8 +360,15 @@ def run_simulation(robots, obs, auv, pub_estimation, pub_platform_state, pub_cov
             np.savetxt(plot_path+'/target_y_traj.txt',target_y_traj)
 
             if OPTIMIZATION_ON == True:
-                np.savetxt(plot_path+'/target_est_x_ON.txt',target_est_x)
-                np.savetxt(plot_path+'/target_est_y_ON.txt',target_est_y)
+                np.savetxt(plot_path+'/est1_x_ON.txt',est1_x)
+                np.savetxt(plot_path+'/est1_y_ON.txt',est1_y)
+                np.savetxt(plot_path+'/est2_x_ON.txt',est2_x)
+                np.savetxt(plot_path+'/est2_y_ON.txt',est2_y)
+                if N_AUV > 2:
+                    np.savetxt(plot_path+'/est3_x_ON.txt',est3_x)
+                    np.savetxt(plot_path+'/est3_y_ON.txt',est3_y)
+                    np.savetxt(plot_path+'/est4_x_ON.txt',est4_x)
+                    np.savetxt(plot_path+'/est4_y_ON.txt',est4_y)
                 np.savetxt(plot_path+'/rmse_ON.txt',rmse)
                 np.savetxt(plot_path+'/x_platform_ON.txt',platform_x)
                 np.savetxt(plot_path+'/y_platform_ON.txt',platform_y)
@@ -362,8 +384,15 @@ def run_simulation(robots, obs, auv, pub_estimation, pub_platform_state, pub_cov
                 np.savetxt(plot_path+'/bearing2_ON.txt',bearing2)
             else:
 
-                np.savetxt(plot_path+'/target_est_x_OFF.txt',target_est_x)
-                np.savetxt(plot_path+'/target_est_y_OFF.txt',target_est_y)
+                np.savetxt(plot_path+'/est1_x_OFF.txt',est1_x)
+                np.savetxt(plot_path+'/est1_y_OFF.txt',est1_y)
+                np.savetxt(plot_path+'/est2_x_OFF.txt',est2_x)
+                np.savetxt(plot_path+'/est2_y_OFF.txt',est2_y)
+                if N_AUV > 2:
+                    np.savetxt(plot_path+'/est3_x_OFF.txt',est3_x)
+                    np.savetxt(plot_path+'/est3_y_OFF.txt',est3_y)
+                    np.savetxt(plot_path+'/est4_x_OFF.txt',est4_x)
+                    np.savetxt(plot_path+'/est4_y_OFF.txt',est4_y)
                 np.savetxt(plot_path+'/rmse_OFF.txt',rmse)
                 np.savetxt(plot_path+'/x_platform_OFF.txt',platform_x)
                 np.savetxt(plot_path+'/y_platform_OFF.txt',platform_y)
@@ -413,7 +442,6 @@ def main():
     robots: list[Robot] = [robot_1]
     # Generate Trajectory given the target start pos and waypoints
     ts = np.linspace(0,TIME_DURATION+1000,round(TIME_DURATION+1000/(TIME_SCALER*TIME_STEP)))
-
     #poly_traj = traj_generator.Trajectory(ts, target_start)
     [ts, poly_traj, vel, acc] = generatePolynomialTrajectory(ts, target_start, 0, 0, target_goal, 0, 0)
 

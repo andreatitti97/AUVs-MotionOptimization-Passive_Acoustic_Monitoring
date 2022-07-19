@@ -44,14 +44,18 @@ def sensorPlacement():
     for i in range(N_AUV): #TODO: AUV up to 6 consider
             if (i+1) % 2 == 0:
                 if i+1 > 3:                    
-                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,-1,BASELINE_X, BASELINE_Y))#freq,mean,variance,displachement
+                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
+                        -1,BASELINE_X, BASELINE_Y))#freq,mean,variance,displachement
                 else:                 
-                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,-1,0,BASELINE_Y))#freq,mean,variance,displachement
+                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
+                        -1,0,BASELINE_Y))#freq,mean,variance,displachement
             if (i+1) % 2 == 1:
                 if i+1 > 2:
-                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,1,BASELINE_X, BASELINE_Y))#freq,mean,variance,displachement
+                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
+                        1,BASELINE_X, BASELINE_Y))#freq,mean,variance,displachement
                 else:   
-                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,1,0,BASELINE_Y))#freq,mean,variance,displachement
+                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
+                        1,0,BASELINE_Y))#freq,mean,variance,displachement
 
 class Platform():
     def __init__(self, init_vector):

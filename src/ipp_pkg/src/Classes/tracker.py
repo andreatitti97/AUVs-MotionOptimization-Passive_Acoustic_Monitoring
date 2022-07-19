@@ -46,7 +46,5 @@ class Tracker:
         self.__ekf.predict()
         #4th Update the observation matrix and the target state
         self.__ekf.update(measures, auv_positions, bool)
-        #5th COMMUNICATION 
-        #TODO SPLIT THE KALMAN FILTER
 
         

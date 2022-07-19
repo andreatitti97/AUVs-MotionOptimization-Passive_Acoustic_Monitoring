@@ -140,7 +140,7 @@ class ExtendedKalmanFilter:
                     y_tilde1 = y_tilde1 + 2*pi
                 y_tilde.append(y_tilde1)
             if len(auv_positions) > 2:
-                y_tilde = np.array([[y_tilde[0]], [y_tilde[1]],[y_tilde[2]],[y_tilde[3]]]) # TODO make iterative
+                y_tilde = np.array([[y_tilde[0]], [y_tilde[1]],[y_tilde[2]],[y_tilde[3]]])
             else:
                 y_tilde = np.array([[y_tilde[0]], [y_tilde[1]]])
     
