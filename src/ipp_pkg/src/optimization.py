@@ -36,7 +36,7 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 platform_state, target_est = [], []
 t_est_x, t_est_y, auv = [], [], []
 # OPTIMIZATION PARAMETERS
-key1, key2, key3, key4, key5 = -pi/10, -pi/12, 0, +pi/12, +pi/10 #before 15 and 18
+key1, key2, key3, key4, key5 = -pi/6, -pi/10, 0, +pi/10, +pi/6 #before 15 and 18
 DELTA = 10**15
 ctrl_cmd = [key1, key2, key3, key4, key5]
 
@@ -64,7 +64,7 @@ class Platform():
         self.y = init_vector[1]
         self.theta = init_vector[2]
         self.vl = 1
-        self.dt = tc/4
+        self.dt = tc/2
     def update_state(self, delta):
 
         self.theta = self.theta + delta
@@ -80,7 +80,7 @@ class Target():
         
         self.vlx = init_vector[2]
         self.vly = init_vector[3]
-        self.dt = tc/4
+        self.dt = tc/2
 
     def update_state(self):
 
@@ -94,7 +94,7 @@ def simulation(control_input, target_est, platform_pose, P):
     platform = Platform(platform_pose)
     target = Target(target_est)
     
-    for t in range(0,4):
+    for t in range(0,2):
         vehicle_pose = []
         rel_bearing = []
         measures = []
@@ -114,7 +114,7 @@ def simulation(control_input, target_est, platform_pose, P):
             rel_bearing.append(rel_bearing1)
     
         # update EKF WITH NEW MEASURAMENT
-        tracker_.processMeasurement(measures,target_state, vehicle_pose, tc/4, True)
+        tracker_.processMeasurement(measures,target_state, vehicle_pose, tc/2, True)
     [state, P] = tracker_.state
     state = [state[0,0], state[1,0], state[2,0], state[3,0]]
     return state, P, platform_state
@@ -125,9 +125,10 @@ def compute_cost(P):
     return cost
 
 class Simple(pybnb.Problem):
-    def __init__(self, x_hat, s, P, initial_cost):
+    def __init__(self,x_hat, s, P, initial_cost):
         # aggiungi un livello per imporre un orizzonte finito 
         self._x_hat = x_hat
+
         self._s = s
         self._P = P
         self.value = initial_cost #fake obj
@@ -236,20 +237,23 @@ def main():
 
         # INIT TARGET MODEL AND PLATFORM MODEL WITH THE LATEST ESTIMATION AND SENSOR POSITIONS 
         t_est = rospy.wait_for_message('/estimation',numpy_msg(Floats))
+
         s_state = rospy.wait_for_message('/platform_state',numpy_msg(Floats))
         covariance_values = rospy.wait_for_message('/covariance_values', numpy_msg(Floats))
         t_est = t_est.data
+
+        
         s_state = s_state.data
         covariance_values = covariance_values.data
 
         P = np.matrix([[covariance_values[0], 0, 0, 0], #TODO INITIAL COV VALUE AFTER LAST ESTIMATE - TO CHECK
                         [0, covariance_values[1], 0, 0],
-                        [0, 0,covariance_values[2],0],
+                        [0, 0, covariance_values[2],0],
                         [0, 0, 0, covariance_values[3]]])
-        P = np.matrix([[0.01, 0, 0, 0], #TODO INITIAL COV VALUE AFTER LAST ESTIMATE - TO CHECK
-                        [0, 0.1, 0, 0],
-                        [0, 0, 0.01, 0],
-                        [0, 0, 0, 0.01]])
+        P = np.matrix([[10, 0, 0, 0], #TODO INITIAL COV VALUE AFTER LAST ESTIMATE - TO CHECK
+                        [0, 10, 0, 0],
+                        [0, 0, 1, 0],
+                        [0, 0, 0, 1]])
 
         # Compute the best solution solving the optimization with BnB or Greedy search
         problem = Simple(t_est, s_state, P, DELTA)

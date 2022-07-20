@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-from main import TIME_DURATION, N_AUV
+from main import BASELINE_X, TIME_DURATION, N_AUV, BASELINE_Y
 from math import pi
 lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 
@@ -259,6 +259,8 @@ err_medio1 = sum1/n_sample
 err_medio2 = sum2/n_sample
 print('ERRORE MEDIO OFF:',err_medio1)
 print('ERRORE MEDIO ON:',err_medio2)
+print('baseline_x:',BASELINE_X)
+print('baseline_y:',BASELINE_Y)
 # COMPARE RMSE 
 plt.plot(t,err_off[0:n_sample],'y')
 plt.plot(t,err_on[0:n_sample],'b')
@@ -266,8 +268,8 @@ plt.legend(['optimization OFF','optimization ON'])
 plt.title('ESTIMATION PERFORMANCES COMPARISON')
 plt.xlabel('Time (s)',fontsize=20)
 plt.ylabel('RMSE (m)',fontsize=20)
-plt.text(t[100], err_off[300]+500, 'ERRORE MEDIO OFF:'+str(err_medio1), fontsize=15, color='y')
-plt.text(t[100], err_off[300]+700, 'ERRORE MEDIO ON:'+str(err_medio2), fontsize=15, color='b')
+plt.text(t[100], err_off[300]+400, 'ERRORE MEDIO OFF:'+str(err_medio1), fontsize=15, color='y')
+plt.text(t[100], err_off[300]+450, 'ERRORE MEDIO ON:'+str(err_medio2), fontsize=15, color='b')
 plt.grid()
 plt.show()
 

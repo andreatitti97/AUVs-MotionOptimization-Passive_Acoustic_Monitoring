@@ -7,12 +7,12 @@ import importlib.util
 from math import pi
 import numpy as np
 import copy
-
+from scipy import stats
 #Import ROS modules
 import rospy
 from rospy_tutorials.msg import Floats
 from rospy.numpy_msg import numpy_msg
-
+#import matplotlib.pyplot as plt
 # Import Costum classes
 class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
 spec = importlib.util.spec_from_file_location("module.tracker", class_path+"/tracker.py")
@@ -31,18 +31,18 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 TIME_DURATION = 2900 # (s) c.a. 45 min
 TIME_STEP = 0.01
 TIME_SCALER = 80 # MAX for communication purpose 
-TARGET_INIT = [-2000, -2000, pi/12, 5] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [+8000, -6000, pi/2, 5] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 MEAS_VARIANCE = 0.01 #already al quadrato -> 3° incertezza -> sigma^2 = (3*2*pi/180)^2
 OPTIMIZATION_ON = True
 OPTIMIZATION_TIME_STEP = 128 #VA INTESO COME time between each command 
 BASELINE_Y = 1200
-BASELINE_X = 400 #lower in realta is bettter for opt (fake tests)
+BASELINE_X = 800 #lower in realta is bettter for opt (fake tests)
 INIT_POSE_UNCERTAINTY = 50 #(m)
 INIT_VEL_UNCERTAINTY = 0.01 #(m/s)
 EKF_MEAS_UPDATE = 4 #(s) delta time tra le misure
 N_AUV = 4
-MAX_TARGET_VEL = 8 #(m/s)
+MAX_TARGET_VEL = 6 #(m/s)
 MIN_TARGET_VEL = 3 #(m/s)
 #GLOBAL VARIABLES
 t = 0
@@ -55,8 +55,8 @@ target_x_traj, target_y_traj, platform_x, platform_y = [], [], [], []
 est1_x, est1_y, est2_x, est2_y,est3_x, est3_y,est4_x, est4_y = [], [], [], [], [], [], [], []
 auv1_x, auv1_y, auv2_x, auv2_y,auv3_x,auv3_y,auv4_x,auv4_y  = [], [], [], [], [], [], [], []
 rmse, bearing1, bearing2 = [], [], []
-
-
+t_axe = []
+est1_vx, est1_vy = [], []
 def generatePolynomialTrajectory(ts, y_from, yd_from, ydd_from, y_to, yd_to, ydd_to):
         
         a0 = y_from
@@ -300,13 +300,33 @@ def run_simulation(robots, obs, auv, pub_estimation, pub_platform_state, pub_cov
         if N_AUV > 2:
             [curr_est3, P3] = obs[2].state
             [curr_est4, P4] = obs[3].state
-        
+
+        t_axe.append(t)
+        est1_x.append(curr_est1[0,0])
+        est1_y.append(curr_est1[1,0])
+        est1_vx.append(curr_est1[2,0])
+        est1_vy.append(curr_est1[3,0])
+        x_realization = []
+        y_realization = []
+        vx_realization = []
+        vy_realization= []
         # SEND LAST INFORMATIONS and LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
         if count1%((N*OPTIMIZATION_TIME_STEP)/(TIME_STEP*TIME_SCALER)) == 0 and OPTIMIZATION_ON == True: 
+            slope_x, intercept_x, r_value, p_value, std_err = stats.linregress(t_axe,est1_x)
+            slope_y, intercept_y, r_value, p_value, std_err = stats.linregress(t_axe,est1_y)
+            slope_vx, intercept_vx, r_value, p_value, std_err = stats.linregress(t_axe,est1_vx)
+            slope_vy, intercept_vy, r_value, p_value, std_err = stats.linregress(t_axe,est1_vy)
 
+            for i in range(len(t_axe)):
+                x_realization.append(slope_x*t_axe[i] + intercept_x)
+                y_realization.append(slope_y*t_axe[i] + intercept_y)
+                vx_realization.append(slope_vx*t_axe[i] + intercept_vx)
+                vy_realization.append(slope_vy*t_axe[i] + intercept_vy)
+
+            mle_est = [x_realization[-1], y_realization[-1], vx_realization[-1], vy_realization[-1]]
             cov_values = np.array([P1[0,0],P1[1,1],P1[2,2],P1[3,3]])
             rospy.loginfo('SENDING DATA')
-            pub_estimation.publish(np.array(curr_est1,dtype=np.float32))
+            pub_estimation.publish(np.array(mle_est,dtype=np.float32))
             rospy.sleep(TIME_STEP*5)
             pub_platform_state.publish(np.array(platform_pose,dtype=np.float32))
             rospy.sleep(TIME_STEP*5)
@@ -314,11 +334,11 @@ def run_simulation(robots, obs, auv, pub_estimation, pub_platform_state, pub_cov
             cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))
             cmds = cmds.data
             rospy.loginfo('RECEIVED CMDS')
+            
             print(cmds)
 
         # SAVE DATA FOR PLOT
-        est1_x.append(curr_est1[0,0])
-        est1_y.append(curr_est1[1,0])
+        
         est2_x.append(curr_est2[0,0])
         est2_y.append(curr_est2[1,0])
         if N_AUV > 2:
@@ -353,6 +373,7 @@ def run_simulation(robots, obs, auv, pub_estimation, pub_platform_state, pub_cov
         #################################################################################################################
         if int(t) == (TIME_DURATION-1):
             rospy.loginfo('saving data for plot')
+            
             np.savetxt(plot_path+'/target_x_traj.txt',target_x_traj)
             np.savetxt(plot_path+'/target_y_traj.txt',target_y_traj)
 
@@ -409,13 +430,15 @@ def main():
     # ROS INIT
     rospy.init_node('simulation')
     pub_estimation = rospy.Publisher('estimation', numpy_msg(Floats), queue_size=10)
+
+
     pub_platform_state = rospy.Publisher('platform_state', numpy_msg(Floats), queue_size=100)
     pub_covariance = rospy.Publisher('covariance_values', numpy_msg(Floats), queue_size=100)
     # Initial Conditions
     pose_target = Pose(TARGET_INIT[0], TARGET_INIT[1],  TARGET_INIT[2])
     pose_start_1 = Pose(PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1], PLATFORM_INIT_POSE[2])
     target_start = np.array([TARGET_INIT[0],TARGET_INIT[1], TARGET_INIT[2]])
-    target_goal = np.array([2000, 2500,TARGET_INIT[2]+pi/6])
+    target_goal = np.array([5000, 5000,TARGET_INIT[2]+pi/6])
     # Init tracker controller and robots
     tr = []
     tracker1 = tracker.Tracker('first_observer',False, N_AUV)
