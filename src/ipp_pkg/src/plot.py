@@ -277,13 +277,3 @@ plt.plot(real_x, real_y)
 plt.plot(opt_x,opt_y)
 plt.grid()
 plt.show()
-
-# LOAD bearing during sim
-#bearing1_on = np.loadtxt(lib_path+'/bearing1_ON.txt')
-#bearing2_on = np.loadtxt(lib_path+'/bearing2_ON.txt')
-#bearing1_off = np.loadtxt(lib_path+'/bearing1_OFF.txt')
-#bearing2_off = np.loadtxt(lib_path+'/bearing2_OFF.txt')
-#bearing1_off = bearing1_off *180/pi
-#bearing2_off = bearing2_off *180/pi
-#bearing1_on = bearing1_on *180/pi
-#bearing2_on = bearing2_on *180/pi

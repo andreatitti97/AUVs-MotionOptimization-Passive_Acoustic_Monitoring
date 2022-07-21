@@ -1,6 +1,5 @@
 #Import basic system modules
-import os, time
-from tkinter import BASELINE
+import os
 import pybnb
 # Import math modules
 import numpy as np
@@ -237,7 +236,6 @@ def main():
 
         # INIT TARGET MODEL AND PLATFORM MODEL WITH THE LATEST ESTIMATION AND SENSOR POSITIONS 
         t_est = rospy.wait_for_message('/estimation',numpy_msg(Floats))
-
         s_state = rospy.wait_for_message('/platform_state',numpy_msg(Floats))
         covariance_values = rospy.wait_for_message('/covariance_values', numpy_msg(Floats))
         t_est = t_est.data
@@ -246,10 +244,6 @@ def main():
         s_state = s_state.data
         covariance_values = covariance_values.data
 
-        P = np.matrix([[covariance_values[0], 0, 0, 0], #TODO INITIAL COV VALUE AFTER LAST ESTIMATE - TO CHECK
-                        [0, covariance_values[1], 0, 0],
-                        [0, 0, covariance_values[2],0],
-                        [0, 0, 0, covariance_values[3]]])
         P = np.matrix([[10, 0, 0, 0], #TODO INITIAL COV VALUE AFTER LAST ESTIMATE - TO CHECK
                         [0, 10, 0, 0],
                         [0, 0, 1, 0],
@@ -270,7 +264,6 @@ def main():
         pub.publish(np.array(ctrl_opt,dtype=np.float32))
         for i in range(4):
             ctrl_plot.append(ctrl_opt[i])
-        print('SAVED CMDS',ctrl_plot)
         #SAVE DATA FOR PLOT    
         np.savetxt(plot_path+'/plot_cmds.txt',ctrl_plot)
         np.savetxt(plot_path+'/t_est_x_opt.txt',t_est_x)

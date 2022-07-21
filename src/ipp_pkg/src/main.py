@@ -55,8 +55,8 @@ target_x_traj, target_y_traj, platform_x, platform_y = [], [], [], []
 est1_x, est1_y, est2_x, est2_y,est3_x, est3_y,est4_x, est4_y = [], [], [], [], [], [], [], []
 auv1_x, auv1_y, auv2_x, auv2_y,auv3_x,auv3_y,auv4_x,auv4_y  = [], [], [], [], [], [], [], []
 rmse, bearing1, bearing2 = [], [], []
-t_axe = []
-est1_vx, est1_vy = [], []
+t_axe, est1_vx, est1_vy = [], [], []
+
 def generatePolynomialTrajectory(ts, y_from, yd_from, ydd_from, y_to, yd_to, ydd_to):
         
         a0 = y_from
@@ -147,7 +147,6 @@ class Robot:
         self.pose = Pose(0,0,0)
         self.pose_start = Pose(0,0,0)
         self.pose_target =Pose(0,0,0)
-        self.waypoints = []
 
     def set_start_target_poses(self, pose_start, pose_target):
         """
@@ -241,7 +240,7 @@ class Robot:
         if (self.pose.theta == goal_theta or flag == True) and OPTIMIZATION_ON==True:         
             prev_count = count2
 
-def run_simulation(robots, obs, auv, pub_estimation, pub_platform_state, pub_covariance, poly_traj):
+def run_simulation(robots, obs, auv, pub, poly_traj):
     """Simulate the sensor platform and the moving target"""
     global count1
     Hz = 1/(TIME_STEP) #NB: different from sampling rate for move things, this is ros rate
@@ -306,10 +305,14 @@ def run_simulation(robots, obs, auv, pub_estimation, pub_platform_state, pub_cov
         est1_y.append(curr_est1[1,0])
         est1_vx.append(curr_est1[2,0])
         est1_vy.append(curr_est1[3,0])
-        x_realization = []
-        y_realization = []
-        vx_realization = []
-        vy_realization= []
+        est2_x.append(curr_est2[0,0])
+        est2_y.append(curr_est2[1,0])
+        if N_AUV > 2:
+            est3_x.append(curr_est3[0,0])
+            est3_y.append(curr_est3[1,0])
+            est4_x.append(curr_est4[0,0])
+            est4_y.append(curr_est4[1,0])
+        x_realization, y_realization,vx_realization, vy_realization = [], [], [], []
         # SEND LAST INFORMATIONS and LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
         if count1%((N*OPTIMIZATION_TIME_STEP)/(TIME_STEP*TIME_SCALER)) == 0 and OPTIMIZATION_ON == True: 
             slope_x, intercept_x, r_value, p_value, std_err = stats.linregress(t_axe,est1_x)
@@ -326,27 +329,17 @@ def run_simulation(robots, obs, auv, pub_estimation, pub_platform_state, pub_cov
             mle_est = [x_realization[-1], y_realization[-1], vx_realization[-1], vy_realization[-1]]
             cov_values = np.array([P1[0,0],P1[1,1],P1[2,2],P1[3,3]])
             rospy.loginfo('SENDING DATA')
-            pub_estimation.publish(np.array(mle_est,dtype=np.float32))
+            pub[0].publish(np.array(mle_est,dtype=np.float32))
             rospy.sleep(TIME_STEP*5)
-            pub_platform_state.publish(np.array(platform_pose,dtype=np.float32))
+            pub[1].publish(np.array(platform_pose,dtype=np.float32))
             rospy.sleep(TIME_STEP*5)
-            pub_covariance.publish(np.array(cov_values, dtype=np.float32))
+            pub[2].publish(np.array(cov_values, dtype=np.float32))
             cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))
             cmds = cmds.data
             rospy.loginfo('RECEIVED CMDS')
-            
-            print(cmds)
 
         # SAVE DATA FOR PLOT
         
-        est2_x.append(curr_est2[0,0])
-        est2_y.append(curr_est2[1,0])
-        if N_AUV > 2:
-            est3_x.append(curr_est3[0,0])
-            est3_y.append(curr_est3[1,0])
-            est4_x.append(curr_est4[0,0])
-            est4_y.append(curr_est4[1,0])    
-
         err_x = np.sqrt(((target_state_real[0] - curr_est1[0,0])**2))
         err_y = np.sqrt(((target_state_real[1] - curr_est1[1,0])**2))
         norma_err = np.sqrt(err_x**2+err_y**2)
@@ -429,11 +422,13 @@ def run_simulation(robots, obs, auv, pub_estimation, pub_platform_state, pub_cov
 def main():
     # ROS INIT
     rospy.init_node('simulation')
+    pub = []
     pub_estimation = rospy.Publisher('estimation', numpy_msg(Floats), queue_size=10)
-
-
     pub_platform_state = rospy.Publisher('platform_state', numpy_msg(Floats), queue_size=100)
     pub_covariance = rospy.Publisher('covariance_values', numpy_msg(Floats), queue_size=100)
+    pub.append(pub_estimation)
+    pub.append(pub_platform_state)
+    pub.append(pub_covariance)
     # Initial Conditions
     pose_target = Pose(TARGET_INIT[0], TARGET_INIT[1],  TARGET_INIT[2])
     pose_start_1 = Pose(PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1], PLATFORM_INIT_POSE[2])
@@ -462,9 +457,7 @@ def main():
     robots: list[Robot] = [robot_1]
     # Generate Trajectory given the target start pos and waypoints
     ts = np.linspace(0,TIME_DURATION+1000,round(TIME_DURATION+1000/(TIME_SCALER*TIME_STEP)))
-    #poly_traj = traj_generator.Trajectory(ts, target_start)
     [ts, poly_traj, vel, acc] = generatePolynomialTrajectory(ts, target_start, 0, 0, target_goal, 0, 0)
-
     # Run The Simulation
     if OPTIMIZATION_ON == True:
         rospy.loginfo('LAUNCH THE OPTIMIZATION')
@@ -473,7 +466,7 @@ def main():
     else:
         rospy.loginfo('STARTED SIMULATION - OPTIMIZATION OFF')
 
-    run_simulation(robots, tr, auv, pub_estimation, pub_platform_state, pub_covariance, poly_traj)
+    run_simulation(robots, tr, auv, pub, poly_traj)
 
 if __name__ == '__main__':
     main()
