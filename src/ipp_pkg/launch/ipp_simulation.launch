@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <launch>
 
-<node pkg="ipp_pkg" type="main_cassino.py" name="main" output="screen"/>
+<node pkg="ipp_pkg" type="main.py" name="main" output="screen"/>
 
-<node pkg="ipp_pkg" type="optimization_cassino.py" name="optimization" output="screen"/>
+<node pkg="ipp_pkg" type="optimization.py" name="optimization" output="screen"/>
 
 </launch>
