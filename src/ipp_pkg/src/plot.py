@@ -105,7 +105,7 @@ else:
     'AUV2-Target Estimation','OPERATOR LOCATION',
     'Target Start','Formation Reference','AUV1','AUV2'])
 
-for i in range(6):
+for i in range(5):
     
     plt.plot([auv1_x_off[n_sample-(i+1)*500],
         est1_x_OFF[n_sample-(i+1)*500]],[auv1_y_off[n_sample-(i+1)*500],est1_y_OFF[n_sample-(i+1)*500]],'k--',linewidth=0.5)
@@ -158,7 +158,7 @@ else:
     plt.legend(['Formation Reference Path','Target Path','AUV1-Target Estimation',
     'AUV2-Target Estimation','OPERATOR LOCATION',
     'Target Start','Formation Reference','AUV1','AUV2'])
-for i in range(6):
+for i in range(5):
     
     plt.plot([auv1_x_on[n_sample-(i+1)*500],
         est1_x_ON[n_sample-(i+1)*500]],[auv1_y_on[n_sample-(i+1)*500],est1_y_ON[n_sample-(i+1)*500]],'k--',linewidth=0.5)
@@ -273,7 +273,8 @@ plt.text(t[100], err_off[300]+450, 'ERRORE MEDIO ON:'+str(err_medio2), fontsize=
 plt.grid()
 plt.show()
 
-plt.plot(real_x, real_y)
+plt.plot(real_x, real_y,linewidth=5)
 plt.plot(opt_x,opt_y)
+plt.legend(['real','estimated'])
 plt.grid()
 plt.show()

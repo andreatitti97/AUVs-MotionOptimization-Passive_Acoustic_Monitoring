@@ -96,16 +96,16 @@ class ExtendedKalmanFilter:
                 tmp = auv_positions[i]
                 rx.append(px - tmp[0])
                 ry.append(py - tmp[1])
-            if self.n_auv == 4:
+            '''if self.n_auv == 4:
                 self.__H = np.matrix([[-ry[0]/(ry[0]**2+rx[0]**2), rx[0]/(rx[0]**2+ry[0]**2) , 0, 0], 
                                         [-ry[1]/(ry[1]**2+rx[1]**2), rx[1]/(rx[1]**2+ry[1]**2) , 0, 0],
                                         [-ry[2]/(ry[2]**2+rx[2]**2), rx[2]/(rx[2]**2+ry[2]**2) , 0, 0],
                                         [-ry[3]/(ry[3]**2+rx[3]**2), rx[3]/(rx[3]**2+ry[3]**2) , 0, 0]])
-                self.__R = np.matrix([[0.01,0,0,0],[0,0.01,0,0],[0,0,0.01,0],[0,0,0,0.01]])
-            else:
-                self.__H = np.matrix([[-ry[0]/(ry[0]**2+rx[0]**2), rx[0]/(rx[0]**2+ry[0]**2) , 0, 0],
-                                        [-ry[1]/(ry[1]**2+rx[1]**2), rx[1]/(rx[1]**2+ry[1]**2) , 0, 0]])
-                self.__R = np.matrix([[0.01,0],[0,0.01]])
+                self.__R = np.matrix([[0.01,0,0,0],[0,0.01,0,0],[0,0,0.01,0],[0,0,0,0.01]])'''
+            #else:
+            self.__H = np.matrix([[-ry[0]/(ry[0]**2+rx[0]**2), rx[0]/(rx[0]**2+ry[0]**2) , 0, 0],
+                                    [-ry[1]/(ry[1]**2+rx[1]**2), rx[1]/(rx[1]**2+ry[1]**2) , 0, 0]])
+            self.__R = np.matrix([[0.01,0],[0,0.01]])
                                 
     def predict(self):
         '''
@@ -139,10 +139,10 @@ class ExtendedKalmanFilter:
                 if y_tilde1 < -pi:
                     y_tilde1 = y_tilde1 + 2*pi
                 y_tilde.append(y_tilde1)
-            if len(auv_positions) > 2:
-                y_tilde = np.array([[y_tilde[0]], [y_tilde[1]],[y_tilde[2]],[y_tilde[3]]])
-            else:
-                y_tilde = np.array([[y_tilde[0]], [y_tilde[1]]])
+            #if len(auv_positions) > 2:
+            #    y_tilde = np.array([[y_tilde[0]], [y_tilde[1]],[y_tilde[2]],[y_tilde[3]]])
+            #else:
+            y_tilde = np.array([[y_tilde[0]], [y_tilde[1]]])
     
         self.recompute_H(auv_positions, bool)
 

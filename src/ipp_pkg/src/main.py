@@ -31,15 +31,15 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 TIME_DURATION = 2900 # (s) c.a. 45 min
 TIME_STEP = 0.01
 TIME_SCALER = 80 # MAX for communication purpose 
-TARGET_INIT = [+8000, -6000, pi/2, 5] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [+1000, -22000, pi/2] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 MEAS_VARIANCE = 0.01 #already al quadrato -> 3° incertezza -> sigma^2 = (3*2*pi/180)^2
-OPTIMIZATION_ON = True
+OPTIMIZATION_ON = False
 OPTIMIZATION_TIME_STEP = 128 #VA INTESO COME time between each command 
 BASELINE_Y = 1200
-BASELINE_X = 800 #lower in realta is bettter for opt (fake tests)
-INIT_POSE_UNCERTAINTY = 50 #(m)
-INIT_VEL_UNCERTAINTY = 0.01 #(m/s)
+BASELINE_X = 400 #lower in realta is bettter for opt (fake tests)
+INIT_POSE_UNCERTAINTY = 0 #(m)
+INIT_VEL_UNCERTAINTY = 0 #(m/s)
 EKF_MEAS_UPDATE = 4 #(s) delta time tra le misure
 N_AUV = 4
 MAX_TARGET_VEL = 6 #(m/s)
@@ -147,6 +147,8 @@ class Robot:
         self.pose = Pose(0,0,0)
         self.pose_start = Pose(0,0,0)
         self.pose_target =Pose(0,0,0)
+        self.lin_vel_target = 0
+        self.ang_vel_target = 0
 
     def set_start_target_poses(self, pose_start, pose_target):
         """
@@ -188,6 +190,8 @@ class Robot:
             np.cos(self.pose_target.theta) * dt
         self.pose_target.y = self.pose_target.y + linear_velocity * \
             np.sin(self.pose_target.theta) * dt
+        self.ang_vel_target = angular_velocity
+        self.lin_vel_target = linear_velocity
 
     def move(self, dt, heading_changes, count1):
         """
@@ -268,8 +272,8 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
                 rel_bearing.append(rel_bearing1)
     
             platform_pose = np.array([instance.pose.x,instance.pose.y,instance.pose.theta])
-            target_state_real = [instance.pose_target.x,instance.pose_target.y, TARGET_INIT[3]*np.cos(instance.pose_target.theta),
-          TARGET_INIT[3]*np.sin(instance.pose_target.theta)]
+            target_state_real = [instance.pose_target.x,instance.pose_target.y, instance.lin_vel_target*np.cos(instance.pose_target.theta),
+            instance.lin_vel_target*np.sin(instance.pose_target.theta)]
 
         # SIMULATE EKF
         if count1 == 1: #add distrubnace to th initial guess GAUSSIAN DISTURB TO INITIAL STATE
@@ -433,7 +437,7 @@ def main():
     pose_target = Pose(TARGET_INIT[0], TARGET_INIT[1],  TARGET_INIT[2])
     pose_start_1 = Pose(PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1], PLATFORM_INIT_POSE[2])
     target_start = np.array([TARGET_INIT[0],TARGET_INIT[1], TARGET_INIT[2]])
-    target_goal = np.array([5000, 5000,TARGET_INIT[2]+pi/6])
+    target_goal = np.array([5000, 5000,TARGET_INIT[2]-pi/6])
     # Init tracker controller and robots
     tr = []
     tracker1 = tracker.Tracker('first_observer',False, N_AUV)

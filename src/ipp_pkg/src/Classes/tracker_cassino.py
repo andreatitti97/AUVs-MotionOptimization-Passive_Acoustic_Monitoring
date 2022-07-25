@@ -11,12 +11,14 @@ class Tracker:
     The Tracker class is created everytime we detect a target.
     It contains the entire state of the tracked object.
     '''
-    def __init__(self, id, n_auv):
+    def __init__(self, id, n_auv, bool, phi=0, y=0):
 
         self.id  = id
         self.n_auv = n_auv
-      
-        self.__ekf = dekf.Estimator(n_auv)
+        if bool == True:
+            self.__ekf = dekf.Estimator(n_auv, bool, phi, y)
+        else:
+            self.__ekf = dekf.Estimator(n_auv, bool)
         self.__is_initialized = False
         self.__curr_time = 0 
 
@@ -39,16 +41,11 @@ class Tracker:
         self.__curr_time = curr_time
         for i in range(len(table)):
             tmp = table[i]
-            print(tmp)
-            print(tmp[0])
         # Non c'è piu un dt fisso, ma curr time stamps and measu timestamp
-        # Set new F and Q using new dt
             self.__ekf.iteration(tmp[0], tmp[1], tmp[2], tmp[3],self.__curr_time)
         
         for i in range(len(table)):
             tmp = table[i]
-            print(tmp)
-            print(tmp[0])
             if self.__is_initialized:
 
                 self.__ekf.propagation(tmp[0], self.__curr_time)

@@ -12,6 +12,7 @@ from scipy import stats
 import rospy
 from rospy_tutorials.msg import Floats
 from rospy.numpy_msg import numpy_msg
+from random import randrange
 #import matplotlib.pyplot as plt
 # Import Costum classes
 class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
@@ -31,15 +32,15 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 TIME_DURATION = 2900 # (s) c.a. 45 min
 TIME_STEP = 0.01
 TIME_SCALER = 80 # MAX for communication purpose 
-TARGET_INIT = [+8000, -6000, pi/2, 5] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [8000, -6000, pi/2] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
-MEAS_VARIANCE = 0.001 #already al quadrato -> 3° incertezza -> sigma^2 = (3*2*pi/180)^2
+MEAS_VARIANCE = 0.01 #already al quadrato -> 3° incertezza -> sigma^2 = (3*2*pi/180)^2
 OPTIMIZATION_ON = False
 OPTIMIZATION_TIME_STEP = 128 #VA INTESO COME time between each command 
 BASELINE_Y = 1200
-BASELINE_X = 800 #lower in realta is bettter for opt (fake tests)
-INIT_POSE_UNCERTAINTY = 50 #(m)
-INIT_VEL_UNCERTAINTY = 0.01 #(m/s)
+BASELINE_X = 400 #lower in realta is bettter for opt (fake tests)
+INIT_POSE_UNCERTAINTY = 0 #(m)
+INIT_VEL_UNCERTAINTY = 0#0.01 #(m/s)
 EKF_MEAS_UPDATE = 4 #(s) delta time tra le misure
 N_AUV = 4
 MAX_TARGET_VEL = 6 #(m/s)
@@ -147,6 +148,8 @@ class Robot:
         self.pose = Pose(0,0,0)
         self.pose_start = Pose(0,0,0)
         self.pose_target =Pose(0,0,0)
+        self.lin_vel_target = 0
+        self.ang_vel_target = 0
 
     def set_start_target_poses(self, pose_start, pose_target):
         """
@@ -188,6 +191,8 @@ class Robot:
             np.cos(self.pose_target.theta) * dt
         self.pose_target.y = self.pose_target.y + linear_velocity * \
             np.sin(self.pose_target.theta) * dt
+        self.ang_vel_target = angular_velocity
+        self.lin_vel_target = linear_velocity
 
     def move(self, dt, heading_changes, count1):
         """
@@ -279,20 +284,20 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
                     t_meas.append(t) 
                     auv_pose.append(vehicle_pose1)
                     rel_bearing.append(rel_bearing1)
+            if count1 % 25 == 0 or count1 == 1:
+                for i in range(len(measures)): #create a matrix with measuraments and timestamp
+                    tmp = auv_pose[i]
+                    arr = [t_meas[i],measures[i],tmp[0],tmp[1]]
 
-            for i in range(len(measures)): #create a matrix with measuraments and timestamp
-                tmp = auv_pose[i]
-                arr = [t_meas[i],measures[i],tmp[0],tmp[1]]
-
-                meas_table1.append(arr)
-                meas_table2.append(arr)
-                meas_table3.append(arr)
-                meas_table4.append(arr)
+                    meas_table1.append(arr)
+                    meas_table2.append(arr)
+                    meas_table3.append(arr)
+                    meas_table4.append(arr)
 
         
             platform_pose = np.array([instance.pose.x,instance.pose.y,instance.pose.theta])
-            target_state_real = [instance.pose_target.x,instance.pose_target.y, TARGET_INIT[3]*np.cos(instance.pose_target.theta),
-          TARGET_INIT[3]*np.sin(instance.pose_target.theta)]
+            target_state_real = [instance.pose_target.x,instance.pose_target.y, instance.lin_vel_target*np.cos(instance.pose_target.theta),
+            instance.lin_vel_target*np.sin(instance.pose_target.theta)]
 
         # SIMULATE EKF
         if count1 == 1: #add distrubnace to th initial guess GAUSSIAN DISTURB TO INITIAL STATE
@@ -301,30 +306,40 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
             initial_guess = [target_state_real[0] + initial_gaussian_noise, target_state_real[1] + initial_gaussian_noise,
                                 target_state_real[2] + initial_gaussian_noise_vel,
                                     target_state_real[3] + initial_gaussian_noise_vel]
+            for i in range(len(auv)):   
+                obs[i].processMeasurement(initial_guess, meas_table1, t)
 
         if count1 % 4 == 0 or count1 == 1: # each (12 s) and at (0.8 s) first update
 
             for i in range(len(auv)):
                 if i == 0:
-                    meas_table1.pop(3)
-                    obs[i].processMeasurement(initial_guess, meas_table1, t) 
-                if i == 2: 
-                    meas_table3.pop(0)
-                    obs[i].processMeasurement(initial_guess, meas_table3, t)
-                if i == 3:
-                    meas_table4.pop(1)
-                    meas_table4.pop(0)
-                    obs[i].processMeasurement(initial_guess, meas_table4, t)
+                    if len(meas_table1) == 4:
+                        #idx = randrange() #aggiungi per maggiore veridicità ma non urgente 
+                        meas_table1.pop(3)
+                        obs[i].processMeasurement(initial_guess, meas_table1, t) 
                 if i == 1:
-                    meas_table2.pop(2)
-                    obs[i].processMeasurement(initial_guess, meas_table2, t)
+                    if len(meas_table1) == 4:
+                        meas_table2.pop(2)
+                        obs[i].processMeasurement(initial_guess, meas_table2, t)
+
+                if i == 2: 
+                    if len(meas_table3) == 4:
+                        meas_table3.pop(0)
+                        obs[i].processMeasurement(initial_guess, meas_table3, t)
+                if i == 3:
+                    if len(meas_table4) == 4:
+                        meas_table4.pop(1)
+                        meas_table4.pop(0)
+                        obs[i].processMeasurement(initial_guess, meas_table4, t)
+                
 
          #TODO considera covarianze di tutti e stato di tutti pre ottimizzazione
-        curr_est1 = obs[0].state
-        curr_est2 = obs[1].state
+        curr_est1, phi1, y1 = obs[0].state
+        #time.sleep(5)
+        curr_est2, phi2, y2 = obs[1].state
         if N_AUV > 2:
-            curr_est3 = obs[2].state
-            curr_est4 = obs[3].state
+            curr_est3, phi3, y3 = obs[2].state
+            curr_est4, phi4, y4 = obs[3].state
 
         t_axe.append(t)
         est1_x.append(curr_est1[0,0])
@@ -355,11 +370,24 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
             mle_est = [x_realization[-1], y_realization[-1], vx_realization[-1], vy_realization[-1]]
 
             rospy.loginfo('SENDING DATA')
-            pub[0].publish(np.array(mle_est,dtype=np.float32))
+            pub[0].publish(np.array(target_state_real,dtype=np.float32))
             rospy.sleep(TIME_STEP*5)
             pub[1].publish(np.array(platform_pose,dtype=np.float32))
             rospy.sleep(TIME_STEP*5)
-
+            #for i in range(4):
+            #    for j in range(4):
+            tmp1 = phi1[0]
+            tmp2 = phi1[1]
+            tmp3 = phi1[2]
+            tmp4 = phi1[3]
+            phi = [tmp1[0], tmp1[1],tmp1[2],tmp1[3],tmp1[0], tmp2[1],tmp2[2],tmp2[3],tmp2[0], tmp3[1],tmp3[2],tmp3[3],tmp3[0], tmp4[1],tmp4[2],tmp4[3]]
+            print('SENDED PHI:',phi)
+            pub[2].publish(np.array(phi,dtype=np.float32))
+            rospy.sleep(TIME_STEP*5)
+            print('SENDED Y:',y1)
+            pub[3].publish(np.array(y1,dtype=np.float32))
+            print('TARGET REAL REAL FROM MAIN',target_state_real)
+            #print('TARGET EST FROM MAIN',curr_est1)
             cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))
             cmds = cmds.data
             rospy.loginfo('RECEIVED CMDS')
@@ -390,7 +418,7 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
         instance.move(TIME_STEP*TIME_SCALER, cmds, count1)
         instance.move_target(TIME_STEP*TIME_SCALER,poly_traj[count1])
         #################################################################################################################
-        
+        #time.sleep(2)
         if int(t) == (TIME_DURATION-1):
             rospy.loginfo('saving data for plot')
             
@@ -452,10 +480,12 @@ def main():
     pub = []
     pub_estimation = rospy.Publisher('estimation', numpy_msg(Floats), queue_size=10)
     pub_platform_state = rospy.Publisher('platform_state', numpy_msg(Floats), queue_size=100)
-    pub_covariance = rospy.Publisher('covariance_values', numpy_msg(Floats), queue_size=100)
+    pub_regressor = rospy.Publisher('regressor', numpy_msg(Floats), queue_size=100)
+    pub_uscita = rospy.Publisher('output', numpy_msg(Floats), queue_size=100)
     pub.append(pub_estimation)
     pub.append(pub_platform_state)
-    pub.append(pub_covariance)
+    pub.append(pub_regressor)
+    pub.append(pub_uscita)
     # Initial Conditions
     pose_target = Pose(TARGET_INIT[0], TARGET_INIT[1],  TARGET_INIT[2])
     pose_start_1 = Pose(PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1], PLATFORM_INIT_POSE[2])
@@ -463,13 +493,13 @@ def main():
     target_goal = np.array([5000, 5000,TARGET_INIT[2]+pi/6])
     # Init tracker controller and robots
     tr = []
-    tracker1 = tracker.Tracker('first_observer', N_AUV)
-    tracker2 = tracker.Tracker('second_observer', N_AUV)
+    tracker1 = tracker.Tracker('first_observer', N_AUV, False)
+    tracker2 = tracker.Tracker('second_observer', N_AUV, False)
     tr.append(tracker1)
     tr.append(tracker2)
     if N_AUV > 2:
-        tracker3 = tracker.Tracker('third_observer', N_AUV)
-        tracker4 = tracker.Tracker('forth_observer', N_AUV)
+        tracker3 = tracker.Tracker('third_observer', N_AUV, False)
+        tracker4 = tracker.Tracker('forth_observer', N_AUV, False)
         tr.append(tracker3)
         tr.append(tracker4)
     controller1_target = controller.Controller(0.01, 0.1) # controller parameters  (rho,alpha -> gain linear and angul vel) DO NOT CHANGE

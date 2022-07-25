@@ -1,5 +1,5 @@
 #Import basic system modules
-import os
+import os, time
 import pybnb
 # Import math modules
 import numpy as np
@@ -11,7 +11,7 @@ from rospy.numpy_msg import numpy_msg
 # Import costum classes
 import importlib.util
 class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
-spec = importlib.util.spec_from_file_location("module.tracker_optimization", class_path+"/tracker.py")
+spec = importlib.util.spec_from_file_location("module.tracker_optimization", class_path+"/tracker_cassino.py")
 tracker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tracker)
 spec = importlib.util.spec_from_file_location("module.sensor", class_path+"/sensor.py")
@@ -21,10 +21,8 @@ spec.loader.exec_module(sensor)
 spec = importlib.util.spec_from_file_location("module.main2", "/home/andrea/ros_simulation_ws/src/ipp_pkg/src/main.py")
 main = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(main)
-TIME_SCALER = main.TIME_SCALER
 TIME_STEP = main.TIME_STEP
 MEAS_VARIANCE = main.MEAS_VARIANCE
-TARGET_INIT = main.TARGET_INIT
 BASELINE_X = main.BASELINE_X
 BASELINE_Y = main.BASELINE_Y
 tc = main.OPTIMIZATION_TIME_STEP
@@ -38,7 +36,7 @@ t_est_x, t_est_y, auv = [], [], []
 key1, key2, key3, key4, key5 = -pi/12, -pi/15, 0, +pi/15, +pi/12 #before 15 and 18
 DELTA = 10**15
 ctrl_cmd = [key1, key2, key3, key4, key5]
-
+simulation_count = 0
 def sensorPlacement():
     for i in range(N_AUV): #TODO: AUV up to 6 consider
             if (i+1) % 2 == 0:
@@ -63,7 +61,7 @@ class Platform():
         self.y = init_vector[1]
         self.theta = init_vector[2]
         self.vl = 1
-        self.dt = tc/2
+        self.dt = tc/4
     def update_state(self, delta):
 
         self.theta = self.theta + delta
@@ -79,7 +77,7 @@ class Target():
         
         self.vlx = init_vector[2]
         self.vly = init_vector[3]
-        self.dt = tc/2
+        self.dt = tc/4
 
     def update_state(self):
 
@@ -87,49 +85,78 @@ class Target():
         self.y = self.y + self.vly*self.dt
         return [self.x, self.y, self.vlx, self.vly]
 
-def simulation(control_input, target_est, platform_pose, P):
+def simulation(control_input, target_est, platform_pose, phi, y):
+    global simulation_count
 
-    tracker_ = tracker.Tracker('1', True, N_AUV, P)
+    tracker_ = tracker.Tracker('1', N_AUV, True, phi, y)
     platform = Platform(platform_pose)
+    print('INPUT TARGET ESTIMATION',target_est)
     target = Target(target_est)
+    variabile = 0
     
-    for t in range(0,2):
+    for t in range(0,4):
         vehicle_pose = []
-        rel_bearing = []
         measures = []
+        t_meas = []
+        meas_table = []
+        
         if t == 0:
             platform_state = platform.update_state(control_input) 
         else:
             platform_state = platform.update_state(0) 
         target_state = target.update_state()
+        #print('REAL TARGET', target_state)
+        if t == 0 or t == 2:
+            for i in range(len(auv)):
 
-        for i in range(len(auv)):
-
-            auv[i].vehiclePose(platform_state[0], platform_state[1], platform_state[2])
-            auv[i].targetPoseReal(target_state[0], target_state[1], 0)
-            [measure1, vehicle_pose1, rel_bearing1] = auv[i].measureBearing()
-            measures.append(measure1)
-            vehicle_pose.append(vehicle_pose1)
-            rel_bearing.append(rel_bearing1)
-    
+                auv[i].vehiclePose(platform_state[0], platform_state[1], platform_state[2])
+                auv[i].targetPoseReal(target_state[0], target_state[1], 0)
+                [measure1, vehicle_pose1, rel_bearing1] = auv[i].measureBearing()
+                measures.append(measure1)
+                vehicle_pose.append(vehicle_pose1)
+                t_meas.append(tc/4)
+                '''if t == 0:
+                    t_meas.append(tc/4)
+                else:
+                    t_meas.append(3*tc/4)'''
+        
         # update EKF WITH NEW MEASURAMENT
-        tracker_.processMeasurement(measures,target_state, vehicle_pose, tc/2, True)
-    [state, P] = tracker_.state
-    state = [state[0,0], state[1,0], state[2,0], state[3,0]]
-    return state, P, platform_state
+        if t == 1 or t == 3:
+            for i in range(len(measures)): #create a matrix with measuraments and timestamp
 
-def compute_cost(P):
-   
-    cost = np.trace(P)
+                tmp = vehicle_pose[i]
+                arr = [t_meas[i],measures[i],tmp[0],tmp[1]]
+                meas_table.append(arr)
+            tracker_.processMeasurement(target_state, meas_table, tc/4)
+        #print('MEAS TABLE',meas_table)
+        '''
+            if t == 1:
+                tracker_.processMeasurement(target_state, meas_table, tc/2)
+            else: 
+                tracker_.processMeasurement(target_state, meas_table, tc)
+        #t_ += tc/4'''
+        
+    [state, phi, y] = tracker_.state
+    state = [state[0,0], state[1,0], state[2,0], state[3,0]]
+    #print('ESTIMATION:',state)
+    #time.sleep(500)
+    #print('SIMULATION COUNTER ####################',simulation_count)
+    return state, phi, y, platform_state
+
+def compute_cost(phi):
+    print(phi)
+    cost = np.linalg.norm(np.linalg.pinv(phi))*np.linalg.norm(phi)
+    #cost = np.trace(phi)
+    print('cost',cost)
     return cost
 
 class Simple(pybnb.Problem):
-    def __init__(self,x_hat, s, P, initial_cost):
+    def __init__(self,x_hat, s, phi, y,initial_cost):
         # aggiungi un livello per imporre un orizzonte finito 
         self._x_hat = x_hat
-
         self._s = s
-        self._P = P
+        self._phi = [[phi[0],phi[1],phi[2],phi[3]],[phi[4],phi[5],phi[6],phi[7]], [phi[8],phi[9],phi[10],phi[11]],[phi[12], phi[13],phi[14],phi[15]]]
+        self.__y = y
         self.value = initial_cost #fake obj
         self._bound = 0 #lower bound 
         self._objective = 0 #real obj
@@ -147,23 +174,25 @@ class Simple(pybnb.Problem):
         return self._bound
 
     def save_state(self, node):
-        node.state = (self._x_hat, self._s, self._P, self.value, self._bound, self.choices)
+        node.state = (self._x_hat, self._s, self._phi, self.__y, self.value, self._bound, self.choices)
 
     def load_state(self, node):
-        (self._x_hat, self._s, self._P, self.value, self._bound, self.choices) = node.state
+        (self._x_hat, self._s, self._phi, self.__y, self.value, self._bound, self.choices) = node.state
 
     def branch(self): #durante il branch devi calcolare le varie realizzazioni quindi simuli qua
 
-        x_hat, s, P = self._x_hat, self._s, self._P
+        x_hat, s, phi, y = self._x_hat, self._s, self._phi, self.__y
         
-        x1, P1, s1 = simulation(ctrl_cmd[0], x_hat, s, P)
-        x2, P2, s2 = simulation(ctrl_cmd[1], x_hat, s, P)
-        x3, P3, s3 = simulation(ctrl_cmd[2], x_hat, s, P)
-        x4, P4, s4 = simulation(ctrl_cmd[3], x_hat, s, P)
-        x5, P5, s5 = simulation(ctrl_cmd[4], x_hat, s, P)
-
+        x1, phi1, y1, s1 = simulation(ctrl_cmd[0], x_hat, s, phi, y)
+        print('OPT ESTIMATION',x1)
+        #time.sleep(50)
+        x2, phi2, y2, s2 = simulation(ctrl_cmd[1], x_hat, s, phi, y)
+        x3, phi3, y3, s3 = simulation(ctrl_cmd[2], x_hat, s, phi, y)
+        x4, phi4, y4, s4 = simulation(ctrl_cmd[3], x_hat, s, phi, y)
+        x5, phi5, y5, s5 = simulation(ctrl_cmd[4], x_hat, s, phi, y)
+        #time.sleep(50)
         child = pybnb.Node()
-        cost1 = compute_cost(P1)
+        cost1 = compute_cost(phi1)
         
         self.tmp_bound = self._bound
         tmp1 = [ctrl_cmd[0]]
@@ -184,38 +213,36 @@ class Simple(pybnb.Problem):
         father_value = self.value
 
         child1_value = father_value + cost1
-        child.state = (x1, s1, P1, child1_value, self.tmp_bound, choices1)
+        child.state = (x1, s1, phi1, y1, child1_value, self.tmp_bound, choices1)
         yield child
 
-        cost2 = compute_cost(P2)
+        cost2 = compute_cost(phi2)
         child2_value = father_value + cost2
         child = pybnb.Node()
-        child.state = (x2, s2, P2, child2_value, self.tmp_bound, choices2)
+        child.state = (x2, s2, phi2, y2, child2_value, self.tmp_bound, choices2)
         yield child
 
-        cost3 = compute_cost(P3)
+        cost3 = compute_cost(phi3)
         child3_value = father_value + cost3
         child = pybnb.Node()
-        child.state = (x3, s3, P3, child3_value, self.tmp_bound, choices3)
+        child.state = (x3, s3, phi3, y3, child3_value, self.tmp_bound, choices3)
         yield child
         
-        cost4 = compute_cost(P4)
+        cost4 = compute_cost(phi4)
         child4_value = father_value + cost4
         child = pybnb.Node()
-        child.state = (x4, s4, P4, child4_value, self.tmp_bound, choices4)
+        child.state = (x4, s4, phi4, y4, child4_value, self.tmp_bound, choices4)
         yield child
 
-        cost5 = compute_cost(P5)
+        cost5 = compute_cost(phi5)
         child5_value = father_value + cost5
         child = pybnb.Node()
-        child.state = (x5, s5, P5, child5_value, self.tmp_bound, choices5)
+        child.state = (x5, s5, phi5, y5, child5_value, self.tmp_bound, choices5)
         yield child
-
+        print('CHOICES',choices1)
         t_est_x.append(x1[0])
         t_est_y.append(x1[1])
 
-def compute_cost(P):
-    return np.trace(P)
 
 def main():
 
@@ -228,7 +255,7 @@ def main():
     # Init array and cov matrix
     ctrl_opt = []
     ctrl_plot = []
-    P = np.eye((4))
+   
     sensorPlacement() #recreate the AUV displachment
     rospy.loginfo('STARTED OPTIMIZATION')
     
@@ -237,20 +264,16 @@ def main():
         # INIT TARGET MODEL AND PLATFORM MODEL WITH THE LATEST ESTIMATION AND SENSOR POSITIONS 
         t_est = rospy.wait_for_message('/estimation',numpy_msg(Floats))
         s_state = rospy.wait_for_message('/platform_state',numpy_msg(Floats))
-        covariance_values = rospy.wait_for_message('/covariance_values', numpy_msg(Floats))
+        regressor = rospy.wait_for_message('/regressor', numpy_msg(Floats))
+        output = rospy.wait_for_message('/output', numpy_msg(Floats))
         t_est = t_est.data
-
-        
         s_state = s_state.data
-        covariance_values = covariance_values.data
-
-        P = np.matrix([[10, 0, 0, 0], #TODO INITIAL COV VALUE AFTER LAST ESTIMATE - TO CHECK
-                        [0, 10, 0, 0],
-                        [0, 0, 1, 0],
-                        [0, 0, 0, 1]])
+        regressor = regressor.data
+        output = output.data
 
         # Compute the best solution solving the optimization with BnB or Greedy search
-        problem = Simple(t_est, s_state, P, DELTA)
+
+        problem = Simple(t_est, s_state,regressor,output, DELTA)
         solver = pybnb.Solver()
         limit = len(ctrl_cmd)**4 + len(ctrl_cmd)**3 + len(ctrl_cmd)**2 + len(ctrl_cmd)**1 + 1
 
@@ -258,9 +281,9 @@ def main():
         best_node_states = results.best_node.state
 
         # PRINT and PUBLISH results of optimization
-        print(results.best_node)
-        print('NODE CHOICHES:',best_node_states[5])
-        ctrl_opt = best_node_states[5]
+        #print(results.best_node)
+        #print('NODE CHOICHES:',best_node_states[5])
+        ctrl_opt = best_node_states[6]
         pub.publish(np.array(ctrl_opt,dtype=np.float32))
         for i in range(4):
             ctrl_plot.append(ctrl_opt[i])
