@@ -213,8 +213,8 @@ class Robot:
 
         if count2 == N: 
             count2 = 0
-        if count1 >= (N*OPTIMIZATION_TIME_STEP/(TIME_STEP*TIME_SCALER)):
-            if count1%(OPTIMIZATION_TIME_STEP/(TIME_STEP*TIME_SCALER)) == 0: #metti condizione di aspettare
+        if count1 >= (N*TIME_COUNTER):
+            if count1%TIME_COUNTER == 0: #metti condizione di aspettare
                 count2 = count2+1
         
         if prev_count != count2 and OPTIMIZATION_ON == True:
@@ -306,23 +306,24 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
                 if i == 0:
                     if len(meas_table1) == 4:
                         #idx = randrange(1,4)
-                        meas_table1.pop(2)
+                        meas_table1.pop(3)
                         obs[i].processMeasurement(initial_guess, meas_table1, t) 
                          
                 if i == 1:
                     if len(meas_table2) == 4:
                         idx = randrange(2,4)
-                        meas_table2.pop(3)
+                        meas_table2.pop(2)
                         obs[i].processMeasurement(initial_guess, meas_table2, t)
 
                 if i == 2: 
                     if len(meas_table3) == 4:
                         idx = randrange(0,2)
-                        meas_table3.pop(2)
+                        meas_table3.pop(0)
                         obs[i].processMeasurement(initial_guess, meas_table3, t)
                 if i == 3:
                     if len(meas_table4) == 4:
-                        #meas_table4.pop(1)
+                        
+                        meas_table4.pop(1)
                         meas_table4.pop(0)
                         obs[i].processMeasurement(initial_guess, meas_table4, t)
                 
