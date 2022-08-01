@@ -48,7 +48,8 @@ class Sensor:
         #np.random.seed(10)
         self.noise = np.random.uniform(0, self.variance) #can be also normal
         self.abs_bearing = self.abs_bearing + self.noise #overwrite absolute bearing with the corrupted quantities
-    
-        return self.abs_bearing, self.w_pose_s, rel_bearing 
+        #return measure, self.w_pose_s, rel_bearing 
+        rel_bearing = rel_bearing
+        return self.abs_bearing, self.w_pose_s, rel_bearing
 
     
