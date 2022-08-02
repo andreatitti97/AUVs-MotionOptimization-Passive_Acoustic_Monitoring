@@ -3,10 +3,10 @@
 import os
 import time
 import importlib.util
+import copy
 # Import math modules
 from math import pi
 import numpy as np
-import copy
 from scipy import stats
 #Import ROS modules
 import rospy
@@ -25,6 +25,9 @@ spec.loader.exec_module(controller)
 spec = importlib.util.spec_from_file_location("module.sensor", class_path+"/sensor.py")
 sensor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sensor)
+spec = importlib.util.spec_from_file_location("module.robot", class_path+"/robot.py")
+robot = importlib.util.module_from_spec(spec)
+#spec.loader.exec_module(robot)
 # PATH DEFINITON
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 
@@ -32,10 +35,10 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 TIME_DURATION = 2800 # (s) c.a. 45 min
 TIME_STEP = 0.01
 TIME_SCALER = 80 # MAX for communication purpose 
-TARGET_INIT = [8000, -6000, pi/2] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [8000, 8000, -pi/2] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 SIGMA_MEAS = 0.001 # uncertainty = 1° --> sigma^2 = (uncertainty*2*pi/180)^2
-OPTIMIZATION_ON = True
+OPTIMIZATION_ON = False
 OPTIMIZATION_TIME_STEP = 128 #VA INTESO COME time between each command 
 BASELINE_Y = 1200
 BASELINE_X = 400 #lower in realta is bettter for opt (fake tests)
@@ -43,7 +46,7 @@ INIT_POSE_UNCERTAINTY = 50 #(m)
 INIT_VEL_UNCERTAINTY = 0.01 #(m/s)
 EKF_MEAS_UPDATE = 4 #(s) delta time tra le misure
 N_AUV = 4
-MAX_TARGET_VEL = 6 #(m/s)
+MAX_TARGET_VEL = 8 #(m/s)
 MIN_TARGET_VEL = 3 #(m/s)
 TIME_COUNTER = (OPTIMIZATION_TIME_STEP/(TIME_STEP*TIME_SCALER))
 #GLOBAL VARIABLES
@@ -106,13 +109,6 @@ def sensorPlacement(auv):
                         1,0,BASELINE_Y))#freq,mean,variance,displachement
     return auv
 
-def saturateVel(linear_velocity):
-    if -MIN_TARGET_VEL < linear_velocity < MIN_TARGET_VEL:
-        linear_velocity = MIN_TARGET_VEL
-    if linear_velocity >= MAX_TARGET_VEL or linear_velocity <= -MAX_TARGET_VEL:
-        linear_velocity = MAX_TARGET_VEL
-    return np.abs(linear_velocity)
-
 class Pose:
     """2D pose"""
 
@@ -120,6 +116,13 @@ class Pose:
         self.x = x
         self.y = y
         self.theta = theta
+
+def saturateVel(linear_velocity):
+    if -MIN_TARGET_VEL < linear_velocity < MIN_TARGET_VEL:
+        linear_velocity = MIN_TARGET_VEL
+    if linear_velocity >= MAX_TARGET_VEL or linear_velocity <= -MAX_TARGET_VEL:
+        linear_velocity = MAX_TARGET_VEL
+    return np.abs(linear_velocity)
 
 class Robot:
     """
@@ -305,26 +308,40 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
             for i in range(len(auv)):
                 if i == 0:
                     if len(meas_table1) == 4:
-                        #idx = randrange(1,4)
-                        meas_table1.pop(3)
+                        if count1 % 25 == 0:
+                            idx = randrange(1,4)
+                            meas_table1.pop(idx)
                         obs[i].processMeasurement(initial_guess, meas_table1, t) 
                          
                 if i == 1:
                     if len(meas_table2) == 4:
-                        idx = randrange(2,4)
+                        idx = randrange(0,4)
+                        tmp = 0
+                        if idx == 1 and tmp == 0:
+                            tmp = 1
+                            idx = 0
+                        elif idx == 1 and tmp == 1:
+                            tmp = 0
+                            idx = 2
                         meas_table2.pop(2)
                         obs[i].processMeasurement(initial_guess, meas_table2, t)
 
                 if i == 2: 
                     if len(meas_table3) == 4:
-                        idx = randrange(0,2)
-                        meas_table3.pop(0)
+                        idx = randrange(0,4)
+                        tmp = 0
+                        if idx == 2 and tmp == 0:
+                            tmp = 1
+                            idx = 1
+                        elif idx == 1 and tmp == 1:
+                            tmp = 0
+                            idx = 3
+                        meas_table3.pop(idx)
                         obs[i].processMeasurement(initial_guess, meas_table3, t)
                 if i == 3:
                     if len(meas_table4) == 4:
-                        
-                        meas_table4.pop(1)
-                        meas_table4.pop(0)
+                        idx = randrange(0,3)
+                        meas_table4.pop(idx)
                         obs[i].processMeasurement(initial_guess, meas_table4, t)
                 
         # SAVE DATA FOR PLOT
@@ -382,7 +399,7 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
                 vx_realization.append(slope_vx*t_axe[i] + intercept_vx)
                 vy_realization.append(slope_vy*t_axe[i] + intercept_vy)
 
-            mle_est = [x_realization[-1], y_realization[-1], vx_realization[-1], vy_realization[-1]]
+            mle_est = [x_realization[-1], y_realization[-1], 0,0]#TODO check this
             rospy.loginfo('SENDING DATA')
             pub[0].publish(np.array(mle_est,dtype=np.float32))
             rospy.sleep(TIME_STEP*5)
@@ -476,7 +493,7 @@ def main():
     pose_target = Pose(TARGET_INIT[0], TARGET_INIT[1],  TARGET_INIT[2])
     pose_start_1 = Pose(PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1], PLATFORM_INIT_POSE[2])
     target_start = np.array([TARGET_INIT[0],TARGET_INIT[1], TARGET_INIT[2]])
-    target_goal = np.array([5000, 5000,TARGET_INIT[2]])
+    target_goal = np.array([3000, 6000,TARGET_INIT[2]-pi/8])
     # Init tracker controller and robots
     tr = []
     tracker1 = tracker.Tracker('first_observer', N_AUV, False)
@@ -491,6 +508,7 @@ def main():
     controller1_target = controller.Controller(0.01, 0.1) # controller parameters  (rho,alpha -> gain linear and angul vel) DO NOT CHANGE
     controller1_auv = controller.Controller(1, 1)
     robot_1 = Robot("platoform_center", "y", controller1_auv, controller1_target)
+    #robot_1 = robot.Robot("auv_team", "y", controller1_auv, controller1_target)
     auv = []
     # Sensor Initialization
     auv = sensorPlacement(auv)
@@ -498,6 +516,7 @@ def main():
     robot_1.set_start_target_poses(pose_start_1, pose_target)
     # Instantiate the object Robot 
     robots: list[Robot] = [robot_1]
+    # robots: list[robot.Robot] = [robot_1]
     # Generate Trajectory given the target start pos and waypoints
     ts = np.linspace(0,TIME_DURATION+1000,round(TIME_DURATION+1000/(TIME_SCALER*TIME_STEP)))
     [ts, poly_traj, vel, acc] = generatePolynomialTrajectory(ts, target_start, 0, 0, target_goal, 0, 0)

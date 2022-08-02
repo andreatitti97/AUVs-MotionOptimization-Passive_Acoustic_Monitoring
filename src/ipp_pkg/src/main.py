@@ -31,10 +31,10 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 TIME_DURATION = 2900 # (s) c.a. 45 min
 TIME_STEP = 0.01
 TIME_SCALER = 80 # MAX for communication purpose 
-TARGET_INIT = [+1000, -22000, pi/2] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [-8000, -6000, pi/2] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 MEAS_VARIANCE = 0.01 #already al quadrato -> 3° incertezza -> sigma^2 = (3*2*pi/180)^2
-OPTIMIZATION_ON = False
+OPTIMIZATION_ON = True
 OPTIMIZATION_TIME_STEP = 128 #VA INTESO COME time between each command 
 BASELINE_Y = 1200
 BASELINE_X = 400 #lower in realta is bettter for opt (fake tests)
@@ -437,7 +437,7 @@ def main():
     pose_target = Pose(TARGET_INIT[0], TARGET_INIT[1],  TARGET_INIT[2])
     pose_start_1 = Pose(PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1], PLATFORM_INIT_POSE[2])
     target_start = np.array([TARGET_INIT[0],TARGET_INIT[1], TARGET_INIT[2]])
-    target_goal = np.array([5000, 5000,TARGET_INIT[2]-pi/6])
+    target_goal = np.array([-6000, 6000,TARGET_INIT[2]-pi/6])
     # Init tracker controller and robots
     tr = []
     tracker1 = tracker.Tracker('first_observer',False, N_AUV)

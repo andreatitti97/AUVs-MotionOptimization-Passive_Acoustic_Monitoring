@@ -1,10 +1,9 @@
 #Import basic system modules
-from cmath import inf
+
 import os, time
 import pybnb
 # Import math modules
 import numpy as np
-import math
 from math import cos, pi, sin
 # Import ROS modules and Service
 import rospy
@@ -21,7 +20,7 @@ spec = importlib.util.spec_from_file_location("module.sensor", class_path+"/sens
 sensor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sensor)
 # IMPORT GLOBAL VARIABLES FOR SIMULATION
-spec = importlib.util.spec_from_file_location("module.main2", "/home/andrea/ros_simulation_ws/src/ipp_pkg/src/main.py")
+spec = importlib.util.spec_from_file_location("module.main2", "/home/andrea/ros_simulation_ws/src/ipp_pkg/src/main_cassino.py")
 main = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(main)
 TIME_STEP = main.TIME_STEP

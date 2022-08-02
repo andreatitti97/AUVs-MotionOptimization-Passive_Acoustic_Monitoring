@@ -70,10 +70,10 @@ t = np.linspace(0,TIME_DURATION,n_sample)
 plt.plot(s_x_off,s_y_off)
 plt.plot(real_x,real_y,linewidth=5)
 plt.plot(est1_x_OFF,est1_y_OFF,'r')
-plt.plot(est2_x_OFF,est2_y_OFF,'g')
+'''plt.plot(est2_x_OFF,est2_y_OFF,'g')
 if N_AUV > 2:
     plt.plot(est3_x_OFF,est3_y_OFF,'m')
-    plt.plot(est4_x_OFF,est4_y_OFF,'k')
+    plt.plot(est4_x_OFF,est4_y_OFF,'k')'''
 plt.title('SIMULATION - OPTIMIZATION OFF',fontsize=20)
 plt.xlabel('x (m)',fontsize=20)
 plt.ylabel('y (m)',fontsize=20)
@@ -123,7 +123,7 @@ plt.show()
 
 # PLOT THE RESULT OF THE SIMULATION with OPTIMIZATION
 plt.plot(s_x_on,s_y_on)
-plt.plot(real_x,real_y)
+plt.plot(real_x,real_y,linewidth=5)
 plt.plot(est1_x_ON,est1_y_ON,'r')
 plt.plot(est2_x_ON,est2_y_ON,'g')
 if N_AUV > 2:
