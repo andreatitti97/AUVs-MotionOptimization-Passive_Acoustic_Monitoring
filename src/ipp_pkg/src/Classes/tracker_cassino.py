@@ -5,7 +5,6 @@ dekf = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(dekf)
 lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs')
 
-
 class Tracker:
     '''
     The Tracker class is created everytime we detect a target.
@@ -27,27 +26,20 @@ class Tracker:
         return self.__ekf.current_estimate
 
     def processMeasurement(self,target_init, table, curr_time): #table = [tempo, misura, auv pos x, auv pos y]
-        # if this is initialization with the first measurament for setup state vector.
-        if not self.__is_initialized: # non puoi propagare se non hai lo stato iniziale, ora, su cassino non è ben chiaro come
-                                            #si inizializza lo stato, io rimango come con ekf, fornisco un guess iniziale con disturbo.
-          
+        
+        if not self.__is_initialized: 
             vx, vy = target_init[2], target_init[3]
             x0, y0 = target_init[0], target_init[1]
             self.__ekf.init_state_vector(x0,y0, vx, vy, curr_time)
-            #self.__previous_timestamp = measurement_packet.timestamp
-            
             self.__is_initialized = True
             return
         self.__curr_time = curr_time
-        #print('len table:',len(table))
         for i in range(len(table)):
             tmp = table[i]
-        # Non c'è piu un dt fisso, ma curr time stamps and measu timestamp
             self.__ekf.iteration(tmp[0], tmp[1], tmp[2], tmp[3],self.__curr_time)
         for i in range(len(table)):
             tmp = table[i]
             if self.__is_initialized:
-
                 self.__ekf.propagation(tmp[0], self.__curr_time)
 
 

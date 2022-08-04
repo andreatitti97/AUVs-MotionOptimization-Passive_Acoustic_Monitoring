@@ -5,7 +5,6 @@ dekf = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(dekf)
 lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs')
 
-
 class Tracker:
     '''
     The Tracker class is created everytime we detect a target.

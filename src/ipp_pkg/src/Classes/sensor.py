@@ -45,11 +45,8 @@ class Sensor:
             rel_bearing = 2*pi - (theta_tmp - self.abs_bearing)
 
         # Create the noise and add the noise to the measurament
-        #np.random.seed(10)
-        self.noise = np.random.uniform(0, self.variance) #can be also normal
+        self.noise = np.random.uniform(-self.variance, self.variance)
         self.abs_bearing = self.abs_bearing + self.noise #overwrite absolute bearing with the corrupted quantities
-        #return measure, self.w_pose_s, rel_bearing 
-        rel_bearing = rel_bearing
         return self.abs_bearing, self.w_pose_s, rel_bearing
 
     

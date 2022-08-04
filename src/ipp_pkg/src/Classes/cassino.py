@@ -49,8 +49,7 @@ class Estimator:
                               [0,0,1,0],
                               [0,0,0,1]])
 
-        self.__x = self.__F*self.__x#stato attuale aggiornato con le misure ricevute tra il tempo corrente e il tempo dell'ultimo stato
-
+        self.__x = self.__F*self.__x
         self.t_prev = curr_time
         self.target_pose = self.__x
                                 
@@ -68,17 +67,17 @@ class Estimator:
             tmp[i] = self.__y[i]
 
         delta = (t_meas - self.t_prev)
-        self.__C = np.array([np.sin(measures), -np.cos(measures), 0, 0]) #TODO con Cassino non stima la velocità :( (t_meas/curr_t)*
+        self.__C = np.array([np.sin(measures), -np.cos(measures), 0, 0])
         
         self.__phi.append(self.__C)
         if len(self.__phi)>4:
             self.__phi.pop(0)
 
-        self.__x =  np.dot(np.linalg.pinv(self.__phi),tmp) #lo stato al tempo t_meas
+        self.__x =  np.dot(np.linalg.pinv(self.__phi),tmp)
 
         xt = self.target_pose[0]
         yt = self.target_pose[1]
         vx = (self.__x[0] - xt) / delta
         vy = (self.__x[1] - yt) / delta
-        self.__x[2] = vx
-        self.__x[3] = vy
+        #self.__x[2] = vx #TODO: sistema stima vel
+        #self.__x[3] = vy

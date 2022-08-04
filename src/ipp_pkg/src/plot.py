@@ -1,17 +1,19 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import os
-from main import BASELINE_X, TIME_DURATION, N_AUV, BASELINE_Y
+import os, importlib
 from math import pi
 lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
-
+class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
+spec = importlib.util.spec_from_file_location("module.config", class_path+"/config.py")
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
 #LOAD LOG FILES
 # Estimation vs Real (in time)
 est1_x_ON = np.loadtxt(lib_path+'/est1_x_ON.txt')
 est1_y_ON = np.loadtxt(lib_path+'/est1_y_ON.txt')
 est2_x_ON = np.loadtxt(lib_path+'/est2_x_ON.txt')
 est2_y_ON = np.loadtxt(lib_path+'/est2_y_ON.txt')
-if N_AUV > 2:
+if config.N_AUV > 2:
     est3_x_ON = np.loadtxt(lib_path+'/est3_x_ON.txt')
     est3_y_ON = np.loadtxt(lib_path+'/est3_y_ON.txt')
     est4_x_ON = np.loadtxt(lib_path+'/est4_x_ON.txt')
@@ -24,7 +26,7 @@ est1_x_OFF = np.loadtxt(lib_path+'/est1_x_OFF.txt')
 est1_y_OFF = np.loadtxt(lib_path+'/est1_y_OFF.txt')
 est2_x_OFF = np.loadtxt(lib_path+'/est2_x_OFF.txt')
 est2_y_OFF = np.loadtxt(lib_path+'/est2_y_OFF.txt')
-if N_AUV > 2:
+if config.N_AUV > 2:
     est3_x_OFF = np.loadtxt(lib_path+'/est3_x_OFF.txt')
     est3_y_OFF = np.loadtxt(lib_path+'/est3_y_OFF.txt')
     est4_x_OFF = np.loadtxt(lib_path+'/est4_x_OFF.txt')
@@ -42,7 +44,7 @@ auv1_x_on = np.loadtxt(lib_path+'/auv1_x_ON.txt')
 auv1_y_on = np.loadtxt(lib_path+'/auv1_y_ON.txt')
 auv2_x_on = np.loadtxt(lib_path+'/auv2_x_ON.txt')
 auv2_y_on = np.loadtxt(lib_path+'/auv2_y_ON.txt')
-if N_AUV > 2:
+if config.N_AUV > 2:
     auv3_x_on = np.loadtxt(lib_path+'/auv3_x_ON.txt')
     auv3_y_on = np.loadtxt(lib_path+'/auv3_y_ON.txt')
     auv4_x_on = np.loadtxt(lib_path+'/auv4_x_ON.txt')
@@ -54,7 +56,7 @@ auv1_x_off = np.loadtxt(lib_path+'/auv1_x_OFF.txt')
 auv1_y_off = np.loadtxt(lib_path+'/auv1_y_OFF.txt')
 auv2_x_off = np.loadtxt(lib_path+'/auv2_x_OFF.txt')
 auv2_y_off = np.loadtxt(lib_path+'/auv2_y_OFF.txt')
-if N_AUV > 2:
+if config.N_AUV > 2:
     auv3_x_off = np.loadtxt(lib_path+'/auv3_x_OFF.txt')
     auv3_y_off = np.loadtxt(lib_path+'/auv3_y_OFF.txt')
     auv4_x_off = np.loadtxt(lib_path+'/auv4_x_OFF.txt')
@@ -65,15 +67,15 @@ opt_x = np.loadtxt(lib_path+'/t_est_x_opt.txt')
 opt_y = np.loadtxt(lib_path+'/t_est_y_opt.txt')
 # Load temporal vaiables
 n_sample = np.size(est1_x_ON)
-t = np.linspace(0,TIME_DURATION,n_sample)
+t = np.linspace(0,config.TIME_DURATION,n_sample)
 # PLOT THE RESULT OF THE SIMULATION without OPTIMIZATION
 plt.plot(s_x_off,s_y_off)
-plt.plot(real_x,real_y,linewidth=5)
+plt.plot(real_x,real_y,linewidth=2)
 plt.plot(est1_x_OFF,est1_y_OFF,'r')
-'''plt.plot(est2_x_OFF,est2_y_OFF,'g')
-if N_AUV > 2:
+plt.plot(est2_x_OFF,est2_y_OFF,'g')
+if config.N_AUV > 2:
     plt.plot(est3_x_OFF,est3_y_OFF,'m')
-    plt.plot(est4_x_OFF,est4_y_OFF,'k')'''
+    plt.plot(est4_x_OFF,est4_y_OFF,'k')
 plt.title('SIMULATION - OPTIMIZATION OFF',fontsize=20)
 plt.xlabel('x (m)',fontsize=20)
 plt.ylabel('y (m)',fontsize=20)
@@ -87,7 +89,7 @@ plt.gca().add_patch(circle2)
 plt.gca().add_patch(circle3)
 plt.gca().add_patch(circle4)
 plt.gca().add_patch(circle5)
-if N_AUV > 2:
+if config.N_AUV > 2:
     circle6 = plt.Circle((auv3_x_off[0],auv3_y_off[0]),100,color='m')
     circle7 = plt.Circle((auv4_x_off[0],auv4_y_off[0]),100,color='k')
     plt.gca().add_patch(circle6)
@@ -96,7 +98,7 @@ if N_AUV > 2:
 
 
 
-if N_AUV > 2:
+if config.N_AUV > 2:
     plt.legend(['Formation Reference Path','Target Path','AUV1-Target Estimation',
     'AUV2-Target Estimation','AUV3-Target Estimation','AUV4-Target Estimation','OPERATOR LOCATION',
     'Target Start','Formation Reference','AUV1','AUV2','AUV3','AUV4'])
@@ -113,7 +115,7 @@ for i in range(5):
         est1_y_OFF[n_sample-(i+1)*500]],'k--',linewidth=0.5)
     plt.plot(auv1_x_off[n_sample-(i+1)*500],auv1_y_off[n_sample-(i+1)*500],'or')
     plt.plot(auv2_x_off[n_sample-(i+1)*500],auv2_y_off[n_sample-(i+1)*500],'og')
-    if N_AUV > 2:
+    if config.N_AUV > 2:
         plt.plot(auv3_x_off[n_sample-(i+1)*500],auv3_y_off[n_sample-(i+1)*500],'om')
         plt.plot(auv4_x_off[n_sample-(i+1)*500],auv4_y_off[n_sample-(i+1)*500],'ok')
     plt.plot(s_x_off[n_sample-(i+1)*500],s_y_off[n_sample-(i+1)*500],'ob') 
@@ -123,10 +125,10 @@ plt.show()
 
 # PLOT THE RESULT OF THE SIMULATION with OPTIMIZATION
 plt.plot(s_x_on,s_y_on)
-plt.plot(real_x,real_y,linewidth=5)
+plt.plot(real_x,real_y,linewidth=2)
 plt.plot(est1_x_ON,est1_y_ON,'r')
 plt.plot(est2_x_ON,est2_y_ON,'g')
-if N_AUV > 2:
+if config.N_AUV > 2:
     plt.plot(est3_x_ON,est3_y_ON,'m')
     plt.plot(est4_x_ON,est4_y_ON,'k')
 plt.title('SIMULATION - OPTIMIZATION ON',fontsize=20)
@@ -142,15 +144,13 @@ plt.gca().add_patch(circle2)
 plt.gca().add_patch(circle3)
 plt.gca().add_patch(circle4)
 plt.gca().add_patch(circle5)
-if N_AUV > 2:
+if config.N_AUV > 2:
     circle6 = plt.Circle((auv3_x_on[0],auv3_y_on[0]),100,color='m')
     circle7 = plt.Circle((auv4_x_on[0],auv4_y_on[0]),100,color='k')
     plt.gca().add_patch(circle6)
     plt.gca().add_patch(circle7)
 
-
-
-if N_AUV > 2:
+if config.N_AUV > 2:
     plt.legend(['Formation Reference Path','Target Path','AUV1-Target Estimation',
     'AUV2-Target Estimation','AUV3-Target Estimation','AUV4-Target Estimation','OPERATOR LOCATION',
     'Target Start','Formation Reference','AUV1','AUV2','AUV3','AUV4'])
@@ -166,7 +166,7 @@ for i in range(5):
         est1_y_ON[n_sample-(i+1)*500]],'k--',linewidth=0.5)
     plt.plot(auv1_x_on[n_sample-(i+1)*500],auv1_y_on[n_sample-(i+1)*500],'or')
     plt.plot(auv2_x_on[n_sample-(i+1)*500],auv2_y_on[n_sample-(i+1)*500],'og')
-    if N_AUV > 2:
+    if config.N_AUV > 2:
         plt.plot(auv3_x_on[n_sample-(i+1)*500],auv3_y_on[n_sample-(i+1)*500],'om')
         plt.plot(auv4_x_on[n_sample-(i+1)*500],auv4_y_on[n_sample-(i+1)*500],'ok')
     plt.plot(s_x_on[n_sample-(i+1)*500],s_y_on[n_sample-(i+1)*500],'ob')  
@@ -183,7 +183,6 @@ for i in range(len(auv1_x_on)):
     angle = np.arccos(tmp)
     angle = angle*180/pi
     baseline_angle.append(angle)
-
 
 baseline_angle_off = []
 for i in range(len(auv1_x_off)):
@@ -240,7 +239,7 @@ plt.show()
 
 # PLOT ctrl cmds from optimization
 n_sample1 = np.size(ctrl_cmds)
-t1 = np.linspace(640,TIME_DURATION,n_sample1)
+t1 = np.linspace(640,config.TIME_DURATION,n_sample1)
 plt.plot(t1,ctrl_cmds*180/pi,'-ok',markerfacecolor='blue')
 plt.title('HEADING CHANGE COMMANDED',fontsize=20)
 plt.xlabel('Time (s)',fontsize=20)
@@ -259,8 +258,8 @@ err_medio1 = sum1/n_sample
 err_medio2 = sum2/n_sample
 print('ERRORE MEDIO OFF:',err_medio1)
 print('ERRORE MEDIO ON:',err_medio2)
-print('baseline_x:',BASELINE_X)
-print('baseline_y:',BASELINE_Y)
+print('baseline_x:',config.BASELINE_X)
+print('baseline_y:',config.BASELINE_Y)
 # COMPARE RMSE 
 plt.plot(t,err_off[0:n_sample],'y')
 plt.plot(t,err_on[0:n_sample],'b')

@@ -11,6 +11,9 @@ from rospy.numpy_msg import numpy_msg
 # Import costum classes
 import importlib.util
 class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
+spec = importlib.util.spec_from_file_location("module.config", class_path+"/config.py")
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
 spec = importlib.util.spec_from_file_location("module.tracker_optimization", class_path+"/tracker.py")
 tracker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tracker)
@@ -21,14 +24,7 @@ spec.loader.exec_module(sensor)
 spec = importlib.util.spec_from_file_location("module.main2", "/home/andrea/ros_simulation_ws/src/ipp_pkg/src/main.py")
 main = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(main)
-TIME_SCALER = main.TIME_SCALER
-TIME_STEP = main.TIME_STEP
-MEAS_VARIANCE = main.MEAS_VARIANCE
-TARGET_INIT = main.TARGET_INIT
-BASELINE_X = main.BASELINE_X
-BASELINE_Y = main.BASELINE_Y
-tc = main.OPTIMIZATION_TIME_STEP
-N_AUV = main.N_AUV
+
 # FOLDER PATH DEFINITION
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 # Init global variables for callbacks
@@ -40,21 +36,21 @@ DELTA = 10**15
 ctrl_cmd = [key1, key2, key3, key4, key5]
 
 def sensorPlacement():
-    for i in range(N_AUV): #TODO: AUV up to 6 consider
+    for i in range(config.N_AUV): #TODO: AUV up to 6 consider
             if (i+1) % 2 == 0:
                 if i+1 > 3:                    
-                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
-                        -1,BASELINE_X, BASELINE_Y-BASELINE_Y/2))#freq,mean,variance,displachement
+                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
+                        -1,config.BASELINE_X, config.BASELINE_Y-config.BASELINE_Y/2))#freq,mean,variance,displachement
                 else:                 
-                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
-                        -1,0,BASELINE_Y))#freq,mean,variance,displachement
+                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
+                        -1,0,config.BASELINE_Y))#freq,mean,variance,displachement
             if (i+1) % 2 == 1:
                 if i+1 > 2:
-                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
-                        1,BASELINE_X, BASELINE_Y-BASELINE_Y/2))#freq,mean,variance,displachement
+                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
+                        1,config.BASELINE_X, config.BASELINE_Y-config.BASELINE_Y/2))#freq,mean,variance,displachement
                 else:   
-                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
-                        1,0,BASELINE_Y))#freq,mean,variance,displachement
+                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
+                        1,0,config.BASELINE_Y))#freq,mean,variance,displachement
 
 class Platform():
     def __init__(self, init_vector):
@@ -63,7 +59,7 @@ class Platform():
         self.y = init_vector[1]
         self.theta = init_vector[2]
         self.vl = 1
-        self.dt = tc/2
+        self.dt = config.OPTIMIZATION_TIME_STEP/2
     def update_state(self, delta):
 
         self.theta = self.theta + delta
@@ -79,7 +75,7 @@ class Target():
         
         self.vlx = init_vector[2]
         self.vly = init_vector[3]
-        self.dt = tc/2
+        self.dt = config.OPTIMIZATION_TIME_STEP/2
 
     def update_state(self):
 
@@ -89,7 +85,7 @@ class Target():
 
 def simulation(control_input, target_est, platform_pose, P):
 
-    tracker_ = tracker.Tracker('1', True, N_AUV, P)
+    tracker_ = tracker.Tracker('1', True, config.N_AUV, P)
     platform = Platform(platform_pose)
     target = Target(target_est)
     
@@ -113,7 +109,7 @@ def simulation(control_input, target_est, platform_pose, P):
             rel_bearing.append(rel_bearing1)
     
         # update EKF WITH NEW MEASURAMENT
-        tracker_.processMeasurement(measures,target_state, vehicle_pose, tc/2, True)
+        tracker_.processMeasurement(measures,target_state, vehicle_pose, config.OPTIMIZATION_TIME_STEP/2, True)
     [state, P] = tracker_.state
     state = [state[0,0], state[1,0], state[2,0], state[3,0]]
     return state, P, platform_state
@@ -223,7 +219,7 @@ def main():
     # Ros Initialization
     rospy.init_node('optimization')
     pub = rospy.Publisher("ctrl_cmd",numpy_msg(Floats),queue_size=100)
-    Hz = 1/(TIME_STEP)
+    Hz = 1/(config.TIME_STEP)
     rate = rospy.Rate(Hz)
     # Init array and cov matrix
     ctrl_opt = []

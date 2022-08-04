@@ -1,7 +1,7 @@
 #Import basic system modules
-
-import os, time
+import os
 import pybnb
+import importlib.util
 # Import math modules
 import numpy as np
 from math import cos, pi, sin
@@ -9,52 +9,43 @@ from math import cos, pi, sin
 import rospy
 from rospy_tutorials.msg import Floats
 from rospy.numpy_msg import numpy_msg
-import matplotlib.pyplot as plt 
 # Import costum classes
-import importlib.util
 class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
+spec = importlib.util.spec_from_file_location("module.config", class_path+"/config.py")
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
 spec = importlib.util.spec_from_file_location("module.tracker_optimization", class_path+"/tracker_cassino.py")
 tracker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tracker)
 spec = importlib.util.spec_from_file_location("module.sensor", class_path+"/sensor.py")
 sensor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sensor)
-# IMPORT GLOBAL VARIABLES FOR SIMULATION
-spec = importlib.util.spec_from_file_location("module.main2", "/home/andrea/ros_simulation_ws/src/ipp_pkg/src/main_cassino.py")
-main = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(main)
-TIME_STEP = main.TIME_STEP
-MEAS_VARIANCE = 0
-BASELINE_X = main.BASELINE_X
-BASELINE_Y = main.BASELINE_Y
-tc = main.OPTIMIZATION_TIME_STEP
-N_AUV = main.N_AUV
 # FOLDER PATH DEFINITION
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 # Init global variables for callbacks
 platform_state, target_est = [], []
 t_est_x, t_est_y, auv = [], [], []
 # OPTIMIZATION PARAMETERS
-key1, key2, key3, key4, key5 = -pi/12, -pi/15, 0, +pi/15, +pi/12 #before 15 and 18
+key1, key2, key3, key4, key5 = -pi/12, -pi/15, 0, +pi/15, +pi/12
 DELTA = 10**15
 ctrl_cmd = [key1, key2, key3, key4, key5]
 
 def sensorPlacement():
-    for i in range(N_AUV): #TODO: AUV up to 6 consider
+    for i in range(config.N_AUV): #TODO: AUV up to 6 consider
             if (i+1) % 2 == 0:
                 if i+1 > 3:                    
-                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
-                        -1,BASELINE_X, BASELINE_Y-BASELINE_Y/2))#freq,mean,variance,displachement
+                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
+                        -1,config.BASELINE_X, config.BASELINE_Y-config.BASELINE_Y/2))#freq,mean,variance,displachement
                 else:                 
-                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
-                        -1,0,BASELINE_Y))#freq,mean,variance,displachement
+                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
+                        -1,0,config.BASELINE_Y))#freq,mean,variance,displachement
             if (i+1) % 2 == 1:
                 if i+1 > 2:
-                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
-                        1,BASELINE_X, BASELINE_Y-BASELINE_Y/2))#freq,mean,variance,displachement
+                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
+                        1,config.BASELINE_X, config.BASELINE_Y-config.BASELINE_Y/2))#freq,mean,variance,displachement
                 else:   
-                    auv.append(sensor.Sensor(str(i),1,0,MEAS_VARIANCE,
-                        1,0,BASELINE_Y))#freq,mean,variance,displachement
+                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
+                        1,0,config.BASELINE_Y))#freq,mean,variance,displachement
 
 class Platform():
     def __init__(self, init_vector):
@@ -63,7 +54,7 @@ class Platform():
         self.y = init_vector[1]
         self.theta = init_vector[2]
         self.vl = 1
-        self.dt = tc/8
+        self.dt = config.OPTIMIZATION_TIME_STEP/8
     def update_state(self, delta):
 
         self.theta = self.theta + delta
@@ -80,7 +71,7 @@ class Target():
         self.vlx = init_vector[2]
         self.vly = init_vector[3]
         
-        self.dt = tc/8
+        self.dt = config.OPTIMIZATION_TIME_STEP/8
 
     def update_state(self):
 
@@ -90,7 +81,7 @@ class Target():
 
 def simulation(control_input, target_est, platform_pose, phi, y):
 
-    tracker_ = tracker.Tracker('1', N_AUV, True, phi, y)
+    tracker_ = tracker.Tracker('1', config.N_AUV, True, phi, y)
     platform = Platform(platform_pose)
     target = Target(target_est)
     variable = 0
@@ -129,7 +120,7 @@ def simulation(control_input, target_est, platform_pose, phi, y):
             tracker_.processMeasurement(target_state, meas_table, variable)
         [state, phi, y] = tracker_.state
 
-        variable += tc/8
+        variable += config.OPTIMIZATION_TIME_STEP/8
     [state, phi, y] = tracker_.state
     state = [state[0,0], state[1,0], state[2,0], state[3,0]]
 
@@ -138,9 +129,9 @@ def simulation(control_input, target_est, platform_pose, phi, y):
 def compute_cost(phi):
 
     phi_ = []
-    for i in range(N_AUV):        
+    for i in range(config.N_AUV):        
         tmp = phi[i]
-        for j in range(N_AUV):
+        for j in range(config.N_AUV):
             phi_.append(tmp[j])
     mat = np.matrix([[phi_[0], phi_[1]],
     [phi_[4], phi_[5]],
@@ -254,7 +245,7 @@ def main():
     # Ros Initialization
     rospy.init_node('optimization')
     pub = rospy.Publisher("ctrl_cmd",numpy_msg(Floats),queue_size=100)
-    Hz = 1/(TIME_STEP)
+    Hz = 1/(config.TIME_STEP)
     rate = rospy.Rate(Hz)
     # Init array and cov matrix
     ctrl_opt = []

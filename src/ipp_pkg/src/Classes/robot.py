@@ -1,29 +1,20 @@
-import os
-import importlib.util
+import os 
+import importlib
 import numpy as np
 import copy
-from src.main_cassino import MIN_TARGET_VEL, OPTIMIZATION_ON
-# IMPORT GLOBAL VARIABLES FOR SIMULATION
-spec = importlib.util.spec_from_file_location("module.main_cassino", "/home/andrea/ros_simulation_ws/src/ipp_pkg/src/main_cassino.py")
-main = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(main)
-TIME_STEP = main.TIME_STEP
-TIME_COUNTER = main.TIME_COUNTER
-OPTIMIZATION_ON = main.OPTIMIZATION_ON
-MIN_TARGET_VEL = main.MIN_TARGET_VEL
-MAX_TARGET_VEL = main.MAX_TARGET_VEL
-Pose = main.Pose
-target_x_traj = main.target_x_traj
-target_y_traj = main.target_y_traj
-N = main
-platform_x = main.platform_x
-platform_y = main.platform_y
+class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
+spec = importlib.util.spec_from_file_location("module.config", class_path+"/config.py")
+config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(config)
+
+count2, prev_count = 0, 0
+goal_theta, old_pose = 0, 0
 
 def saturateVel(linear_velocity):
-    if -MIN_TARGET_VEL < linear_velocity < MIN_TARGET_VEL:
-        linear_velocity = MIN_TARGET_VEL
-    if linear_velocity >= MAX_TARGET_VEL or linear_velocity <= -MAX_TARGET_VEL:
-        linear_velocity = MAX_TARGET_VEL
+    if config.MIN_TARGET_VEL < linear_velocity < config.MIN_TARGET_VEL:
+        linear_velocity = config.MIN_TARGET_VEL
+    if linear_velocity >= config.MAX_TARGET_VEL or linear_velocity <= -config.MAX_TARGET_VEL:
+        linear_velocity = config.MAX_TARGET_VEL
     return np.abs(linear_velocity)
 
 class Robot:
@@ -51,9 +42,9 @@ class Robot:
         self.color = color
         self.auv_controller = path_finder_controller_auv
         self.target_controller = path_finder_controller_target
-        self.pose = Pose(0,0,0)
-        self.pose_start = Pose(0,0,0)
-        self.pose_target =Pose(0,0,0)
+        self.pose = config.Pose(0,0,0)
+        self.pose_start = config.Pose(0,0,0)
+        self.pose_target = config.Pose(0,0,0)
         self.lin_vel_target = 0
         self.ang_vel_target = 0
 
@@ -81,10 +72,8 @@ class Robot:
         dt : (float)
             time step
         """
-        global count1
-        target_x_traj.append(self.pose_target.x)
-        target_y_traj.append(self.pose_target.y)
-
+        #global count1
+    
         linear_velocity, angular_velocity = \
             self.target_controller .calc_control_command(
                 curr_goal[0] - self.pose_target.x,
@@ -111,18 +100,15 @@ class Robot:
             requested heading change
         """
         global count2, prev_count, goal_theta, old_pose
-        
-        platform_x.append(self.pose.x)
-        platform_y.append(self.pose.y)
         flag = False
-
+        N = 1
         if count2 == N: 
             count2 = 0
-        if count1 >= (N*TIME_COUNTER):
-            if count1%TIME_COUNTER == 0: #metti condizione di aspettare
+        if count1 >= (N*config.TIME_COUNTER):
+            if count1%config.TIME_COUNTER == 0: #metti condizione di aspettare
                 count2 = count2+1
         
-        if prev_count != count2 and OPTIMIZATION_ON == True:
+        if prev_count != count2 and config.OPTIMIZATION_ON == True:
             print("RECEVEID NEW HEADING:*******************************************************************************", count2)
             heading_change = heading_changes[count2-1]
             if heading_change == 0:
@@ -146,5 +132,5 @@ class Robot:
         self.pose.y = self.pose.y + linear_velocity * \
             np.sin(self.pose.theta) * dt
         # If theta reached be ready for the new cmd
-        if (self.pose.theta == goal_theta or flag == True) and OPTIMIZATION_ON==True:         
+        if (self.pose.theta == goal_theta or flag == True) and config.OPTIMIZATION_ON==True:         
             prev_count = count2
