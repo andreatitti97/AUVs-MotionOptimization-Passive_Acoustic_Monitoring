@@ -15,7 +15,8 @@ class Estimator:
         Each object being tracked will result in the creation of a new ExtendedKalmanFilter instance.
         '''
         self.__x = None
-        if bool == True:
+        self.__bool = bool
+        if self.__bool == True:
             self.__phi = phi
             self.__y = y
         else:
@@ -59,8 +60,12 @@ class Estimator:
         if self.__bool == True:
             self.__y = [self.__y[0], self.__y[1], self.__y[2], self.__y[3]]
         self.__y.append(auv_position_x*np.sin(measures) - auv_position_y*np.cos(measures))
-        if len(self.__y) > 4:
-            self.__y.pop(0)
+        if self.__bool == True:
+            if len(self.__y) > 4:
+                self.__y.pop(0)
+        else:
+            if len(self.__y) > 8:
+                self.__y.pop(0)
 
         tmp = np.zeros((len(self.__y),1))
         for i in range(len(self.__y)):
@@ -70,14 +75,19 @@ class Estimator:
         self.__C = np.array([np.sin(measures), -np.cos(measures), 0, 0])
         
         self.__phi.append(self.__C)
-        if len(self.__phi)>4:
-            self.__phi.pop(0)
+        if self.__bool == True:
+            if len(self.__phi) > 4:
+                self.__phi.pop(0)
+        else:
+            if len(self.__phi) > 8:
+                self.__phi.pop(0)    
 
         self.__x =  np.dot(np.linalg.pinv(self.__phi),tmp)
 
-        xt = self.target_pose[0]
-        yt = self.target_pose[1]
-        vx = (self.__x[0] - xt) / delta
-        vy = (self.__x[1] - yt) / delta
+        #xt = self.target_pose[0]
+        #yt = self.target_pose[1]
+        #TODO check vel estimation
+        #vx = (self.__x[0] - xt) / delta
+        #vy = (self.__x[1] - yt) / delta
         #self.__x[2] = vx #TODO: sistema stima vel
         #self.__x[3] = vy

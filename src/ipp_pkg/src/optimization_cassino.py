@@ -33,19 +33,36 @@ ctrl_cmd = [key1, key2, key3, key4, key5]
 def sensorPlacement():
     for i in range(config.N_AUV): #TODO: AUV up to 6 consider
             if (i+1) % 2 == 0:
-                if i+1 > 3:                    
-                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
+                if i+1 > 3:
+                    auv.append(sensor.Sensor(str(i),1,0,0,
                         -1,config.BASELINE_X, config.BASELINE_Y-config.BASELINE_Y/2))#freq,mean,variance,displachement
-                else:                 
-                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
+                else:   
+                    auv.append(sensor.Sensor(str(i),1,0,0,
                         -1,0,config.BASELINE_Y))#freq,mean,variance,displachement
             if (i+1) % 2 == 1:
                 if i+1 > 2:
-                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
-                        1,config.BASELINE_X, config.BASELINE_Y-config.BASELINE_Y/2))#freq,mean,variance,displachement
+                    auv.append(sensor.Sensor(str(i),1,0,0,1,
+                        config.BASELINE_X, config.BASELINE_Y-config.BASELINE_Y/2))#freq,mean,variance,displachement
                 else:   
-                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
+                    auv.append(sensor.Sensor(str(i),1,0,0,
                         1,0,config.BASELINE_Y))#freq,mean,variance,displachement
+
+def sensorPlacement2():
+    for i in range(config.N_AUV): #TODO: AUV up to 6 consider
+            if (i+1) % 2 == 0:
+                if i+1 > 3:
+                    auv.append(sensor.Sensor(str(i),1,0,0,
+                        -1,0, config.BASELINE_Y/2))#freq,mean,variance,displachement
+                else:   
+                    auv.append(sensor.Sensor(str(i),1,0,0,
+                        -1,0,config.BASELINE_Y/2))#freq,mean,variance,displachement
+            if (i+1) % 2 == 1:
+                if i+1 > 2:
+                    auv.append(sensor.Sensor(str(i),1,0,0,1,
+                        0, config.BASELINE_Y/2))#freq,mean,variance,displachement
+                else:   
+                    auv.append(sensor.Sensor(str(i),1,0,0,
+                        1,0,config.BASELINE_Y/2))#freq,mean,variance,displachement
 
 class Platform():
     def __init__(self, init_vector):
@@ -99,7 +116,7 @@ def simulation(control_input, target_est, platform_pose, phi, y):
             platform_state = platform.update_state(0) 
         target_state = target.update_state()
         #print('REAL TARGET', target_state)
-        if t == 0 or t == 2 or t == 4 or t == 6:
+        if t % 2 == 0:
             for i in range(len(auv)):
 
                 auv[i].vehiclePose(platform_state[0], platform_state[1], platform_state[2])
@@ -111,7 +128,7 @@ def simulation(control_input, target_est, platform_pose, phi, y):
                 t_meas.append(variable)
 
         # update EKF WITH NEW MEASURAMENT
-        if t == 1 or t == 3 or t == 5 or t == 7:
+        if t % 2 == 1:
             for i in range(len(auv)): #create a matrix with measuraments and timestamp
 
                 tmp = vehicle_pose[i]
@@ -250,8 +267,12 @@ def main():
     # Init array and cov matrix
     ctrl_opt = []
     ctrl_plot = []
-   
-    sensorPlacement() #recreate the AUV displachment
+
+    if config.ALONG_BAR_FORMATION == True:
+        sensorPlacement2() #recreate the AUV displachment
+    else:
+        sensorPlacement()
+
     rospy.loginfo('STARTED OPTIMIZATION')
     
     while not rospy.is_shutdown():

@@ -19,10 +19,12 @@ class Sensor:
         self.theta_v = theta_v
         x_v = x_v + self.baseline_x*np.cos(self.theta_v)
         y_v = y_v + self.baseline_x*np.sin(self.theta_v)
-        self.w_pose_s = np.array([(x_v+np.sin(self.theta_v)*self.baseline/2)+np.cos(self.theta_v)*self.lin_vel,
-                                    (y_v-np.cos(self.theta_v)*self.baseline/2)+np.sin(self.theta_v)*self.lin_vel,
+        self.w_pose_s = np.array([(x_v+np.sin(self.theta_v)*self.baseline/2),
+                                    (y_v-np.cos(self.theta_v)*self.baseline/2),
                                         self.theta_v])
- 
+# +np.cos(self.theta_v)*self.lin_vel
+# +np.sin(self.theta_v)*self.lin_vel
+
     def targetPoseReal(self, x_t, y_t, theta_t=0):#w.r.t. the  <w>
         self.w_pose_t = np.transpose([x_t, y_t, theta_t])
 

@@ -71,22 +71,25 @@ t = np.linspace(0,config.TIME_DURATION,n_sample)
 # PLOT THE RESULT OF THE SIMULATION without OPTIMIZATION
 plt.plot(s_x_off,s_y_off)
 plt.plot(real_x,real_y,linewidth=2)
+
 plt.plot(est1_x_OFF,est1_y_OFF,'r')
-plt.plot(est2_x_OFF,est2_y_OFF,'g')
-if config.N_AUV > 2:
-    plt.plot(est3_x_OFF,est3_y_OFF,'m')
-    plt.plot(est4_x_OFF,est4_y_OFF,'k')
+#plt.plot(est2_x_OFF,est2_y_OFF,'g')
+#if config.N_AUV > 2:
+#    plt.plot(est3_x_OFF,est3_y_OFF,'m')
+#    plt.plot(est4_x_OFF,est4_y_OFF,'k')
 plt.title('SIMULATION - OPTIMIZATION OFF',fontsize=20)
 plt.xlabel('x (m)',fontsize=20)
 plt.ylabel('y (m)',fontsize=20)
-circle1 = plt.Circle((2000,0),50,color='grey')
-circle2 = plt.Circle((real_x[0],real_y[0]),100,color='y')
+plt.arrow(real_x[500],real_y[500],-450, 300,width=250,color='y')
+plt.arrow(s_x_off[500],s_y_off[500],30,0,width=50,color='b')
+circle1 = plt.Circle((2000,-1000),400,color='grey')
+#circle2 = plt.Circle((real_x[0],real_y[0]),100,color='y')
 circle3 = plt.Circle((s_x_off[0],s_y_off[0]),100,color='b')
 circle4 = plt.Circle((auv1_x_off[0],auv1_y_off[0]),100,color='r')
 circle5 = plt.Circle((auv2_x_off[0],auv2_y_off[0]),100,color='g')
 plt.gca().add_patch(circle1)
-plt.gca().add_patch(circle2)
-plt.gca().add_patch(circle3)
+#plt.gca().add_patch(circle2)
+
 plt.gca().add_patch(circle4)
 plt.gca().add_patch(circle5)
 if config.N_AUV > 2:
@@ -95,30 +98,30 @@ if config.N_AUV > 2:
     plt.gca().add_patch(circle6)
     plt.gca().add_patch(circle7)
 
-
-
-
 if config.N_AUV > 2:
-    plt.legend(['Formation Reference Path','Target Path','AUV1-Target Estimation',
-    'AUV2-Target Estimation','AUV3-Target Estimation','AUV4-Target Estimation','OPERATOR LOCATION',
-    'Target Start','Formation Reference','AUV1','AUV2','AUV3','AUV4'])
+    plt.legend(['Formation Reference Path','Target Path','AUV1 - ESTIMATION','TARGET START - DIRECTION','FORMATION REFERENCE START','OPERATOR LOCATION',
+    'AUV1','AUV2','AUV3','AUV4'])
 else:
     plt.legend(['Formation Reference Path','Target Path','AUV1-Target Estimation',
     'AUV2-Target Estimation','OPERATOR LOCATION',
     'Target Start','Formation Reference','AUV1','AUV2'])
-
-for i in range(5):
+plt.gca().add_patch(circle3)
+plt.plot(auv1_x_off, auv1_y_off, 'r')
+plt.plot(auv2_x_off, auv2_y_off, 'g')
+plt.plot(auv3_x_off, auv3_y_off, 'm')
+plt.plot(auv4_x_off, auv4_y_off, 'k')
+for i in range(10):
     
     plt.plot([auv1_x_off[n_sample-(i+1)*500],
         est1_x_OFF[n_sample-(i+1)*500]],[auv1_y_off[n_sample-(i+1)*500],est1_y_OFF[n_sample-(i+1)*500]],'k--',linewidth=0.5)
     plt.plot([auv2_x_off[n_sample-(i+1)*500],est1_x_OFF[n_sample-(i+1)*500]],[auv2_y_off[n_sample-(i+1)*500],
         est1_y_OFF[n_sample-(i+1)*500]],'k--',linewidth=0.5)
-    plt.plot(auv1_x_off[n_sample-(i+1)*500],auv1_y_off[n_sample-(i+1)*500],'or')
-    plt.plot(auv2_x_off[n_sample-(i+1)*500],auv2_y_off[n_sample-(i+1)*500],'og')
+    plt.plot(auv1_x_off[n_sample-(i+1)*500],auv1_y_off[n_sample-(i+1)*500],'or', linewidth=10)
+    plt.plot(auv2_x_off[n_sample-(i+1)*500],auv2_y_off[n_sample-(i+1)*500],'og', linewidth=10)
     if config.N_AUV > 2:
-        plt.plot(auv3_x_off[n_sample-(i+1)*500],auv3_y_off[n_sample-(i+1)*500],'om')
-        plt.plot(auv4_x_off[n_sample-(i+1)*500],auv4_y_off[n_sample-(i+1)*500],'ok')
-    plt.plot(s_x_off[n_sample-(i+1)*500],s_y_off[n_sample-(i+1)*500],'ob') 
+        plt.plot(auv3_x_off[n_sample-(i+1)*500],auv3_y_off[n_sample-(i+1)*500],'om', linewidth=10)
+        plt.plot(auv4_x_off[n_sample-(i+1)*500],auv4_y_off[n_sample-(i+1)*500],'ok', linewidth=10)
+    plt.plot(s_x_off[n_sample-(i+1)*500],s_y_off[n_sample-(i+1)*500],'ob', linewidth=10) 
 plt.axis('equal')
 plt.grid()
 plt.show()
@@ -127,20 +130,20 @@ plt.show()
 plt.plot(s_x_on,s_y_on)
 plt.plot(real_x,real_y,linewidth=2)
 plt.plot(est1_x_ON,est1_y_ON,'r')
-plt.plot(est2_x_ON,est2_y_ON,'g')
-if config.N_AUV > 2:
-    plt.plot(est3_x_ON,est3_y_ON,'m')
-    plt.plot(est4_x_ON,est4_y_ON,'k')
+#plt.plot(est2_x_ON,est2_y_ON,'g')
+#if config.N_AUV > 2:
+#    plt.plot(est3_x_ON,est3_y_ON,'m')
+#    plt.plot(est4_x_ON,est4_y_ON,'k')
 plt.title('SIMULATION - OPTIMIZATION ON',fontsize=20)
 plt.xlabel('x (m)',fontsize=20)
 plt.ylabel('y (m)',fontsize=20)
-circle1 = plt.Circle((2000,0),50,color='grey')
-circle2 = plt.Circle((real_x[0],real_y[0]),100,color='y')
+plt.arrow(real_x[500],real_y[500],-450,350,width=250,color='y')
+circle1 = plt.Circle((2000,0),100,color='grey')
 circle3 = plt.Circle((s_x_on[0],s_y_on[0]),100,color='b')
 circle4 = plt.Circle((auv1_x_on[0],auv1_y_on[0]),100,color='r')
 circle5 = plt.Circle((auv2_x_on[0],auv2_y_on[0]),100,color='g')
 plt.gca().add_patch(circle1)
-plt.gca().add_patch(circle2)
+#plt.gca().add_patch(circle2)
 plt.gca().add_patch(circle3)
 plt.gca().add_patch(circle4)
 plt.gca().add_patch(circle5)
@@ -151,24 +154,27 @@ if config.N_AUV > 2:
     plt.gca().add_patch(circle7)
 
 if config.N_AUV > 2:
-    plt.legend(['Formation Reference Path','Target Path','AUV1-Target Estimation',
-    'AUV2-Target Estimation','AUV3-Target Estimation','AUV4-Target Estimation','OPERATOR LOCATION',
-    'Target Start','Formation Reference','AUV1','AUV2','AUV3','AUV4'])
+    plt.legend(['Formation Reference Path','Target Path','AUV1-Target Estimation','TARGET START - DIRECTION','OPERATOR LOCATION',
+    'Formation Reference','AUV1','AUV2','AUV3','AUV4'])
 else:
     plt.legend(['Formation Reference Path','Target Path','AUV1-Target Estimation',
     'AUV2-Target Estimation','OPERATOR LOCATION',
     'Target Start','Formation Reference','AUV1','AUV2'])
-for i in range(5):
+plt.plot(auv1_x_on, auv1_y_on, 'r')
+plt.plot(auv2_x_on, auv2_y_on, 'g')
+plt.plot(auv3_x_on, auv3_y_on, 'm')
+plt.plot(auv4_x_on, auv4_y_on, 'k')
+for i in range(10):
     
     plt.plot([auv1_x_on[n_sample-(i+1)*500],
         est1_x_ON[n_sample-(i+1)*500]],[auv1_y_on[n_sample-(i+1)*500],est1_y_ON[n_sample-(i+1)*500]],'k--',linewidth=0.5)
     plt.plot([auv2_x_on[n_sample-(i+1)*500],est1_x_ON[n_sample-(i+1)*500]],[auv2_y_on[n_sample-(i+1)*500],
         est1_y_ON[n_sample-(i+1)*500]],'k--',linewidth=0.5)
-    plt.plot(auv1_x_on[n_sample-(i+1)*500],auv1_y_on[n_sample-(i+1)*500],'or')
-    plt.plot(auv2_x_on[n_sample-(i+1)*500],auv2_y_on[n_sample-(i+1)*500],'og')
+    plt.plot(auv1_x_on[n_sample-(i+1)*500],auv1_y_on[n_sample-(i+1)*500],'or',linewidth=10)
+    plt.plot(auv2_x_on[n_sample-(i+1)*500],auv2_y_on[n_sample-(i+1)*500],'og',linewidth=10)
     if config.N_AUV > 2:
-        plt.plot(auv3_x_on[n_sample-(i+1)*500],auv3_y_on[n_sample-(i+1)*500],'om')
-        plt.plot(auv4_x_on[n_sample-(i+1)*500],auv4_y_on[n_sample-(i+1)*500],'ok')
+        plt.plot(auv3_x_on[n_sample-(i+1)*500],auv3_y_on[n_sample-(i+1)*500],'om',linewidth=10)
+        plt.plot(auv4_x_on[n_sample-(i+1)*500],auv4_y_on[n_sample-(i+1)*500],'ok',linewidth=10)
     plt.plot(s_x_on[n_sample-(i+1)*500],s_y_on[n_sample-(i+1)*500],'ob')  
 plt.axis('equal')
 plt.grid()
@@ -267,8 +273,8 @@ plt.legend(['optimization OFF','optimization ON'])
 plt.title('ESTIMATION PERFORMANCES COMPARISON')
 plt.xlabel('Time (s)',fontsize=20)
 plt.ylabel('RMSE (m)',fontsize=20)
-plt.text(t[100], err_off[300]+400, 'ERRORE MEDIO OFF:'+str(err_medio1), fontsize=15, color='y')
-plt.text(t[100], err_off[300]+450, 'ERRORE MEDIO ON:'+str(err_medio2), fontsize=15, color='b')
+plt.text(t[100], err_off[300]+600, 'ERRORE MEDIO OFF:'+str(err_medio1), fontsize=15, color='y')
+plt.text(t[100], err_off[300]+800, 'ERRORE MEDIO ON:'+str(err_medio2), fontsize=15, color='b')
 plt.grid()
 plt.show()
 

@@ -254,7 +254,7 @@ def main():
     pose_target = config.Pose(config.TARGET_INIT[0], config.TARGET_INIT[1],  config.TARGET_INIT[2])
     pose_start_1 = config.Pose(config.PLATFORM_INIT_POSE[0], config.PLATFORM_INIT_POSE[1], config.PLATFORM_INIT_POSE[2])
     target_start = np.array([config.TARGET_INIT[0],config.TARGET_INIT[1], config.TARGET_INIT[2]])
-    target_goal = np.array([-6000, 6000,config.TARGET_INIT[2]-pi/6])
+    target_goal = np.array([-6000, 6000,config.TARGET_INIT[2]])
     # Init tracker controller and robots
     tr = []
     tracker1 = tracker.Tracker('first_observer',False, config.N_AUV)

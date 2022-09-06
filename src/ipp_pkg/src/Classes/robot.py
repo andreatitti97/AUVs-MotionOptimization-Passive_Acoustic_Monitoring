@@ -2,6 +2,7 @@ import os
 import importlib
 import numpy as np
 import copy
+import time
 class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
 spec = importlib.util.spec_from_file_location("module.config", class_path+"/config.py")
 config = importlib.util.module_from_spec(spec)
@@ -9,7 +10,7 @@ spec.loader.exec_module(config)
 
 count2, prev_count = 0, 0
 goal_theta, old_pose = 0, 0
-
+angular_velocity = 0
 def saturateVel(linear_velocity):
     if config.MIN_TARGET_VEL < linear_velocity < config.MIN_TARGET_VEL:
         linear_velocity = config.MIN_TARGET_VEL
@@ -45,6 +46,8 @@ class Robot:
         self.pose = config.Pose(0,0,0)
         self.pose_start = config.Pose(0,0,0)
         self.pose_target = config.Pose(0,0,0)
+        self.lin_vel = 2
+        self.ang_vel = 0
         self.lin_vel_target = 0
         self.ang_vel_target = 0
 
@@ -99,38 +102,48 @@ class Robot:
         heading_changes : (float)
             requested heading change
         """
-        global count2, prev_count, goal_theta, old_pose
-        flag = False
-        N = 1
-        if count2 == N: 
+        global count2, prev_count, goal_theta, old_pose, angular_velocity
+        self.lin_vel = 2
+        if count2 == config.N: 
             count2 = 0
-        if count1 >= (N*config.TIME_COUNTER):
-            if count1%config.TIME_COUNTER == 0: #metti condizione di aspettare
-                count2 = count2+1
+
+        if count1%config.TIME_COUNTER == 0 and count1 >= config.TIME_COUNTER: #and count1 >= config.TIME_COUNTER
+            count2 = count2+1
         
         if prev_count != count2 and config.OPTIMIZATION_ON == True:
-            print("RECEVEID NEW HEADING:*******************************************************************************", count2)
-            heading_change = heading_changes[count2-1]
-            if heading_change == 0:
-                flag = True
-            if count2 > 0:
-                goal_theta = heading_change + old_pose
+            print("RECEVEID NEW HEADING:*******************************************************************************")
+            heading_change = heading_changes[0] #apply only the first command (MPC paradigm)
+
+            goal_theta = heading_change + old_pose
             linear_velocity, angular_velocity = \
             self.auv_controller.calc_control_command(
                 0,
                 0,
                 self.pose.theta, goal_theta)
+            self.ang_vel = angular_velocity
+            #self.lin_vel = linear_velocity
         else:
-        
-            angular_velocity = 0
+            
             old_pose = self.pose.theta
         # Update State 
-        linear_velocity = 1
-        self.pose.theta = (self.pose.theta + angular_velocity)
-        self.pose.x = self.pose.x + linear_velocity * \
+
+        self.pose.theta = (self.pose.theta + self.ang_vel)
+        self.pose.x = self.pose.x + self.lin_vel * \
             np.cos(self.pose.theta) * dt 
-        self.pose.y = self.pose.y + linear_velocity * \
+        self.pose.y = self.pose.y + self.lin_vel * \
             np.sin(self.pose.theta) * dt
+        
+        if self.ang_vel > 0:
+            print('ang vel', self.ang_vel)
+            print('old pose',old_pose)
+            print('pose',self.pose.theta)
+            print('goal_theta',goal_theta)
+            print('difference',np.abs(np.round(goal_theta,2) - np.round(self.pose.theta,2)))
+            #time.sleep(1)
         # If theta reached be ready for the new cmd
-        if (self.pose.theta == goal_theta or flag == True) and config.OPTIMIZATION_ON==True:         
+        if (np.abs(np.round(goal_theta,3) - np.round(self.pose.theta,3)) < 0.05) and config.OPTIMIZATION_ON==True:         
             prev_count = count2
+            self.ang_vel = 0
+
+            print('prova ------------------------------------------------------------------------------------------------')
+            

@@ -11,8 +11,8 @@ class Tracker:
     It contains the entire state of the tracked object.
     '''
     def __init__(self, id, n_auv, bool, phi=0, y=0):
-
-        if bool == True:
+        self.bool = bool
+        if self.bool == True:
             self.__ekf = dekf.Estimator(n_auv, bool, phi, y)
         else:
             self.__ekf = dekf.Estimator(n_auv, bool)
@@ -34,13 +34,22 @@ class Tracker:
             self.__is_initialized = True
             return
         self.__curr_time = curr_time
-        for i in range(len(table)):
-            tmp = table[i]
-            self.__ekf.iteration(tmp[0], tmp[1], tmp[2], tmp[3],self.__curr_time)
-        for i in range(len(table)):
-            tmp = table[i]
-            if self.__is_initialized:
-                self.__ekf.propagation(tmp[0], self.__curr_time)
+        
+        if self.bool == True:
+            for i in range(len(table)):
+                tmp = table[i]
+                self.__ekf.iteration(tmp[0], tmp[1], tmp[2], tmp[3],self.__curr_time)
+
+            for i in range(len(table)):
+                tmp = table[i]
+                if self.__is_initialized:
+                    self.__ekf.propagation(tmp[0], self.__curr_time)
+        else:
+            self.__ekf.iteration(table[0], table[1], table[2], table[3], self.__curr_time)
+            for i in range(len(table)):
+                tmp = table[i]
+                if self.__is_initialized:
+                    self.__ekf.propagation(table[0], self.__curr_time)
 
 
         

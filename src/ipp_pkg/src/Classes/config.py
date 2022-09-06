@@ -4,21 +4,22 @@ import numpy as np
 TIME_DURATION = 2800 # (s) c.a. 45 min
 TIME_STEP = 0.01
 TIME_SCALER = 80 # MAX for communication purpose 
-TARGET_INIT = [8000, -4000, pi/2] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [-8000, -3000, pi/4] #[x(m),y(m),theta(rad),linear vel(m/s)]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
-SIGMA_MEAS = 0.01 # uncertainty = 1° --> sigma^2 = (uncertainty*2*pi/180)^2
+SIGMA_MEAS = 0.01 # uncertainty = 1° --> sigma^2 = (uncertainty*2*pi/180)^2  per ora 3 gradi
+ALONG_BAR_FORMATION = False
 OPTIMIZATION_ON = True
-OPTIMIZATION_TIME_STEP = 128 #VA INTESO COME time between each command 
+OPTIMIZATION_TIME_STEP = 64 #VA INTESO COME time between each command 
 TIME_COUNTER = (OPTIMIZATION_TIME_STEP/(TIME_STEP*TIME_SCALER))
-BASELINE_Y = 1200
-BASELINE_X = 400 
+BASELINE_Y = 3000 #
+BASELINE_X = 1000 #valori presi dall'esperimento sulla comunicazione (veicoli lontani)
 INIT_POSE_UNCERTAINTY = 50 #(m)
 INIT_VEL_UNCERTAINTY = 0.01 #(m/s)
 EKF_MEAS_UPDATE = 4 #(s) delta time tra le misure
 N_AUV = 4
-MAX_TARGET_VEL = 8 #(m/s)
+MAX_TARGET_VEL = 10 #(m/s)
 MIN_TARGET_VEL = 3 #(m/s)
-N = 1 #planning horizon
+N = 1 #delta del planning horizon
 
 class Pose:
     """2D pose"""
