@@ -11,7 +11,6 @@ from scipy import stats
 import rospy
 from rospy_tutorials.msg import Floats
 from rospy.numpy_msg import numpy_msg
-from random import randrange
 #import matplotlib.pyplot as plt
 # Import Costum classes
 class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
@@ -34,6 +33,7 @@ spec.loader.exec_module(robot)
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 # Time counter
 t = 0
+EKF_MEAS_UPDATE = 15
 # INIT lists for plot
 target_x_traj, target_y_traj, platform_x, platform_y = [], [], [], []
 est1_x, est1_y, est2_x, est2_y,est3_x, est3_y,est4_x, est4_y = [], [], [], [], [], [], [], []
@@ -43,7 +43,9 @@ t_axe, est1_vx, est1_vy = [], [], []
 comm_counter = [0, 0, 0, 0]
 
 def sensorPlacement(auv):
+    
     for i in range(config.N_AUV): #TODO: AUV up to 6 consider
+        if config.ALONG_BAR_FORMATION == False:
             if (i+1) % 2 == 0:
                 if i+1 > 3:
                     auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
@@ -58,10 +60,7 @@ def sensorPlacement(auv):
                 else:   
                     auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
                         1,0,config.BASELINE_Y))#freq,mean,variance,displachement
-    return auv
-
-def sensorPlacement2(auv):
-    for i in range(config.N_AUV): #TODO: AUV up to 6 consider
+        else:
             if (i+1) % 2 == 0:
                 if i+1 > 3:
                     auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
@@ -95,7 +94,7 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
         rospy.loginfo('SIMULATION TIME(s)')
         rospy.loginfo(t)
         auv_pose = []
-        if count1 % 15 == 0 or count1 == 0: #IN QUESTA FASE METTTI SOLO LA MISURA LOCALE
+        if count1 % EKF_MEAS_UPDATE == 0 or count1 == 0: #IN QUESTA FASE METTTI SOLO LA MISURA LOCALE
             measures, rel_bearing, t_meas, meas_pose, meas_table  = [], [], [], [], []
 
         for instance in robots:
@@ -111,7 +110,7 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
                 t_meas.append(t) 
                 meas_pose.append(auv_pose_)
                 rel_bearing.append(rel_bearing_)
-            if count1 % 15 == 0 or count1 == 0: #IN QUESTA FASE METTTI SOLO LA MISURA LOCALE
+            if count1 % EKF_MEAS_UPDATE == 0 or count1 == 0: #IN QUESTA FASE METTTI SOLO LA MISURA LOCALE
 
                 for i in range(len(measures)):#create a matrix with measuraments and timestamp
                     tmp = meas_pose[i]
@@ -133,52 +132,42 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
             target_x_traj.append(instance.pose_target.x)
             target_y_traj.append(instance.pose_target.y)
 
-        # SIMULATE EKF
-        if count1 == 0: #add distrubnace to th initial guess GAUSSIAN DISTURB TO INITIAL STATE
-            initial_gaussian_noise = np.random.normal(0,config.INIT_POSE_UNCERTAINTY) #DO NOT CHANGE (m) 
-            initial_gaussian_noise_vel = np.random.normal(0,config.INIT_VEL_UNCERTAINTY) #DO NOT CHANGE (m/s)
-            initial_guess = [target_state_real[0] + initial_gaussian_noise, target_state_real[1] + initial_gaussian_noise,
-                                target_state_real[2] + initial_gaussian_noise_vel,
-                                    target_state_real[3] + initial_gaussian_noise_vel]
+        # SIMULATE the ESTIMATIONS
 
-        
         for i in range(len(auv)):
             if i == 0:
-
-                if count1 % 15 == 0 or count1 == 0:
-
-
-                    obs[i].processMeasurement(initial_guess, meas_table[0], t) 
-
+                if count1 % EKF_MEAS_UPDATE == 0:
+                    obs[i].processMeasurement(meas_table[0], t)
                 if delta_time[i] > 2 and flag[i] == True:
-
                     comm_counter[i] += 1
                     if comm_counter[i] != 7: #90 %
-                        obs[i].processMeasurement(initial_guess, meas_table[2], t) #2 1
-                        obs[i].processMeasurement(initial_guess, meas_table[3], t) #3 2
+                        if config.ALONG_BAR_FORMATION == True:
+                            idx1 = 1
+                            idx2 = 2
+                            idx3 = 3
+                        else:
+                            idx1 = 2
+                            idx2 = 3
+                            idx3 = 1
+                        obs[i].processMeasurement(meas_table[idx1], t)
+                        obs[i].processMeasurement(meas_table[idx2], t) 
                     if comm_counter[i] == 4 or comm_counter[i] == 8 or comm_counter[i] == 1: #30 %
-                        obs[i].processMeasurement(initial_guess, meas_table[1], t) #1 3
+                        obs[i].processMeasurement(meas_table[idx3], t)
                     delta_time[i] = 0
                     flag[i] = False
                     if comm_counter[i] > 10:
                         comm_counter[i] = 0
 
-
             if i == 1:
                 if count1 % 15 == 0 or count1 == 0:
-
-
-                    obs[i].processMeasurement(initial_guess, meas_table[1], t) 
-
-
+                    obs[i].processMeasurement( meas_table[1], t) 
                 if delta_time[i] > 4 and flag[i] == True:
-
                     comm_counter[i] += 1
                     if comm_counter[i] % 2:
-                        obs[i].processMeasurement(initial_guess, meas_table[0], t)
-                        obs[i].processMeasurement(initial_guess, meas_table[2], t)
+                        obs[i].processMeasurement(meas_table[0], t)
+                        obs[i].processMeasurement(meas_table[2], t)
                     if comm_counter[i] % 5:
-                        obs[i].processMeasurement(initial_guess, meas_table[3], t)
+                        obs[i].processMeasurement(meas_table[3], t)
                     delta_time[i] = 0
                     flag[i] = False
                     if comm_counter[i] == 10:
@@ -187,16 +176,16 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
             if i == 2: 
                 if count1 % 15 == 0 or count1 == 0:
 
-                    obs[i].processMeasurement(initial_guess, meas_table[2], t) 
+                    obs[i].processMeasurement(meas_table[2], t) 
 
                 if delta_time[i] > 4 and flag[i] == True:
 
                     comm_counter[i] += 1
                     if comm_counter[i] % 2:
-                        obs[i].processMeasurement(initial_guess, meas_table[3], t)
-                        obs[i].processMeasurement(initial_guess, meas_table[0], t)
+                        obs[i].processMeasurement(meas_table[3], t)
+                        obs[i].processMeasurement(meas_table[0], t)
                     if comm_counter[i] % 5:
-                        obs[i].processMeasurement(initial_guess, meas_table[1], t)
+                        obs[i].processMeasurement(meas_table[1], t)
                     delta_time[i] = 0
                     flag[i] = False
                     if comm_counter[i] == 10:
@@ -204,16 +193,16 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
             if i == 3:
                 if count1 % 15 == 0 or count1 == 0:
 
-                    obs[i].processMeasurement(initial_guess, meas_table[3], t) 
+                    obs[i].processMeasurement(meas_table[3], t) 
 
                 if delta_time[i] > 4 and flag[i] == True:
 
                     comm_counter[i] += 1
                     if comm_counter[i] % 2:
-                        obs[i].processMeasurement(initial_guess, meas_table[1], t)
-                        obs[i].processMeasurement(initial_guess, meas_table[2], t)
+                        obs[i].processMeasurement(meas_table[1], t)
+                        obs[i].processMeasurement(meas_table[2], t)
                     if comm_counter[i] % 5:
-                        obs[i].processMeasurement(initial_guess, meas_table[0], t)
+                        obs[i].processMeasurement(meas_table[0], t)
                     delta_time[i] = 0
                     flag[i] = False
                     if comm_counter[i] == 10:
@@ -223,7 +212,7 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
         #Navigation Data
 
         #Estimation Data
-        if count1 > 0:
+        if count1 >= 15:
             curr_est1, phi1, y1 = obs[0].state
             curr_est2, phi2, y2 = obs[1].state
             if config.N_AUV > 2:
@@ -371,28 +360,23 @@ def main():
     pose_target = config.Pose(config.TARGET_INIT[0], config.TARGET_INIT[1],  config.TARGET_INIT[2])
     pose_start_1 = config.Pose(config.PLATFORM_INIT_POSE[0], config.PLATFORM_INIT_POSE[1], config.PLATFORM_INIT_POSE[2])
     target_start = np.array([config.TARGET_INIT[0],config.TARGET_INIT[1], config.TARGET_INIT[2]])
-    target_goal = np.array([-12000, 12000,config.TARGET_INIT[2]])
+    target_goal = np.array([config.TARGET_GOAL[0], config.TARGET_GOAL[1],config.TARGET_GOAL[2]])
     # Init tracker controller and robots
     tr = []
     tracker1 = tracker.Tracker('first_observer', config.N_AUV, False)
     tracker2 = tracker.Tracker('second_observer', config.N_AUV, False)
+    tracker3 = tracker.Tracker('third_observer', config.N_AUV, False)
+    tracker4 = tracker.Tracker('forth_observer', config.N_AUV, False)
     tr.append(tracker1)
     tr.append(tracker2)
-    if config.N_AUV > 2:
-        tracker3 = tracker.Tracker('third_observer', config.N_AUV, False)
-        tracker4 = tracker.Tracker('forth_observer', config.N_AUV, False)
-        tr.append(tracker3)
-        tr.append(tracker4)
+    tr.append(tracker3)
+    tr.append(tracker4)
     controller1_target = controller.Controller(0.01, 0.1) # controller parameters  (rho,alpha -> gain linear and angul vel) DO NOT CHANGE
     controller1_auv = controller.Controller(1, 0.003) #0.01
-    #time.sleep(100)
     robot_1 = robot.Robot("formation_reference", "y", controller1_auv, controller1_target)
     auv = []
     # Sensor Initialization
-    if config.ALONG_BAR_FORMATION == True:
-        auv = sensorPlacement2(auv) # along bar formation
-    else:
-        auv = sensorPlacement(auv) #trapezoidal formation
+    auv = sensorPlacement(auv) #trapezoidal formation
     # Set the AUV and the TARGET to the initial conditions
     robot_1.set_start_target_poses(pose_start_1, pose_target)
     # Instantiate the object Robot 

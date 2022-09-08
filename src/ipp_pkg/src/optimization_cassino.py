@@ -26,7 +26,7 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 platform_state, target_est = [], []
 t_est_x, t_est_y, auv = [], [], []
 # OPTIMIZATION PARAMETERS
-key1, key2, key3, key4, key5 = -pi/12, -pi/15, 0, +pi/15, +pi/12
+key1, key2, key3, key4, key5 = -pi/12, -pi/15, 0, +pi/15, +pi/12 #-15°, -12°, 0°, +12°, +15°
 DELTA = 10**15
 ctrl_cmd = [key1, key2, key3, key4, key5]
 
@@ -134,7 +134,7 @@ def simulation(control_input, target_est, platform_pose, phi, y):
                 tmp = vehicle_pose[i]
                 arr = [t_meas[i],measures[i],tmp[0],tmp[1]]
                 meas_table.append(arr)
-            tracker_.processMeasurement(target_state, meas_table, variable)
+            tracker_.processMeasurement(meas_table, variable)
         [state, phi, y] = tracker_.state
 
         variable += config.OPTIMIZATION_TIME_STEP/8
@@ -272,8 +272,8 @@ def main():
         sensorPlacement2() #recreate the AUV displachment
     else:
         sensorPlacement()
-
-    rospy.loginfo('STARTED OPTIMIZATION')
+    if config.OPTIMIZATION_ON == True:
+        rospy.loginfo('STARTED OPTIMIZATION')
     
     while not rospy.is_shutdown():
 

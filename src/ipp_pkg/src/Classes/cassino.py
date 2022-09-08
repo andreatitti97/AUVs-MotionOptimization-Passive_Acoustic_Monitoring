@@ -25,7 +25,7 @@ class Estimator:
         self.__C = matlib.zeros((1,4))
         self.__bool = bool
         self.t_prev = 0
-        self.target_pose = []
+        #self.target_pose = []
         
     @property
     def current_estimate(self):
@@ -35,8 +35,8 @@ class Estimator:
     def init_state_vector(self, x,y, vx, vy, curr_time):
 
         self.t_prev = curr_time        
-        self.__x = np.matrix([[x,y,vx,vy]]).T
-        self.target_pose = [x,y,vx,vy]
+        #self.__x = np.matrix([[x,y,vx,vy]]).T
+        #self.target_pose = [x,y,vx,vy]
 
     def propagation(self, prev_time, curr_time):
 
@@ -52,7 +52,7 @@ class Estimator:
 
         self.__x = self.__F*self.__x
         self.t_prev = curr_time
-        self.target_pose = self.__x
+        #self.target_pose = self.__x
                                 
     def iteration(self, t_meas, measures, auv_position_x, auv_position_y, curr_t):
 
