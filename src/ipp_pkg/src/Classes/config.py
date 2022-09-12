@@ -4,11 +4,11 @@ import numpy as np
 TIME_DURATION = 2800 # (s) c.a. 45 min
 TIME_STEP = 0.01
 TIME_SCALER = 80 # MAX for communication purpose 
-TARGET_INIT = [+20000, -15000, pi/4+pi/2+pi/6] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [-5000, -2000, pi/4] #[x(m),y(m),theta(rad),linear vel(m/s)]
 TARGET_GOAL = [-12000, 12000,TARGET_INIT[2]]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
-SIGMA_MEAS = 0.01 # uncertainty = 1° --> sigma^2 = (uncertainty*2*pi/180)^2  per ora 3 gradi
-ALONG_BAR_FORMATION = False
+SIGMA_MEAS = 0.005 # uncertainty = 1° --> sigma^2 = (uncertainty*2*pi/180)^2  per ora 3 gradi
+ALONG_BAR_FORMATION = True
 OPTIMIZATION_ON = True
 OPTIMIZATION_TIME_STEP = 64 #VA INTESO COME time between each command 
 TIME_COUNTER = (OPTIMIZATION_TIME_STEP/(TIME_STEP*TIME_SCALER))

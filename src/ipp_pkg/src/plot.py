@@ -72,7 +72,7 @@ n_sample = np.size(est1_x_ON)
 t = np.linspace(0,config.TIME_DURATION,n_sample)
 # PLOT THE RESULT OF THE SIMULATION without OPTIMIZATION
 plt.plot(s_x_off,s_y_off)
-plt.plot(real_x,real_y,linewidth=5)
+plt.plot(real_x,real_y,linewidth=5,color='y')
 
 plt.plot(est1_x_OFF,est1_y_OFF,'r')
 #plt.plot(est2_x_OFF,est2_y_OFF,'g')
@@ -95,16 +95,13 @@ circle7 = plt.Circle((auv4_x_off[0],auv4_y_off[0]),200,color='k')
 plt.gca().add_patch(circle6)
 plt.gca().add_patch(circle7)
 
-
-legend_elements = [Line2D([0], [0], color='b', lw=1, label='Reference Path'),
-                    Line2D([0], [0], color='orange', lw=5, label='Target Real Path'),
-                    Line2D([0], [0], color='r', lw=1, label='AUV1-Estimation'),
+legend_elements = [Line2D([0], [0], marker='X',color='b', lw=1, label='Formation Reference Path'),
+                    Line2D([0], [0], color='yellow', lw=5, label='Target Real Path'),
+                    Line2D([0], [0], color='r', lw=1, label='AUV1-Target Estimation'),
                     Line2D([0], [0], marker='o',color='r',  label='AUV1'),
                     Line2D([0], [0], marker='o',color='g',  label='AUV2'),
                     Line2D([0], [0], marker='o',color='m',  label='AUV3'),
                     Line2D([0], [0], marker='o',color='k',  label='AUV4'),
-                    Line2D([0], [0], marker='o',color='y',  label='TARGET'),
-                    Line2D([0], [0], marker='X', color='b',  label='Formation Reference'),
                     Line2D([0], [0], color='r', ls='--', label='LOS AUV1'),
                     Line2D([0], [0], color='g', ls='--', label='LOS AUV2')]
 
@@ -130,7 +127,8 @@ for i in range(7):
     plt.plot(auv2_x_off[idx],auv2_y_off[idx],'og',linewidth=10)
     plt.plot(auv3_x_off[idx],auv3_y_off[idx],'om',linewidth=10)
     plt.plot(auv4_x_off[idx],auv4_y_off[idx],'ok',linewidth=10)
-    plt.plot(real_x[idx],real_y[idx],'oy',linewidth=300)
+    circle = plt.Circle((real_x[idx],real_y[idx]),300,color='y')
+    plt.gca().add_patch(circle)
     plt.text(real_x[idx],real_y[idx],'t'+str(j+1),fontsize=20)
     # plot REFERENCE
     plt.plot(s_x_off[idx],s_y_off[idx],'Xb',linewidth=50)  
@@ -145,7 +143,7 @@ plt.show()
 
 
 plt.plot(s_x_on,s_y_on)
-plt.plot(real_x,real_y,linewidth=5)
+plt.plot(real_x,real_y,linewidth=5,color='y')
 plt.plot(est1_x_ON,est1_y_ON,'r')
 #plt.plot(est2_x_ON,est2_y_ON,'g')
 #plt.plot(est3_x_ON,est3_y_ON,'m')
@@ -167,15 +165,14 @@ plt.gca().add_patch(circle5)
 plt.gca().add_patch(circle6)
 plt.gca().add_patch(circle7)
 
-legend_elements = [Line2D([0], [0], color='b', lw=1, label='Reference Path'),
-                    Line2D([0], [0], color='orange', lw=5, label='Target Real Path'),
-                    Line2D([0], [0], color='r', lw=1, label='AUV1-Estimation'),
+
+legend_elements = [Line2D([0], [0], marker='X',color='b', lw=1, label='Formation Reference Path'),
+                    Line2D([0], [0], color='yellow', lw=5, label='Target Real Path'),
+                    Line2D([0], [0], color='r', lw=1, label='AUV1-Target Estimation'),
                     Line2D([0], [0], marker='o',color='r',  label='AUV1'),
                     Line2D([0], [0], marker='o',color='g',  label='AUV2'),
                     Line2D([0], [0], marker='o',color='m',  label='AUV3'),
                     Line2D([0], [0], marker='o',color='k',  label='AUV4'),
-                    Line2D([0], [0], marker='o',color='y',  label='TARGET'),
-                    Line2D([0], [0], marker='X', color='b',  label='Formation Reference'),
                     Line2D([0], [0], color='r', ls='--', label='LOS AUV1'),
                     Line2D([0], [0], color='g', ls='--', label='LOS AUV2')]
 
@@ -201,7 +198,9 @@ for i in range(7):
     plt.plot(auv2_x_on[idx],auv2_y_on[idx],'og',linewidth=10)
     plt.plot(auv3_x_on[idx],auv3_y_on[idx],'om',linewidth=10)
     plt.plot(auv4_x_on[idx],auv4_y_on[idx],'ok',linewidth=10)
-    plt.plot(real_x[idx],real_y[idx],'oy',linewidth=300)
+    #plt.plot(real_x[idx],real_y[idx],'oy',linewidth=500)
+    circle = plt.Circle((real_x[idx],real_y[idx]),300,color='y')
+    plt.gca().add_patch(circle)
     plt.text(real_x[idx],real_y[idx],'t'+str(j+1),fontsize=20)
     # plot REFERENCE
     plt.plot(s_x_on[idx],s_y_on[idx],'Xb',linewidth=50) 
@@ -241,7 +240,7 @@ plt.subplot(2,1,1)
 
 plt.title('OPTIMIZATION ON',fontsize=15)
 plt.plot(t,baseline_angle,'k',markerfacecolor='yellow')
-plt.ylabel('Angle FORMATION-TARGET(deg)',fontsize=15)
+plt.ylabel('Tracking Angle (deg)',fontsize=15)
 for i in range(n_sample): y[i] = 0
 plt.plot(t,y,'r--',linewidth=2)
 for i in range(n_sample): y[i] = 5
@@ -249,45 +248,35 @@ plt.plot(t,y,'y--',linewidth=2)
 for i in range(n_sample): y[i] = 10
 plt.plot(t,y,'g--',linewidth=2)
 
-for i in range(n_sample): y[i] = -5
-plt.plot(t,y,'y--',linewidth=2)
-
-for i in range(n_sample): y[i] = -10
-plt.plot(t,y,'g--',linewidth=2)
-plt.legend(['Angle','No Baseline','Critical Baseline','Good Baseline'])
+plt.legend(['Angle','No Observability','Critical Observability','Good Observability'])
 
 plt.grid()
 
 plt.subplot(2,1,2)
 plt.title('OPTIMIZATION OFF',fontsize=15)
 plt.plot(t,baseline_angle_off,'k',markerfacecolor='yellow')
-plt.ylabel('Angle FORMATION-TARGET(deg)',fontsize=15)
+plt.ylabel('Tracking Angle(deg)',fontsize=15)
 for i in range(n_sample): y[i] = 0
 plt.plot(t,y,'r--',linewidth=2)
 for i in range(n_sample): y[i] = 5
 plt.plot(t,y,'y--',linewidth=2)
 for i in range(n_sample): y[i] = 10
 plt.plot(t,y,'g--',linewidth=2)
-for i in range(n_sample): y[i] = -5
-plt.plot(t,y,'y--',linewidth=2)
-
-for i in range(n_sample): y[i] = -10
-plt.plot(t,y,'g--',linewidth=2)
 
 plt.xlabel('Time (s)',fontsize=20)
-plt.legend(['Angle','No Baseline','Critical Baseline','Good Baseline'])
+plt.legend(['Angle','No Observability','Critical Observability','Good Observability'])
 plt.grid()
 plt.show()
 
 # PLOT ctrl cmds from optimization
-n_sample1 = np.size(ctrl_cmds)
+'''n_sample1 = np.size(ctrl_cmds)
 t1 = np.linspace(640,config.TIME_DURATION,n_sample1)
 plt.plot(t1,ctrl_cmds*180/pi,'-ok',markerfacecolor='blue')
 plt.title('HEADING CHANGE COMMANDED',fontsize=20)
 plt.xlabel('Time (s)',fontsize=20)
 plt.ylabel('Heading Changes (deg)',fontsize=20)
 plt.grid()
-plt.show()
+plt.show()'''
 
 # PLOT RMSE
 sum1 = 0
@@ -311,7 +300,7 @@ plt.title('ESTIMATION PERFORMANCES COMPARISON')
 plt.xlabel('Time (s)',fontsize=20)
 plt.ylabel('RMSE (m)',fontsize=20)
 plt.text(t[100], err_off[300]+1500, 'ERRORE MEDIO OFF:'+str(err_medio1), fontsize=15, color='y')
-plt.text(t[100], err_off[300]+1700, 'ERRORE MEDIO ON:'+str(err_medio2), fontsize=15, color='b')
+plt.text(t[100], err_off[300]+1900, 'ERRORE MEDIO ON:'+str(err_medio2), fontsize=15, color='b')
 plt.grid()
 plt.show()
 
