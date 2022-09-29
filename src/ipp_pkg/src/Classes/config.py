@@ -8,8 +8,8 @@ TARGET_INIT = [-5000, -2000, pi/4] #[x(m),y(m),theta(rad),linear vel(m/s)]
 TARGET_GOAL = [-12000, 12000,TARGET_INIT[2]]
 PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
 SIGMA_MEAS = 0.005 # uncertainty = 1° --> sigma^2 = (uncertainty*2*pi/180)^2  per ora 3 gradi
-ALONG_BAR_FORMATION = True
-OPTIMIZATION_ON = True
+ALONG_BAR_FORMATION = False
+OPTIMIZATION_ON = False
 OPTIMIZATION_TIME_STEP = 64 #VA INTESO COME time between each command 
 TIME_COUNTER = (OPTIMIZATION_TIME_STEP/(TIME_STEP*TIME_SCALER))
 BASELINE_Y = 3000 #
@@ -17,7 +17,8 @@ BASELINE_X = 1000 #valori presi dall'esperimento sulla comunicazione (veicoli lo
 N_AUV = 4
 MAX_TARGET_VEL = 10 #(m/s)
 MIN_TARGET_VEL = 3 #(m/s)
-N = 1 #delta del planning horizon
+MEAS_UPDATE = 15
+STATE_PROPAGATION = 15
 
 class Pose:
     """2D pose"""

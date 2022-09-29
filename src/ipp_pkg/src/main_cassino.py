@@ -33,7 +33,6 @@ spec.loader.exec_module(robot)
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 # Time counter
 t = 0
-EKF_MEAS_UPDATE = 15
 # INIT lists for plot
 target_x_traj, target_y_traj, platform_x, platform_y = [], [], [], []
 est1_x, est1_y, est2_x, est2_y,est3_x, est3_y,est4_x, est4_y = [], [], [], [], [], [], [], []
@@ -77,6 +76,34 @@ def sensorPlacement(auv):
                         1,0,config.BASELINE_Y))#freq,mean,variance,displachement
     return auv
 
+def estimation_routine(count1,obs,delta_time,meas_table,flag,i,comm_counter,t):
+
+    if count1 % config.MEAS_UPDATE == 0:
+        obs[i].processMeasurement(meas_table[0])
+    if delta_time[i] > 2 and flag[i] == True:
+        comm_counter[i] += 1
+        if comm_counter[i] != 7: #90 %
+            if config.ALONG_BAR_FORMATION == True:
+                idx1 = 1
+                idx2 = 2
+                idx3 = 3
+            else:
+                idx1 = 2
+                idx2 = 3
+                idx3 = 1
+            obs[i].processMeasurement(meas_table[idx1])
+            obs[i].processMeasurement(meas_table[idx2]) 
+        if comm_counter[i] == 4 or comm_counter[i] == 8 or comm_counter[i] == 1: #30 %
+            obs[i].processMeasurement(meas_table[idx3])
+        delta_time[i] = 0
+        flag[i] = False
+        if comm_counter[i] > 10:
+            comm_counter[i] = 0
+    if count1 % config.STATE_PROPAGATION == 0:
+        obs[i].propagate_estimation(t)
+
+    return obs, comm_counter, flag
+
 def run_simulation(robots, obs, auv, pub, poly_traj):
     """Simulate the sensor platform and the moving target"""
     global count1, comm_counter
@@ -94,7 +121,7 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
         rospy.loginfo('SIMULATION TIME(s)')
         rospy.loginfo(t)
         auv_pose = []
-        if count1 % EKF_MEAS_UPDATE == 0 or count1 == 0: #IN QUESTA FASE METTTI SOLO LA MISURA LOCALE
+        if count1 % config.MEAS_UPDATE == 0 or count1 == 0: #IN QUESTA FASE METTTI SOLO LA MISURA LOCALE
             measures, rel_bearing, t_meas, meas_pose, meas_table  = [], [], [], [], []
 
         for instance in robots:
@@ -110,7 +137,7 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
                 t_meas.append(t) 
                 meas_pose.append(auv_pose_)
                 rel_bearing.append(rel_bearing_)
-            if count1 % EKF_MEAS_UPDATE == 0 or count1 == 0: #IN QUESTA FASE METTTI SOLO LA MISURA LOCALE
+            if count1 % config.MEAS_UPDATE == 0 or count1 == 0: #IN QUESTA FASE METTTI SOLO LA MISURA LOCALE
 
                 for i in range(len(measures)):#create a matrix with measuraments and timestamp
                     tmp = meas_pose[i]
@@ -133,84 +160,10 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
             target_y_traj.append(instance.pose_target.y)
 
         # SIMULATE the ESTIMATIONS
-
         for i in range(len(auv)):
-            if i == 0:
-                if count1 % EKF_MEAS_UPDATE == 0:
-                    obs[i].processMeasurement(meas_table[0], t)
-                if delta_time[i] > 2 and flag[i] == True:
-                    comm_counter[i] += 1
-                    if comm_counter[i] != 7: #90 %
-                        if config.ALONG_BAR_FORMATION == True:
-                            idx1 = 1
-                            idx2 = 2
-                            idx3 = 3
-                        else:
-                            idx1 = 2
-                            idx2 = 3
-                            idx3 = 1
-                        obs[i].processMeasurement(meas_table[idx1], t)
-                        obs[i].processMeasurement(meas_table[idx2], t) 
-                    if comm_counter[i] == 4 or comm_counter[i] == 8 or comm_counter[i] == 1: #30 %
-                        obs[i].processMeasurement(meas_table[idx3], t)
-                    delta_time[i] = 0
-                    flag[i] = False
-                    if comm_counter[i] > 10:
-                        comm_counter[i] = 0
-
-            if i == 1:
-                if count1 % 15 == 0 or count1 == 0:
-                    obs[i].processMeasurement( meas_table[1], t) 
-                if delta_time[i] > 4 and flag[i] == True:
-                    comm_counter[i] += 1
-                    if comm_counter[i] % 2:
-                        obs[i].processMeasurement(meas_table[0], t)
-                        obs[i].processMeasurement(meas_table[2], t)
-                    if comm_counter[i] % 5:
-                        obs[i].processMeasurement(meas_table[3], t)
-                    delta_time[i] = 0
-                    flag[i] = False
-                    if comm_counter[i] == 10:
-                        comm_counter[i] = 0
-
-            if i == 2: 
-                if count1 % 15 == 0 or count1 == 0:
-
-                    obs[i].processMeasurement(meas_table[2], t) 
-
-                if delta_time[i] > 4 and flag[i] == True:
-
-                    comm_counter[i] += 1
-                    if comm_counter[i] % 2:
-                        obs[i].processMeasurement(meas_table[3], t)
-                        obs[i].processMeasurement(meas_table[0], t)
-                    if comm_counter[i] % 5:
-                        obs[i].processMeasurement(meas_table[1], t)
-                    delta_time[i] = 0
-                    flag[i] = False
-                    if comm_counter[i] == 10:
-                        comm_counter[i] = 0
-            if i == 3:
-                if count1 % 15 == 0 or count1 == 0:
-
-                    obs[i].processMeasurement(meas_table[3], t) 
-
-                if delta_time[i] > 4 and flag[i] == True:
-
-                    comm_counter[i] += 1
-                    if comm_counter[i] % 2:
-                        obs[i].processMeasurement(meas_table[1], t)
-                        obs[i].processMeasurement(meas_table[2], t)
-                    if comm_counter[i] % 5:
-                        obs[i].processMeasurement(meas_table[0], t)
-                    delta_time[i] = 0
-                    flag[i] = False
-                    if comm_counter[i] == 10:
-                        comm_counter[i] = 0
+            obs, comm_counter, flag=estimation_routine(count1,obs,delta_time,meas_table,flag,i,comm_counter,t)
                 
         # SAVE DATA FOR PLOT
-        #Navigation Data
-
         #Estimation Data
         if count1 >= 15:
             curr_est1, phi1, y1 = obs[0].state
@@ -252,22 +205,10 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
                     auv4_y.append(tmp[1])
 
         # SEND LAST INFORMATIONS and LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
-        x_realization, y_realization,vx_realization, vy_realization = [], [], [], []
-        if count1%(config.N*config.TIME_COUNTER) == 0 and config.OPTIMIZATION_ON == True and count1 != 0: 
-            slope_x, intercept_x, r_value, p_value, std_err = stats.linregress(t_axe,est1_x)
-            slope_y, intercept_y, r_value, p_value, std_err = stats.linregress(t_axe,est1_y)
-            slope_vx, intercept_vx, r_value, p_value, std_err = stats.linregress(t_axe,est1_vx)
-            slope_vy, intercept_vy, r_value, p_value, std_err = stats.linregress(t_axe,est1_vy)
-
-            for i in range(len(t_axe)):
-                x_realization.append(slope_x*t_axe[i] + intercept_x)
-                y_realization.append(slope_y*t_axe[i] + intercept_y)
-                vx_realization.append(slope_vx*t_axe[i] + intercept_vx)
-                vy_realization.append(slope_vy*t_axe[i] + intercept_vy)
-
-            mle_est = [x_realization[-1], y_realization[-1], 0,0]#TODO check this
+        if count1%(config.TIME_COUNTER) == 0 and config.OPTIMIZATION_ON == True and count1 != 0: 
+            
             rospy.loginfo('SENDING DATA')
-            pub[0].publish(np.array(mle_est,dtype=np.float32))
+            pub[0].publish(np.array(curr_est1,dtype=np.float32))
             rospy.sleep(config.TIME_STEP*5)
             pub[1].publish(np.array(platform_pose,dtype=np.float32))
             rospy.sleep(config.TIME_STEP*5)
@@ -363,10 +304,10 @@ def main():
     target_goal = np.array([config.TARGET_GOAL[0], config.TARGET_GOAL[1],config.TARGET_GOAL[2]])
     # Init tracker controller and robots
     tr = []
-    tracker1 = tracker.Tracker('first_observer', config.N_AUV, False)
-    tracker2 = tracker.Tracker('second_observer', config.N_AUV, False)
-    tracker3 = tracker.Tracker('third_observer', config.N_AUV, False)
-    tracker4 = tracker.Tracker('forth_observer', config.N_AUV, False)
+    tracker1 = tracker.Tracker('first_observer', False)
+    tracker2 = tracker.Tracker('second_observer', False)
+    tracker3 = tracker.Tracker('third_observer', False)
+    tracker4 = tracker.Tracker('forth_observer', False)
     tr.append(tracker1)
     tr.append(tracker2)
     tr.append(tracker3)

@@ -98,7 +98,7 @@ class Target():
 
 def simulation(control_input, target_est, platform_pose, phi, y):
 
-    tracker_ = tracker.Tracker('1', config.N_AUV, True, phi, y)
+    tracker_ = tracker.Tracker('1', True, phi, y)
     platform = Platform(platform_pose)
     target = Target(target_est)
     variable = 0
@@ -134,7 +134,8 @@ def simulation(control_input, target_est, platform_pose, phi, y):
                 tmp = vehicle_pose[i]
                 arr = [t_meas[i],measures[i],tmp[0],tmp[1]]
                 meas_table.append(arr)
-            tracker_.processMeasurement(meas_table, variable)
+            tracker_.processMeasurement(meas_table)
+            tracker_.propagate_estimation(t)
         [state, phi, y] = tracker_.state
 
         variable += config.OPTIMIZATION_TIME_STEP/8

@@ -1,0 +1,12 @@
+x_realization, y_realization,vx_realization, vy_realization = [], [], [], []
+        if count1%(config.TIME_COUNTER) == 0 and config.OPTIMIZATION_ON == True and count1 != 0: 
+            slope_x, intercept_x, r_value, p_value, std_err = stats.linregress(t_axe,est1_x)
+            slope_y, intercept_y, r_value, p_value, std_err = stats.linregress(t_axe,est1_y)
+            slope_vx, intercept_vx, r_value, p_value, std_err = stats.linregress(t_axe,est1_vx)
+            slope_vy, intercept_vy, r_value, p_value, std_err = stats.linregress(t_axe,est1_vy)
+
+            for i in range(len(t_axe)):
+                x_realization.append(slope_x*t_axe[i] + intercept_x)
+                y_realization.append(slope_y*t_axe[i] + intercept_y)
+                vx_realization.append(slope_vx*t_axe[i] + intercept_vx)
+                vy_realization.append(slope_vy*t_axe[i] + intercept_vy)

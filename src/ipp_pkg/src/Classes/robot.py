@@ -104,7 +104,7 @@ class Robot:
         """
         global count2, prev_count, goal_theta, old_pose, angular_velocity
         self.lin_vel = 2
-        if count2 == config.N: 
+        if count2 == 1: 
             count2 = 0
 
         if count1%config.TIME_COUNTER == 0 and count1 >= config.TIME_COUNTER: #and count1 >= config.TIME_COUNTER
@@ -133,17 +133,16 @@ class Robot:
         self.pose.y = self.pose.y + self.lin_vel * \
             np.sin(self.pose.theta) * dt
         
-        if self.ang_vel > 0:
+        '''if self.ang_vel > 0: #DEBUGGING PURPOSE
             print('ang vel', self.ang_vel)
             print('old pose',old_pose)
             print('pose',self.pose.theta)
             print('goal_theta',goal_theta)
-            print('difference',np.abs(np.round(goal_theta,2) - np.round(self.pose.theta,2)))
-            #time.sleep(1)
+            print('difference',np.abs(np.round(goal_theta,2) - np.round(self.pose.theta,2)))'''
+
         # If theta reached be ready for the new cmd
         if (np.abs(np.round(goal_theta,3) - np.round(self.pose.theta,3)) < 0.05) and config.OPTIMIZATION_ON==True:         
             prev_count = count2
             self.ang_vel = 0
-
-            print('prova ------------------------------------------------------------------------------------------------')
+            print('REACHED GOAL ------------------------------------------------------------------------------------------------')
             
