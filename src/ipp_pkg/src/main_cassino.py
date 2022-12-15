@@ -79,10 +79,10 @@ def sensorPlacement(auv):
 def estimation_routine(count1,obs,delta_time,meas_table,flag,i,comm_counter,t):
 
     if count1 % config.MEAS_UPDATE == 0:
-        obs[i].processMeasurement(meas_table[0])
-    if delta_time[i] > 2 and flag[i] == True:
+        obs[i].processMeasurement(meas_table[0])#local update
+    if delta_time[i] > 0 and flag[i] == True:
         comm_counter[i] += 1
-        if comm_counter[i] != 7: #90 %
+        if comm_counter[i] != 19: #90 %
             if config.ALONG_BAR_FORMATION == True:
                 idx1 = 1
                 idx2 = 2
@@ -93,8 +93,9 @@ def estimation_routine(count1,obs,delta_time,meas_table,flag,i,comm_counter,t):
                 idx3 = 1
             obs[i].processMeasurement(meas_table[idx1])
             obs[i].processMeasurement(meas_table[idx2]) 
-        if comm_counter[i] == 4 or comm_counter[i] == 8 or comm_counter[i] == 1: #30 %
             obs[i].processMeasurement(meas_table[idx3])
+        #if comm_counter[i] == 4 or comm_counter[i] == 8 or comm_counter[i] == 1: #30 %
+        #    obs[i].processMeasurement(meas_table[idx3])
         delta_time[i] = 0
         flag[i] = False
         if comm_counter[i] > 10:
@@ -238,48 +239,20 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
             if config.OPTIMIZATION_ON == True:
                 np.savetxt(plot_path+'/est1_x_ON.txt',est1_x)
                 np.savetxt(plot_path+'/est1_y_ON.txt',est1_y)
-                np.savetxt(plot_path+'/est2_x_ON.txt',est2_x)
-                np.savetxt(plot_path+'/est2_y_ON.txt',est2_y)
-                if config.N_AUV > 2:
-                    np.savetxt(plot_path+'/est3_x_ON.txt',est3_x)
-                    np.savetxt(plot_path+'/est3_y_ON.txt',est3_y)
-                    np.savetxt(plot_path+'/est4_x_ON.txt',est4_x)
-                    np.savetxt(plot_path+'/est4_y_ON.txt',est4_y)
                 np.savetxt(plot_path+'/rmse_ON.txt',rmse)
                 np.savetxt(plot_path+'/x_platform_ON.txt',platform_x)
                 np.savetxt(plot_path+'/y_platform_ON.txt',platform_y)
                 np.savetxt(plot_path+'/auv1_x_ON.txt',auv1_x)
                 np.savetxt(plot_path+'/auv1_y_ON.txt',auv1_y)
-                np.savetxt(plot_path+'/auv2_x_ON.txt',auv2_x)
-                np.savetxt(plot_path+'/auv2_y_ON.txt',auv2_y)
-                if config.N_AUV > 2:
-                    np.savetxt(plot_path+'/auv3_x_ON.txt',auv3_x)
-                    np.savetxt(plot_path+'/auv3_y_ON.txt',auv3_y)
-                    np.savetxt(plot_path+'/auv4_x_ON.txt',auv4_x)
-                    np.savetxt(plot_path+'/auv4_y_ON.txt',auv4_y)
             else:
 
                 np.savetxt(plot_path+'/est1_x_OFF.txt',est1_x)
                 np.savetxt(plot_path+'/est1_y_OFF.txt',est1_y)
-                np.savetxt(plot_path+'/est2_x_OFF.txt',est2_x)
-                np.savetxt(plot_path+'/est2_y_OFF.txt',est2_y)
-                if config.N_AUV > 2:
-                    np.savetxt(plot_path+'/est3_x_OFF.txt',est3_x)
-                    np.savetxt(plot_path+'/est3_y_OFF.txt',est3_y)
-                    np.savetxt(plot_path+'/est4_x_OFF.txt',est4_x)
-                    np.savetxt(plot_path+'/est4_y_OFF.txt',est4_y)
                 np.savetxt(plot_path+'/rmse_OFF.txt',rmse)
                 np.savetxt(plot_path+'/x_platform_OFF.txt',platform_x)
                 np.savetxt(plot_path+'/y_platform_OFF.txt',platform_y)
                 np.savetxt(plot_path+'/auv1_x_OFF.txt',auv1_x)
                 np.savetxt(plot_path+'/auv1_y_OFF.txt',auv1_y)
-                np.savetxt(plot_path+'/auv2_x_OFF.txt',auv2_x)
-                np.savetxt(plot_path+'/auv2_y_OFF.txt',auv2_y)
-                if config.N_AUV > 2:
-                    np.savetxt(plot_path+'/auv3_x_OFF.txt',auv3_x)
-                    np.savetxt(plot_path+'/auv3_y_OFF.txt',auv3_y)
-                    np.savetxt(plot_path+'/auv4_x_OFF.txt',auv4_x)
-                    np.savetxt(plot_path+'/auv4_y_OFF.txt',auv4_y)
         
         t += config.TIME_STEP*config.TIME_SCALER
         count1 += 1
