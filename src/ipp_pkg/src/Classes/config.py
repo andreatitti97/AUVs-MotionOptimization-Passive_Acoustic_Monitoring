@@ -1,25 +1,38 @@
 from math import pi
 import numpy as np
 # Simulation parameters
-TIME_DURATION = 2800 # (s) c.a. 45 min
+TIME_DURATION = 600 # (s)
 TIME_STEP = 0.01
 TIME_SCALER = 80 # MAX for communication purpose 
-TARGET_INIT = [8000,  8000, pi-pi/10] #[x(m),y(m),theta(rad),linear vel(m/s)]
-TARGET_GOAL = [-12000, 12000,TARGET_INIT[2]]
-PLATFORM_INIT_POSE = [1000, 1000, 0] #[x,y,theta]
-SIGMA_MEAS = 0.01 # uncertainty = 1° --> sigma^2 = (uncertainty*2*pi/180)^2  per ora 3 gradi
-ALONG_BAR_FORMATION = True
-OPTIMIZATION_ON = True
-OPTIMIZATION_TIME_STEP = 64 #VA INTESO COME time between each command 
-TIME_COUNTER = (OPTIMIZATION_TIME_STEP/(TIME_STEP*TIME_SCALER))
-BASELINE_Y = 3000 #
-BASELINE_X = 1000 #valori presi dall'esperimento sulla comunicazione (veicoli lontani)
-N_AUV = 4
-MAX_TARGET_VEL = 10 #(m/s)
-MIN_TARGET_VEL = 3 #(m/s)
-MEAS_UPDATE = 15
-STATE_PROPAGATION = 15
 
+
+'The time is scaled, so the following values are to be considered for the int counter, therefore real value in sec multiply for 0.8'
+
+# Estimation Parameters
+
+TP = 10 # regressor MAX length
+STATE_PROPAGATION = 8 #time between each propagation of the estimation (in real case a consensus (?))
+# Team parameter: number of agents, baselines_XY, inital position, type of formation
+SIGMA_MEAS = 0.005 #0.005 # uncertainty = 1° --> sigma^2 = (uncertainty*2*pi/180)^2  per ora 3 gradi
+MEAS_UPDATE = 2 # MEAS_UPDATE (s)= meas_update*(TIME_SCALER*TIME_STEP)
+N_AUV = 4
+BASELINE_Y = 25 #
+BASELINE_X = 0 #valori presi dall'esperimento sulla comunicazione (veicoli lontani)
+PLATFORM_INIT_POSE = [200, 0, 0] #[x,y,theta]
+ALONG_BAR_FORMATION = True
+AUV_VEL = 3.0 #(m/s)
+CONTROLLER_GAIN = 0.1 #0.01
+# Target parameter: start, goal, min max vels
+TARGET_INIT = [-200, -400, pi/4] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_GOAL = [100, 100,TARGET_INIT[2]]
+TARGET_VEL = 6
+MAX_TARGET_VEL = 3 #(m/s) (only for no costant vels)
+MIN_TARGET_VEL = 3 #(m/s)
+
+# Optimization Parameters
+OPTIMIZATION_ON = False
+OPTIMIZATION_TIME_STEP = STATE_PROPAGATION*(TIME_SCALER*TIME_STEP) #VA INTESO COME delta_k (planning stage)in secondi
+ 
 class Pose:
     """2D pose"""
 

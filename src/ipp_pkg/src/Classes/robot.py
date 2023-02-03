@@ -11,6 +11,7 @@ spec.loader.exec_module(config)
 count2, prev_count = 0, 0
 goal_theta, old_pose = 0, 0
 angular_velocity = 0
+
 def saturateVel(linear_velocity):
     if config.MIN_TARGET_VEL < linear_velocity < config.MIN_TARGET_VEL:
         linear_velocity = config.MIN_TARGET_VEL
@@ -46,9 +47,9 @@ class Robot:
         self.pose = config.Pose(0,0,0)
         self.pose_start = config.Pose(0,0,0)
         self.pose_target = config.Pose(0,0,0)
-        self.lin_vel = 2
+        self.lin_vel = config.AUV_VEL
         self.ang_vel = 0
-        self.lin_vel_target = 0
+        self.lin_vel_target = config.TARGET_VEL
         self.ang_vel_target = 0
 
     def set_start_target_poses(self, pose_start, pose_target):
@@ -75,22 +76,24 @@ class Robot:
         dt : (float)
             time step
         """
-        #global count1
     
-        linear_velocity, angular_velocity = \
+        '''linear_velocity, angular_velocity = \
             self.target_controller .calc_control_command(
                 curr_goal[0] - self.pose_target.x,
                 curr_goal[1] - self.pose_target.y,
                 self.pose_target.theta, curr_goal[2])
 
         linear_velocity = saturateVel(linear_velocity)
-        self.pose_target.theta = self.pose_target.theta + angular_velocity * dt
-        self.pose_target.x = self.pose_target.x + linear_velocity * \
-            np.cos(self.pose_target.theta) * dt
-        self.pose_target.y = self.pose_target.y + linear_velocity * \
-            np.sin(self.pose_target.theta) * dt
         self.ang_vel_target = angular_velocity
-        self.lin_vel_target = linear_velocity
+        self.lin_vel_target = linear_velocity'''
+        
+        
+        self.pose_target.theta = self.pose_target.theta + self.ang_vel_target * dt
+        self.pose_target.x = self.pose_target.x + self.lin_vel_target * \
+            np.cos(self.pose_target.theta) * dt
+        self.pose_target.y = self.pose_target.y + self.lin_vel_target * \
+            np.sin(self.pose_target.theta) * dt
+        
 
     def move(self, dt, heading_changes, count1):
         """
@@ -103,15 +106,16 @@ class Robot:
             requested heading change
         """
         global count2, prev_count, goal_theta, old_pose, angular_velocity
-        self.lin_vel = 2
+        
         if count2 == 1: 
             count2 = 0
 
-        if count1%config.TIME_COUNTER == 0 and count1 >= config.TIME_COUNTER: #and count1 >= config.TIME_COUNTER
+        if count1%config.STATE_PROPAGATION == 0 and count1 >= config.STATE_PROPAGATION:
             count2 = count2+1
         
         if prev_count != count2 and config.OPTIMIZATION_ON == True:
             print("RECEVEID NEW HEADING:*******************************************************************************")
+
             heading_change = heading_changes[0] #apply only the first command (MPC paradigm)
 
             goal_theta = heading_change + old_pose
@@ -121,28 +125,20 @@ class Robot:
                 0,
                 self.pose.theta, goal_theta)
             self.ang_vel = angular_velocity
-            #self.lin_vel = linear_velocity
+
         else:
             
             old_pose = self.pose.theta
         # Update State 
-
+        
         self.pose.theta = (self.pose.theta + self.ang_vel)
         self.pose.x = self.pose.x + self.lin_vel * \
             np.cos(self.pose.theta) * dt 
         self.pose.y = self.pose.y + self.lin_vel * \
             np.sin(self.pose.theta) * dt
-        
-        '''if self.ang_vel > 0: #DEBUGGING PURPOSE
-            print('ang vel', self.ang_vel)
-            print('old pose',old_pose)
-            print('pose',self.pose.theta)
-            print('goal_theta',goal_theta)
-            print('difference',np.abs(np.round(goal_theta,2) - np.round(self.pose.theta,2)))'''
 
         # If theta reached be ready for the new cmd
         if (np.abs(np.round(goal_theta,3) - np.round(self.pose.theta,3)) < 0.05) and config.OPTIMIZATION_ON==True:         
             prev_count = count2
             self.ang_vel = 0
             print('REACHED GOAL ------------------------------------------------------------------------------------------------')
-            

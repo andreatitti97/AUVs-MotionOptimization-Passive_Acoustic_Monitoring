@@ -40,7 +40,7 @@ auv1_x, auv1_y, auv2_x, auv2_y,auv3_x,auv3_y,auv4_x,auv4_y  = [], [], [], [], []
 rmse, bearing1, bearing2 = [], [], []
 t_axe, est1_vx, est1_vy = [], [], []
 comm_counter = [0, 0, 0, 0]
-
+counter_comm = 0
 def sensorPlacement(auv):
     
     for i in range(config.N_AUV): #TODO: AUV up to 6 consider
@@ -63,92 +63,68 @@ def sensorPlacement(auv):
             if (i+1) % 2 == 0:
                 if i+1 > 3:
                     auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
-                        -1,0, config.BASELINE_Y))#freq,mean,variance,displachement
+                        -1,config.BASELINE_X,config.BASELINE_Y*2))#freq,mean,variance,displachement \\ -1,0,config.BASELINE_Y
                 else:   
                     auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
-                        -1,0,config.BASELINE_Y/2))#freq,mean,variance,displachement
+                        -1,config.BASELINE_X,config.BASELINE_Y))#freq,mean,variance,displachement \\ -1,0,config.BASELINE_Y/2
             if (i+1) % 2 == 1:
                 if i+1 > 2:
                     auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,1,
-                        0, config.BASELINE_Y/2))#freq,mean,variance,displachement
+                        config.BASELINE_X,config.BASELINE_Y))#freq,mean,variance,displachement \\ 1,0,config.BASELINE_Y/2
                 else:   
                     auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
-                        1,0,config.BASELINE_Y))#freq,mean,variance,displachement
+                        1,config.BASELINE_X,config.BASELINE_Y*2))#freq,mean,variance,displachement \\ 1,0,config.BASELINE_Y
+    
     return auv
-
-def estimation_routine(count1,obs,delta_time,meas_table,flag,i,comm_counter,t):
-
-    if count1 % config.MEAS_UPDATE == 0:
-        obs[i].processMeasurement(meas_table[0])#local update
-    if delta_time[i] > 0 and flag[i] == True:
-        comm_counter[i] += 1
-        if comm_counter[i] != 19: #90 %
-            if config.ALONG_BAR_FORMATION == True:
-                idx1 = 1
-                idx2 = 2
-                idx3 = 3
-            else:
-                idx1 = 2
-                idx2 = 3
-                idx3 = 1
-            obs[i].processMeasurement(meas_table[idx1])
-            obs[i].processMeasurement(meas_table[idx2]) 
-            obs[i].processMeasurement(meas_table[idx3])
-        #if comm_counter[i] == 4 or comm_counter[i] == 8 or comm_counter[i] == 1: #30 %
-        #    obs[i].processMeasurement(meas_table[idx3])
-        delta_time[i] = 0
-        flag[i] = False
-        if comm_counter[i] > 10:
-            comm_counter[i] = 0
-    if count1 % config.STATE_PROPAGATION == 0:
-        obs[i].propagate_estimation(t)
-
-    return obs, comm_counter, flag
 
 def run_simulation(robots, obs, auv, pub, poly_traj):
     """Simulate the sensor platform and the moving target"""
-    global count1, comm_counter
-
+    global count1, comm_counter, counter_comm
+    propagation = False
     Hz = 1/(config.TIME_STEP) #NB: different from sampling rate for move things, this is ros rate
     rate = rospy.Rate(Hz)
     # Init Time Variables
     t = 0    
-    t0 = 0
     count1 = 0
+    meas_table = []
     cmds = []
-    flag = [False, False, False, False]
-    delta_time = [0,0,0,0]
+    j = 0
     while t <= config.TIME_DURATION:
         rospy.loginfo('SIMULATION TIME(s)')
         rospy.loginfo(t)
-        auv_pose = []
-        if count1 % config.MEAS_UPDATE == 0 or count1 == 0: #IN QUESTA FASE METTTI SOLO LA MISURA LOCALE
-            measures, rel_bearing, t_meas, meas_pose, meas_table  = [], [], [], [], []
 
         for instance in robots:
-        # SIMULATE SENSORS MEASURAMENTS - rimane uguale
-            
-            for i in range(len(auv)):
-                
-                auv[i].vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta)
-                auv[i].targetPoseReal(instance.pose_target.x,instance.pose_target.y,instance.pose_target.theta)
-                [measure_, auv_pose_, rel_bearing_] = auv[i].measureBearing()
-                auv_pose.append(auv_pose_)
-                measures.append(measure_)
-                t_meas.append(t) 
-                meas_pose.append(auv_pose_)
-                rel_bearing.append(rel_bearing_)
-            if count1 % config.MEAS_UPDATE == 0 or count1 == 0: #IN QUESTA FASE METTTI SOLO LA MISURA LOCALE
-
-                for i in range(len(measures)):#create a matrix with measuraments and timestamp
-                    tmp = meas_pose[i]
-                    arr = [t_meas[i],measures[i],tmp[0],tmp[1]]
+            # SIMULATE SENSORS MEASURAMENTS - rimane uguale
+            for j in range(config.N_AUV):
+                auv[j].vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta)
+                auv[j].targetPoseReal(instance.pose_target.x,instance.pose_target.y,instance.pose_target.theta)
+                [measure_, auv_pose_, rel_bearing_] = auv[j].measureBearing()
+                # Save AUVs position
+                if j == 0:
+                    auv1_x.append(auv_pose_[0])
+                    auv1_y.append(auv_pose_[1])
+                if j == 1:
+                    auv2_x.append(auv_pose_[0])
+                    auv2_y.append(auv_pose_[1])
+                if j == 2:
+                    auv3_x.append(auv_pose_[0])
+                    auv3_y.append(auv_pose_[1])
+                if j == 3:
+                    auv4_x.append(auv_pose_[0])
+                    auv4_y.append(auv_pose_[1])
+                if count1 % config.MEAS_UPDATE == 0:
+                    # Write a row of the measurament table
+                    arr = [t,measure_,auv_pose_[0],auv_pose_[1]]
                     meas_table.append(arr)
-                    t0 = t
-                for i in range(len(auv)):
-                    flag[i] =  True
-            for i in range(len(auv)):
-                delta_time[i] = t - t0
+                    j = j + 1
+                    if len(meas_table) > config.TP:
+                        meas_table.pop(0)
+                    if j == 4:
+                        propagation = True
+                        j = 0
+            
+            
+            # Save/Update platform pose and target trajectory
             platform_pose = np.array([instance.pose.x,instance.pose.y,instance.pose.theta])
             
             target_state_real = [instance.pose_target.x,instance.pose_target.y, 
@@ -161,23 +137,24 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
             target_y_traj.append(instance.pose_target.y)
 
         # SIMULATE the ESTIMATIONS
-        for i in range(len(auv)):
-            obs, comm_counter, flag=estimation_routine(count1,obs,delta_time,meas_table,flag,i,comm_counter,t)
-                
+        if propagation == True and count1 % config.STATE_PROPAGATION == 0: 
+            for i in range(len(auv)):
+                obs[i].processMeasurement(meas_table)
+                obs[i].propagate_estimation(t)
+            propagation == False
+            
         # SAVE DATA FOR PLOT
-        #Estimation Data
-        if count1 >= 15:
+        # Estimation Data
+        if count1 >= config.STATE_PROPAGATION: # you can start saving estimation after the first state propagation
             curr_est1, phi1, y1 = obs[0].state
             curr_est2, phi2, y2 = obs[1].state
             if config.N_AUV > 2:
                 curr_est3, phi3, y3 = obs[2].state
                 curr_est4, phi4, y4 = obs[3].state
-
             t_axe.append(t)
             est1_x.append(curr_est1[0,0])
             est1_y.append(curr_est1[1,0])
-            est1_vx.append(curr_est1[2,0])
-            est1_vy.append(curr_est1[3,0])
+
             est2_x.append(curr_est2[0,0])
             est2_y.append(curr_est2[1,0])
             if config.N_AUV > 2:
@@ -190,23 +167,9 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
             err_y = np.sqrt(((target_state_real[1] - curr_est1[1,0])**2))
             norma_err = np.sqrt(err_x**2+err_y**2)
             rmse.append(norma_err)
-            for i in range(len(auv_pose)):  
-                tmp = auv_pose[i]
-                if i == 0:
-                    auv1_x.append(tmp[0])
-                    auv1_y.append(tmp[1])
-                if i == 1:
-                    auv2_x.append(tmp[0])
-                    auv2_y.append(tmp[1])
-                if i == 2:
-                    auv3_x.append(tmp[0])
-                    auv3_y.append(tmp[1])
-                if i == 3:
-                    auv4_x.append(tmp[0])
-                    auv4_y.append(tmp[1])
-
+            
         # SEND LAST INFORMATIONS and LOAD SEQUENCE OF CTRL_CMD FROM OPTIMIZATION
-        if count1%(config.TIME_COUNTER) == 0 and config.OPTIMIZATION_ON == True and count1 != 0: 
+        if count1%(config.STATE_PROPAGATION) == 0 and config.OPTIMIZATION_ON == True and count1 != 0: 
             
             rospy.loginfo('SENDING DATA')
             pub[0].publish(np.array(curr_est1,dtype=np.float32))
@@ -214,16 +177,17 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
             pub[1].publish(np.array(platform_pose,dtype=np.float32))
             rospy.sleep(config.TIME_STEP*5)
             phi = []
-            for i in range(config.N_AUV):        
-                tmp = phi1[i]
-                for j in range(config.N_AUV):
+            for i in range(len(y4)):        
+                tmp = phi4[i]
+                for j in range(4):
                     phi.append(tmp[j])
             pub[2].publish(np.array(phi,dtype=np.float32))
             rospy.sleep(config.TIME_STEP*5)
-            pub[3].publish(np.array(y1,dtype=np.float32))
+            pub[3].publish(np.array(y4,dtype=np.float32))
             rospy.sleep(config.TIME_STEP*5)
             cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))
             cmds = cmds.data
+            
             rospy.loginfo('RECEIVED CMDS')
         
         ######################################### MOVE THE ROBOTS #######################################################
@@ -239,22 +203,39 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
             if config.OPTIMIZATION_ON == True:
                 np.savetxt(plot_path+'/est1_x_ON.txt',est1_x)
                 np.savetxt(plot_path+'/est1_y_ON.txt',est1_y)
+                np.savetxt(plot_path+'/est4_x_ON.txt',est4_x)
+                np.savetxt(plot_path+'/est4_y_ON.txt',est4_y)
                 np.savetxt(plot_path+'/rmse_ON.txt',rmse)
                 np.savetxt(plot_path+'/x_platform_ON.txt',platform_x)
                 np.savetxt(plot_path+'/y_platform_ON.txt',platform_y)
                 np.savetxt(plot_path+'/auv1_x_ON.txt',auv1_x)
                 np.savetxt(plot_path+'/auv1_y_ON.txt',auv1_y)
+                np.savetxt(plot_path+'/auv2_x_ON.txt',auv2_x)
+                np.savetxt(plot_path+'/auv2_y_ON.txt',auv2_y)
+                np.savetxt(plot_path+'/auv3_x_ON.txt',auv3_x)
+                np.savetxt(plot_path+'/auv3_y_ON.txt',auv3_y)
+                np.savetxt(plot_path+'/auv4_x_ON.txt',auv4_x)
+                np.savetxt(plot_path+'/auv4_y_ON.txt',auv4_y)
             else:
 
                 np.savetxt(plot_path+'/est1_x_OFF.txt',est1_x)
                 np.savetxt(plot_path+'/est1_y_OFF.txt',est1_y)
+                np.savetxt(plot_path+'/est4_x_OFF.txt',est4_x)
+                np.savetxt(plot_path+'/est4_y_OFF.txt',est4_y)
                 np.savetxt(plot_path+'/rmse_OFF.txt',rmse)
                 np.savetxt(plot_path+'/x_platform_OFF.txt',platform_x)
                 np.savetxt(plot_path+'/y_platform_OFF.txt',platform_y)
                 np.savetxt(plot_path+'/auv1_x_OFF.txt',auv1_x)
                 np.savetxt(plot_path+'/auv1_y_OFF.txt',auv1_y)
+                np.savetxt(plot_path+'/auv2_x_OFF.txt',auv2_x)
+                np.savetxt(plot_path+'/auv2_y_OFF.txt',auv2_y)
+                np.savetxt(plot_path+'/auv3_x_OFF.txt',auv3_x)
+                np.savetxt(plot_path+'/auv3_y_OFF.txt',auv3_y)
+                np.savetxt(plot_path+'/auv4_x_OFF.txt',auv4_x)
+                np.savetxt(plot_path+'/auv4_y_OFF.txt',auv4_y)
         
         t += config.TIME_STEP*config.TIME_SCALER
+        
         count1 += 1
         rate.sleep()
 
@@ -286,7 +267,7 @@ def main():
     tr.append(tracker3)
     tr.append(tracker4)
     controller1_target = controller.Controller(0.01, 0.1) # controller parameters  (rho,alpha -> gain linear and angul vel) DO NOT CHANGE
-    controller1_auv = controller.Controller(1, 0.003) #0.01
+    controller1_auv = controller.Controller(1, config.CONTROLLER_GAIN) #0.01
     robot_1 = robot.Robot("formation_reference", "y", controller1_auv, controller1_target)
     auv = []
     # Sensor Initialization

@@ -19,8 +19,8 @@ class Sensor:
         self.theta_v = theta_v
         x_v = x_v + self.baseline_x*np.cos(self.theta_v)
         y_v = y_v + self.baseline_x*np.sin(self.theta_v)
-        self.w_pose_s = np.array([(x_v+np.sin(self.theta_v)*self.baseline/2),
-                                    (y_v-np.cos(self.theta_v)*self.baseline/2),
+        self.w_pose_s = np.array([(x_v+np.sin(self.theta_v)*self.baseline), #/2
+                                    (y_v-np.cos(self.theta_v)*self.baseline),
                                         self.theta_v])
 # +np.cos(self.theta_v)*self.lin_vel
 # +np.sin(self.theta_v)*self.lin_vel
@@ -47,7 +47,8 @@ class Sensor:
             rel_bearing = 2*pi - (theta_tmp - self.abs_bearing)
 
         # Create the noise and add the noise to the measurament
-        self.noise = np.random.uniform(-self.variance, self.variance)
+        #self.noise = np.random.uniform(-self.variance, self.variance)
+        self.noise = np.random.normal(0,self.variance)
         self.abs_bearing = self.abs_bearing + self.noise #overwrite absolute bearing with the corrupted quantities
         return self.abs_bearing, self.w_pose_s, rel_bearing
 

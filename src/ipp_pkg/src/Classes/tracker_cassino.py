@@ -29,21 +29,25 @@ class Tracker:
     def processMeasurement(self, table): #table = [tempo, misura, auv pos x, auv pos y]
         
         if self.bool == True:
+            self.__prev_time = 0
             for i in range(len(table)):
                 tmp = table[i]
                 self.__estimator.iteration(tmp[0], tmp[1], tmp[2], tmp[3], self.__prev_time)
 
-            for i in range(len(table)):
-                tmp = table[i]
-                if self.__is_initialized:
-                    self.__estimator.propagation(tmp[0], self.__curr_time, self.__prev_time)
+            #for i in range(len(table)):
+            #    
+            #    tmp = table[i]
+            #    if self.__is_initialized:
+            #        self.__estimator.propagation(tmp[0], self.__curr_time, self.__prev_time)
         else:
-            self.__estimator.iteration(table[0], table[1], table[2], table[3], self.__prev_time)
+            for i in range(len(table)):
+                meas_data = table[i]
+                self.__estimator.iteration(meas_data[0], meas_data[1], meas_data[2], meas_data[3], self.__prev_time)
 
     def propagate_estimation(self, curr_time):
+
         self.__curr_time = curr_time
-        if self.__is_initialized:
-            self.__estimator.propagation(self.__curr_time, self.__prev_time)
+        self.__estimator.propagation(self.__curr_time, self.__prev_time)
         self.__prev_time = self.__curr_time
 
 
