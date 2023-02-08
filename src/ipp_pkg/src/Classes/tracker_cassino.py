@@ -18,7 +18,6 @@ class Tracker:
         else:
             self.__estimator = dekf.Estimator(bool)
         self.id  = id
-        self.__is_initialized = False
         self.__curr_time = 0
         self.__prev_time = 0
 
@@ -33,12 +32,6 @@ class Tracker:
             for i in range(len(table)):
                 tmp = table[i]
                 self.__estimator.iteration(tmp[0], tmp[1], tmp[2], tmp[3], self.__prev_time)
-
-            #for i in range(len(table)):
-            #    
-            #    tmp = table[i]
-            #    if self.__is_initialized:
-            #        self.__estimator.propagation(tmp[0], self.__curr_time, self.__prev_time)
         else:
             for i in range(len(table)):
                 meas_data = table[i]

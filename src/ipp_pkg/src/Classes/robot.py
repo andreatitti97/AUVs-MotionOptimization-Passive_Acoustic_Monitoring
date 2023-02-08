@@ -76,7 +76,7 @@ class Robot:
         dt : (float)
             time step
         """
-    
+        # Uncomment for NON constant velocity target
         '''linear_velocity, angular_velocity = \
             self.target_controller .calc_control_command(
                 curr_goal[0] - self.pose_target.x,

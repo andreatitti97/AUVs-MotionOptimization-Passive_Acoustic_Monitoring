@@ -18,19 +18,19 @@ MEAS_UPDATE = 2 # MEAS_UPDATE (s)= meas_update*(TIME_SCALER*TIME_STEP)
 N_AUV = 4
 BASELINE_Y = 25 #
 BASELINE_X = 0 #valori presi dall'esperimento sulla comunicazione (veicoli lontani)
-PLATFORM_INIT_POSE = [200, 0, 0] #[x,y,theta]
+PLATFORM_INIT_POSE = [100, 100, 0] #[x,y,theta]
 ALONG_BAR_FORMATION = True
-AUV_VEL = 3.0 #(m/s)
+AUV_VEL = 1.0 #(m/s)
 CONTROLLER_GAIN = 0.1 #0.01
 # Target parameter: start, goal, min max vels
-TARGET_INIT = [-200, -400, pi/4] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [+400, 0, pi/2] #[x(m),y(m),theta(rad),linear vel(m/s)]
 TARGET_GOAL = [100, 100,TARGET_INIT[2]]
-TARGET_VEL = 6
+TARGET_VEL = 3 #(m/s)
 MAX_TARGET_VEL = 3 #(m/s) (only for no costant vels)
 MIN_TARGET_VEL = 3 #(m/s)
 
 # Optimization Parameters
-OPTIMIZATION_ON = False
+OPTIMIZATION_ON = True
 OPTIMIZATION_TIME_STEP = STATE_PROPAGATION*(TIME_SCALER*TIME_STEP) #VA INTESO COME delta_k (planning stage)in secondi
  
 class Pose:

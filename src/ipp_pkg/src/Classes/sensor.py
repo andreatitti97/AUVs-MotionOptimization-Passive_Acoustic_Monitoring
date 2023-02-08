@@ -22,8 +22,7 @@ class Sensor:
         self.w_pose_s = np.array([(x_v+np.sin(self.theta_v)*self.baseline), #/2
                                     (y_v-np.cos(self.theta_v)*self.baseline),
                                         self.theta_v])
-# +np.cos(self.theta_v)*self.lin_vel
-# +np.sin(self.theta_v)*self.lin_vel
+
 
     def targetPoseReal(self, x_t, y_t, theta_t=0):#w.r.t. the  <w>
         self.w_pose_t = np.transpose([x_t, y_t, theta_t])

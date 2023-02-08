@@ -10,6 +10,7 @@ spec = importlib.util.spec_from_file_location("module.config", class_path+"/conf
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
 tmp = []
+
 def state_vector_to_scalars(state_vector):
     '''
     Returns the elements from the state_vector as a tuple of scalars.
@@ -26,8 +27,6 @@ class Estimator:
         if self.__bool == True:
             self.__phi = phi
             self.__y = y
-            #self.__phi = []
-            #self.__y = []
         else:
             self.__phi = []
             self.__y = []
@@ -51,16 +50,7 @@ class Estimator:
         for i in range(len(self.__y)):
             a = self.__phi[i]
             tmp_phi[i,:] = [a[0],a[1],a[2],a[3]]
-
-        '''self.____phi = [[self.__phi[0],self.__phi[1],self.__phi[2],self.__phi[3]],
-        [self.__phi[4],self.__phi[5],self.__phi[6],self.__phi[7]],
-        [self.__phi[8],self.__phi[9],self.__phi[10],self.__phi[11]],
-        [self.__phi[12], self.__phi[13],self.__phi[14],self.__phi[15]]]'''
-        #print('PHIIIIIIIIIIIIIII',self.__phi)
-        #print('tmp phi',tmp_phi)
-        #print('YYYYYYYYYYYYYYYY',self.__y)
         self.__x =  np.dot(np.linalg.pinv(tmp_phi),tmp_y)
-        #time.sleep(50)
         dt = curr_time - prev_time #tempo attuale - tempo ultimo stato noto.
         self.__F = np.matrix([[1,0,dt,0],
                               [0,1,0,dt],
@@ -75,7 +65,6 @@ class Estimator:
             self.__y.pop(0)
 
         delta = (t_meas - prev_t)
-        #self.__C = np.array([np.sin(measures), -np.cos(measures), delta*np.sin(measures), -delta*np.cos(measures)])
         self.__C = [np.sin(measures), -np.cos(measures), delta*np.sin(measures), -delta*np.cos(measures)]
         self.__phi.append(self.__C)
 

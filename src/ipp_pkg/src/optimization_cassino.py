@@ -89,7 +89,7 @@ class Platform():
     def update_state(self, delta, t, old_ori):
 
 
-        heading_change = delta #apply only the first command (MPC paradigm)
+        heading_change = delta 
         if t == 0:
             goal_theta = heading_change + old_ori
             linear_velocity, angular_velocity = \
@@ -133,7 +133,7 @@ def simulation(control_input, target_est, platform_pose, phi, y):
     j = 0
     propagation = False
     [x_pos,y_pos, old_ori] = platform.retrieve_state()
-    
+
     for t in range(0,8):
         if t == 0:
             platform_state = platform.update_state(control_input,t,old_ori) 
@@ -164,35 +164,12 @@ def simulation(control_input, target_est, platform_pose, phi, y):
 
 def compute_cost(phi,length_y):
 
-    phi_ = []
     tmp_phi = np.zeros((length_y,4))
     for i in range(length_y):
         a = phi[i]
         tmp_phi[i,:] = [a[0],a[1],a[2],a[3]]
-        
-    '''for i in range(config.N_AUV):        
-        tmp = phi[i]
-        for j in range(config.N_AUV):
-            phi_.append(tmp[j])
-    mat = np.matrix([[phi_[0], phi_[1]],
-    [phi_[4], phi_[5]],
-    [phi_[8], phi_[9]],
-    [phi_[12], phi_[13]]])
-    #print('mat',mat)
-    [U,A,V] = np.linalg.svd(mat,full_matrices=True)
-    A = np.diag(A)
-    #print('A',A)
-    
-    cost = np.linalg.norm(np.linalg.inv(A))*np.linalg.norm(A)
-    #print('cost',cost)
 
-    #time.sleep(2)'''
     A = np.dot(np.transpose(tmp_phi),tmp_phi)
-    
-    #[U,A,V] = np.linalg.svd(tmp_phi,full_matrices=True)
-    
-    #print('A',A)
-    #A = np.diag(A)
     cost = np.linalg.norm(np.linalg.inv(A))*np.linalg.norm(A)
     return cost
 
@@ -254,7 +231,6 @@ class Simple(pybnb.Problem):
         choices5 = self.choices + tmp5
 
         if len(choices1) == 4 or len(choices2) == 4 or len(choices3) == 4:
-            #print('REACHED LIMIT HORIZON')
             self.value = self.value - DELTA #trick#TODO
             #self.value = 0 #UNCOMMENT IF YO WANT THE LAST BEST NODE WITHOUT CONSIDERING COST 
             # AGGIUNGI CHE CONDIZIONE PER NODO CON COVARIANZA FINALE SINGOLA, NON DELLA SEQUENZA
