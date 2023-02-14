@@ -11,7 +11,7 @@ setup(name='ipp_pkg',
       install_requires=[
           'numpy',
           'scipy',
-          'theano',
+          'matplotlib',
           'pybnb'
       ],
       zip_safe=False)

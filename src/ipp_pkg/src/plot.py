@@ -1,4 +1,3 @@
-from turtle import width
 import matplotlib.pyplot as plt
 import numpy as np
 import os, importlib
@@ -159,10 +158,10 @@ legend_elements = [Line2D([0], [0], marker='X',color='b', lw=1, label='Formation
 
 plt.legend(handles=legend_elements, fontsize=20)
     
-plt.plot(auv1_x_on, auv1_y_on, 'k')
-plt.plot(auv2_x_on, auv2_y_on, 'k')
-plt.plot(auv3_x_on, auv3_y_on, 'k')
-plt.plot(auv4_x_on, auv4_y_on, 'k')
+#plt.plot(auv1_x_on, auv1_y_on, 'k')
+#plt.plot(auv2_x_on, auv2_y_on, 'k')
+#plt.plot(auv3_x_on, auv3_y_on, 'k')
+#plt.plot(auv4_x_on, auv4_y_on, 'k')
 j = 0
 
 for i in range(ranges):
@@ -198,7 +197,7 @@ plt.show()
 
 # PLTO BASELINE ANGLE
 baseline_angle = []
-for i in range(len(auv4_x_on)-8):
+for i in range(len(auv4_x_on)-16):
     tmp = (((real_x[i]-auv1_x_on[i])*(real_x[i]-auv4_x_on[i]))+((real_y[i]-auv1_y_on[i])*(real_y[i]-auv4_y_on[i]))
     )/(np.sqrt((real_x[i]-auv1_x_on[i])**2+(real_y[i]-auv1_y_on[i])**2)*np.sqrt((real_x[i]-auv4_x_on[i])**2+(
         real_y[i]-auv4_y_on[i])**2))
@@ -208,7 +207,7 @@ for i in range(len(auv4_x_on)-8):
     baseline_angle.append(angle)
 
 baseline_angle_off = []
-for i in range(len(auv4_x_off)-8):
+for i in range(len(auv4_x_off)-16):
     tmp = (((real_x[i]-auv1_x_off[i])*(real_x[i]-auv4_x_off[i]))+((real_y[i]-auv1_y_off[i])*(real_y[i]-auv4_y_off[i]))
     )/(np.sqrt((real_x[i]-auv1_x_off[i])**2+(real_y[i]-auv1_y_off[i])**2)*np.sqrt((real_x[i]-auv4_x_off[i])**2+(
         real_y[i]-auv4_y_off[i])**2))
