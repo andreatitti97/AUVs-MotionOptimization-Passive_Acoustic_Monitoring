@@ -35,7 +35,7 @@ def generatePolynomialTrajectory(ts, y_from, yd_from, ydd_from, y_to, yd_to, ydd
 def potential_field(leader_pos, pos, formation, num_robots, K_att, K_rep, d_rep):
     # Calculate the desired positions of the followers in the formation
  
-    formation = np.array([[0, 0],[0, 10.0], [0, -10.0], [0, 20.0], [0, -20.0]])
+    formation = np.array([[0, 0],[0, 250.0], [0, -250.0], [0, 500.0], [0, -500.0]])
     desired_positions = np.zeros_like(pos)
 
     for i in range(0, num_robots-1):
@@ -80,7 +80,7 @@ def main():
     num_robots = 5
 
     # Define the desired formation (equilateral triangle)
-    formation = np.array([[0, 0],[0, 10.0], [0, -10.0], [0, 20.0], [0, -20.0]])
+    formation = np.array([[0, 0],[0, 250.0], [0, -250.0], [0, 500.0], [0, -500.0]])
 
     # Define the initial position and orientation of the robots
     theta = 0
@@ -91,7 +91,7 @@ def main():
         orientations[i] = theta
 
     # Define the gains for the control law
-    K_att = 500.0 # Attractive gain
+    K_att = 1.0 # Attractive gain
     K_rep = 50.0 # Repulsive gain
     d_rep = 0.2 # Distance threshold for repulsion
 
@@ -118,7 +118,7 @@ def main():
     ko = 1.0
     while t < t_end:
         if count % 100 == 0:
-            theta_goal += pi/15
+            theta_goal += 0
             angular_vel_leader = ko*(theta_goal - orientations[0])
         # Update the position and orientation of the leader robot
         

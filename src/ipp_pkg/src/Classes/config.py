@@ -25,7 +25,7 @@ while before propagate the estimation around 16 seconds
 TP = 10 # regressor MAX length
 STATE_PROPAGATION = 16 #time between each propagation of the estimation (in real case a consensus (?))
 # Team parameter: number of agents, baselines_XY, inital position, type of formation
-SIGMA_MEAS = 0.01 #0.005 # uncertainty = 1° --> sigma^2 = (uncertainty*2*pi/180)^2  per ora 3 gradi -- TO DECIDE!!
+SIGMA_MEAS = 0#0.01 #0.005 # uncertainty = 1° --> sigma^2 = (uncertainty*2*pi/180)^2  per ora 3 gradi -- TO DECIDE!!
 MEAS_UPDATE = 4 # MEAS_UPDATE (s)= meas_update*(TIME_SCALER*TIME_STEP)
 N_AUV = 4
 BASELINE_Y = 250 #(m)
@@ -42,9 +42,13 @@ MAX_TARGET_VEL = 3 #(m/s) (only for no costant vels)
 MIN_TARGET_VEL = 3 #(m/s)
 
 # Optimization Parameters
-OPTIMIZATION_ON = True
+OPTIMIZATION_ON = False
 OPTIMIZATION_TIME_STEP = STATE_PROPAGATION*(TIME_SCALER*TIME_STEP) #VA INTESO COME delta_k (planning stage)in secondi
- 
+# Cooperative Path Following Params
+K_att = 1.0 # Attractive gain
+K_rep = 50.0 # Repulsive gain
+d_rep = 0.2 # Distance threshold for repulsion
+
 class Pose:
     """2D pose"""
 
