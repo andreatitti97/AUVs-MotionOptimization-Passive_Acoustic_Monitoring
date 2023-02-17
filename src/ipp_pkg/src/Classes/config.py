@@ -42,7 +42,7 @@ MAX_TARGET_VEL = 3 #(m/s) (only for no costant vels)
 MIN_TARGET_VEL = 3 #(m/s)
 
 # Optimization Parameters
-OPTIMIZATION_ON = False
+OPTIMIZATION_ON = True
 OPTIMIZATION_TIME_STEP = STATE_PROPAGATION*(TIME_SCALER*TIME_STEP) #VA INTESO COME delta_k (planning stage)in secondi
 # Cooperative Path Following Params
 K_att = 1.0 # Attractive gain
@@ -82,6 +82,6 @@ def generatePolynomialTrajectory(ts, y_from, yd_from, ydd_from, y_to, yd_to, ydd
 
         yds /= (ts[n_time_steps - 1] - ts[0])
         ydds /= pow(ts[n_time_steps - 1] - ts[0], 2)
-
+        #path = [(path_x[i], path_y[i]) for i in range(len(ts))] # SUGGESTE syntax for eventually polynomial path 
         return ts, ys, yds, ydds
 

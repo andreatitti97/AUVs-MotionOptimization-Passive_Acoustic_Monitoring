@@ -20,30 +20,30 @@ class CooperativePathFollowing:
         self.d_rep = d_rep
         self.desired_vel = lin_vel
 
-    def potential_field(self,leader_pos, pos, num_robots, K_att, K_rep, d_rep):
+    def potential_field(self,leader_pos, pos):
         # Calculate the desired positions of the followers in the formation
     
-        formation = np.array([[0, 0],[config.BASELINE_X, -config.BASELINE_Y], 
+        formation = np.array([[config.PLATFORM_INIT_POSE[0], config.PLATFORM_INIT_POSE[1]],[config.BASELINE_X, -config.BASELINE_Y], 
                             [config.BASELINE_X, config.BASELINE_Y], 
                             [config.BASELINE_X, -config.BASELINE_Y*2], 
                             [config.BASELINE_X, config.BASELINE_Y*2]])
 
         desired_positions = np.zeros_like(pos)
 
-        for i in range(0, num_robots):
+        for i in range(0, self.n_agents):
             desired_positions[i] = leader_pos + formation[i+1]
         
         # Calculate the attractive potential for each robot
-        F_att = -K_att * (pos - desired_positions)
+        F_att = -self.k_att * (pos - desired_positions)
         
         # Calculate the repulsive potential for each robot
         F_rep = np.zeros_like(F_att)
         for i in range(self.n_agents):
             for j in range(i+1, self.n_agents):
                 d = np.linalg.norm(pos[i] - pos[j])
-                if d < d_rep:
-                    F_rep[i] += K_rep * (1/(d+1e8) - 1/d_rep) * (pos[i] - pos[j]) / (d+1e8)
-                    F_rep[j] += K_rep * (1/(d+1e8) - 1/d_rep) * (pos[j] - pos[i]) / (d+1e8)
+                if d < self.d_rep:
+                    F_rep[i] += self.k_rep * (1/(d+1e8) - 1/self.d_rep) * (pos[i] - pos[j]) / (d+1e8)
+                    F_rep[j] += self.k_rep * (1/(d+1e8) - 1/self.d_rep) * (pos[j] - pos[i]) / (d+1e8)
         
         # Calculate the total force for each robot
         F_total = F_att + F_rep
@@ -78,7 +78,7 @@ class CooperativePathFollowing:
         leader_pos = [tmp1, tmp2]
 
         # Update the position and orientation of the follower robots
-        F_total_follower, desired_position = self.potential_field(leader_pos, positions, self.n_agents, self.k_att, self.k_rep, self.d_rep)
+        F_total_follower, desired_position = self.potential_field(leader_pos, positions)
         # Compute the heading according to the desired position
         angular_vel = self.compute_orientations(desired_position,positions, self.n_agents, orientations)
         for i in range(self.n_agents):

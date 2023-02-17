@@ -1,6 +1,6 @@
 from math import atan2, pi
 import numpy as np
-import time 
+
 class Sensor:
     """ Simulate Vector Sensor """
     
@@ -13,10 +13,10 @@ class Sensor:
 
     def measureBearing(self,xt,yt,obs_pos, orientation):
 
-        print('obs_pos',obs_pos)
+
         vect = [xt-obs_pos[0],yt-obs_pos[1]]
         self.abs_bearing = atan2(vect[1],vect[0]) # abs bearing = rel_bearing - vehcile ori -> [-pi,+pi]
-        print('target_pos',xt,yt)
+
         if orientation < 0:
             theta_tmp = 2*pi + orientation
         else:
@@ -30,8 +30,7 @@ class Sensor:
             rel_bearing = self.abs_bearing - theta_tmp 
         else:
             rel_bearing = 2*pi - (theta_tmp - self.abs_bearing)
-        print('ABS BEARING',self.abs_bearing)
-        #time.sleep(5)
+
         # Create the noise and add the noise to the measurament
         #self.noise = np.random.uniform(-self.variance, self.variance)
         self.noise = np.random.normal(0,self.variance)

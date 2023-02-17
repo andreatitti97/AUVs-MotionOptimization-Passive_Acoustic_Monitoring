@@ -2,6 +2,7 @@
 import os
 import pybnb
 import importlib.util
+import time
 # Import math modules
 import numpy as np
 from math import cos, pi, sin
@@ -9,10 +10,6 @@ from math import cos, pi, sin
 import rospy
 from rospy_tutorials.msg import Floats
 from rospy.numpy_msg import numpy_msg
-
-import time
-import matplotlib.pyplot as plt
-
 
 # Import costum classes
 class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
@@ -22,7 +19,7 @@ spec.loader.exec_module(config)
 spec = importlib.util.spec_from_file_location("module.tracker_optimization", class_path+"/tracker_cassino.py")
 tracker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tracker)
-spec = importlib.util.spec_from_file_location("module.sensor", class_path+"/sensor.py")
+spec = importlib.util.spec_from_file_location("module.sensor_cpf", class_path+"/sensor_cpf.py")
 sensor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sensor)
 spec = importlib.util.spec_from_file_location("module.controller", class_path+"/controller.py")
@@ -38,7 +35,7 @@ key1, key2, key3, key4, key5 = -pi/12, -pi/15, 0, +pi/15, +pi/12 #-15°, -12°, 
 DELTA = 10**15
 ctrl_cmd = [key1, key2, key3, key4, key5]
 
-def sensorPlacement():
+'''def sensorPlacement():
     
     for i in range(config.N_AUV): #TODO: AUV up to 6 consider
         if config.ALONG_BAR_FORMATION == False:
@@ -70,7 +67,7 @@ def sensorPlacement():
                         config.BASELINE_X,config.BASELINE_Y))#freq,mean,variance,displachement \\ 1,0,config.BASELINE_Y/2
                 else:   
                     auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
-                        1,config.BASELINE_X,config.BASELINE_Y*2))#freq,mean,variance,displachement \\ 1,0,config.BASELINE_Y
+                        1,config.BASELINE_X,config.BASELINE_Y*2))#freq,mean,variance,displachement \\ 1,0,config.BASELINE_Y'''
     
 
 class Platform():
@@ -270,16 +267,20 @@ class Simple(pybnb.Problem):
 
 def main():
 
-    global covariance, target_est, platform_state
+    global target_est, platform_state
     # Ros Initialization
     rospy.init_node('optimization')
+
     pub = rospy.Publisher("ctrl_cmd",numpy_msg(Floats),queue_size=100)
     Hz = 1/(config.TIME_STEP)
     rate = rospy.Rate(Hz)
     # Init array and cov matrix
     ctrl_opt = []
     ctrl_plot = []
-    sensorPlacement()
+    #sensorPlacement()
+    auv = []
+    for i in range(config.N_AUV): #TODO: AUV up to 6 consider
+        auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS))
     if config.OPTIMIZATION_ON == True:
         rospy.loginfo('STARTED OPTIMIZATION')
     
@@ -296,7 +297,7 @@ def main():
         output = output.data
 
         # Compute the best solution solving the optimization with BnB or Greedy search
-
+        #time.sleep(50000)
         problem = Simple(t_est, s_state,regressor,output, DELTA)
         solver = pybnb.Solver()
         limit = len(ctrl_cmd)**4 + len(ctrl_cmd)**3 + len(ctrl_cmd)**2 + len(ctrl_cmd)**1 + 1
