@@ -121,13 +121,13 @@ class Robot:
             goal_theta = heading_change + old_pose
             linear_velocity, angular_velocity = \
             self.auv_controller.calc_control_command(
-                0,
-                0,
+                0.1,
+                0.1,
                 self.pose.theta, goal_theta)
             self.ang_vel = angular_velocity
-
+            self.lin_vel = linear_velocity
         else:
-            
+            self.lin_vel = 1
             old_pose = self.pose.theta
         # Update State 
         

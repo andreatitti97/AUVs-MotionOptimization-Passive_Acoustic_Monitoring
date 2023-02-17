@@ -2,33 +2,16 @@ from math import atan2, pi
 import numpy as np
 
 class Sensor:
-    """ Simulate Streamer """
+    """ Simulate Vector Sensor """
     
-    def __init__(self, name, f, mean, variance, sign, baseline_x, baseline_y):
+    def __init__(self, name, f, mean, variance):
         self.name = name
         self.f = f
         self.mean = mean
         self.variance = variance
-        d = baseline_y
-        self.baseline = sign*d 
-        self.baseline_x = -baseline_x
-        self.lin_vel = 1
-        self.w_pose_t = []
 
-    def vehiclePose(self, x_v, y_v, theta_v):#w.r.t the <w> - return auv pose from refernce pose
-        self.theta_v = theta_v
-        x_v = x_v + self.baseline_x*np.cos(self.theta_v)
-        y_v = y_v + self.baseline_x*np.sin(self.theta_v)
-        self.w_pose_s = np.array([(x_v+np.sin(self.theta_v)*self.baseline), #/2
-                                    (y_v-np.cos(self.theta_v)*self.baseline),
-                                        self.theta_v])#to check
-
-
-    def targetPoseReal(self, x_t, y_t, theta_t=0):#w.r.t. the  <w>
-        self.w_pose_t = np.transpose([x_t, y_t, theta_t])
-
-    def measureBearing(self):
-        vect = [self.w_pose_t[1]-self.w_pose_s[1],self.w_pose_t[0]-self.w_pose_s[0]]
+    def measureBearing(self,xt,yt,xo,yo):
+        vect = [xt[1]-xo[1],yt[0]-yo[0]]
         self.abs_bearing = atan2(vect[0],vect[1]) # abs bearing = rel_bearing - vehcile ori -> [-pi,+pi]
         
         if self.theta_v < 0:

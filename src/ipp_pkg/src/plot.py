@@ -163,8 +163,9 @@ plt.legend(handles=legend_elements, fontsize=20)
 #plt.plot(auv3_x_on, auv3_y_on, 'k')
 #plt.plot(auv4_x_on, auv4_y_on, 'k')
 j = 0
-
+lista = []
 for i in range(ranges):
+
     # plot LOS
     idx = (i+1)*5*ranges#500
     if i == 6:
@@ -173,6 +174,7 @@ for i in range(ranges):
         real_x[idx]],[auv1_y_on[idx],real_y[idx]],'k--',linewidth=1)
     plt.plot([auv4_x_on[idx],real_x[idx]],[auv4_y_on[idx],
         real_y[idx]],'k--',linewidth=1)
+    # = plt.Circle((auv4_x_on[0],auv4_y_on[0]),1*scaling,color='k')
     # plot AUVs
     plt.plot(auv1_x_on[idx],auv1_y_on[idx],'ok',linewidth=1)
     plt.plot(auv2_x_on[idx],auv2_y_on[idx],'ok',linewidth=1)
@@ -184,7 +186,10 @@ for i in range(ranges):
     plt.text(real_x[idx],real_y[idx],'t'+str(j+1),fontsize=1)
     # plot REFERENCE
     plt.plot(s_x_on[idx],s_y_on[idx],'Xb',linewidth=5) 
-
+    #tmp = np.sqrt((auv1_x_on[idx]-auv4_x_on[idx])**2+(auv1_y_on[idx]-auv4_y_on[idx])**2)
+    #circle = plt.Circle((s_x_on[idx],s_y_on[idx]),radius=tmp/2,fill=False)
+    #plt.scatter(s_x_on[idx],s_y_on[idx], s=tmp, facecolors='none', edgecolors='r')
+    plt.gca().add_patch(circle)
     j += 1 
 plt.axis('equal')
 idx1 = int(len(real_x)/2) 

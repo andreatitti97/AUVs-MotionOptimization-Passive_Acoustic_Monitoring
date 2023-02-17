@@ -3,6 +3,7 @@
 import os
 import time
 import importlib.util
+import matplotlib.pyplot as plt
 # Import math modules
 from math import pi
 import numpy as np
@@ -23,12 +24,15 @@ spec.loader.exec_module(tracker)
 spec = importlib.util.spec_from_file_location("module.controller", class_path+"/controller.py")
 controller = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(controller)
-spec = importlib.util.spec_from_file_location("module.sensor", class_path+"/sensor.py")
+spec = importlib.util.spec_from_file_location("module.sensor", class_path+"/sensor_cpf.py")
 sensor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sensor)
 spec = importlib.util.spec_from_file_location("module.robot", class_path+"/robot.py")
 robot = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(robot)
+spec = importlib.util.spec_from_file_location("module.cpf", class_path+"/cpf.py")
+cpf = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(cpf)
 # PATH DEFINITON
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 # Time counter
@@ -38,48 +42,16 @@ target_x_traj, target_y_traj, platform_x, platform_y = [], [], [], []
 est1_x, est1_y, est2_x, est2_y,est3_x, est3_y,est4_x, est4_y = [], [], [], [], [], [], [], []
 auv1_x, auv1_y, auv2_x, auv2_y,auv3_x,auv3_y,auv4_x,auv4_y  = [], [], [], [], [], [], [], []
 rmse, bearing1, bearing2 = [], [], []
-t_axe, est1_vx, est1_vy = [], [], []
-comm_counter = [0, 0, 0, 0]
-counter_comm = 0
+
+
 def sensorPlacement(auv):
-    
     for i in range(config.N_AUV): #TODO: AUV up to 6 consider
-        if config.ALONG_BAR_FORMATION == False:
-            if (i+1) % 2 == 0:
-                if i+1 > 3:
-                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
-                        -1,config.BASELINE_X, config.BASELINE_Y-config.BASELINE_Y/2))#freq,mean,variance,displachement
-                else:   
-                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
-                        -1,0,config.BASELINE_Y))#freq,mean,variance,displachement
-            if (i+1) % 2 == 1:
-                if i+1 > 2:
-                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,1,
-                        config.BASELINE_X, config.BASELINE_Y-config.BASELINE_Y/2))#freq,mean,variance,displachement
-                else:   
-                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
-                        1,0,config.BASELINE_Y))#freq,mean,variance,displachement
-        else:
-            if (i+1) % 2 == 0:
-                if i+1 > 3:
-                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
-                        -1,config.BASELINE_X,config.BASELINE_Y*2))#freq,mean,variance,displachement \\ -1,0,config.BASELINE_Y
-                else:   
-                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
-                        -1,config.BASELINE_X,config.BASELINE_Y))#freq,mean,variance,displachement \\ -1,0,config.BASELINE_Y/2
-            if (i+1) % 2 == 1:
-                if i+1 > 2:
-                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,1,
-                        config.BASELINE_X,config.BASELINE_Y))#freq,mean,variance,displachement \\ 1,0,config.BASELINE_Y/2
-                else:   
-                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
-                        1,config.BASELINE_X,config.BASELINE_Y*2))#freq,mean,variance,displachement \\ 1,0,config.BASELINE_Y
-    
+        auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS))
     return auv
 
-def run_simulation(robots, obs, auv, pub, poly_traj):
+def run_simulation(robots, obs, auv, pub, poly_traj, cpf_control, path):
     """Simulate the sensor platform and the moving target"""
-    global count1, comm_counter, counter_comm
+    global count1
     propagation = False
     Hz = 1/(config.TIME_STEP) #NB: different from sampling rate for move things, this is ros rate
     rate = rospy.Rate(Hz)
@@ -89,16 +61,21 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
     meas_table = []
     cmds = []
     j = 0
+    auv_init = []
+    
     while t <= config.TIME_DURATION:
         rospy.loginfo('SIMULATION TIME(s)')
         rospy.loginfo(t)
 
         for instance in robots:
             # SIMULATE SENSORS MEASURAMENTS - rimane uguale
+            
             for j in range(config.N_AUV):
-                auv[j].vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta)
-                auv[j].targetPoseReal(instance.pose_target.x,instance.pose_target.y,instance.pose_target.theta)
-                [measure_, auv_pose_, rel_bearing_] = auv[j].measureBearing()
+                #auv[j].vehiclePose(instance.pose.x,instance.pose.y,instance.pose.theta)
+                #auv[j]
+                #auv[j].targetPoseReal(instance.pose_target.x,instance.pose_target.y,instance.pose_target.theta)
+                
+                [measure_, auv_pose_, rel_bearing_] = auv[j].measureBearing(instance.pose_target.x,instance.pose_target.y,new_state[j])
                 # Save AUVs position
                 if j == 0:
                     auv1_x.append(auv_pose_[0])
@@ -151,7 +128,6 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
             if config.N_AUV > 2:
                 curr_est3, phi3, y3 = obs[2].state
                 curr_est4, phi4, y4 = obs[3].state
-            t_axe.append(t)
             est1_x.append(curr_est1[0,0])
             est1_y.append(curr_est1[1,0])
 
@@ -191,7 +167,7 @@ def run_simulation(robots, obs, auv, pub, poly_traj):
             rospy.loginfo('RECEIVED CMDS')
         
         ######################################### MOVE THE ROBOTS #######################################################
-        instance.move(config.TIME_STEP*config.TIME_SCALER, cmds, count1)
+
         instance.move_target(config.TIME_STEP*config.TIME_SCALER,poly_traj[count1])
         #################################################################################################################
         if int(t) == (config.TIME_DURATION-1):
@@ -272,13 +248,23 @@ def main():
     auv = []
     # Sensor Initialization
     auv = sensorPlacement(auv) #trapezoidal formation
+    start = np.array([0,0,0])
+    goal = np.array([600,000,0])
+    ts = np.linspace(0,config.TIME_DURATION,round(config.TIME_DURATION/(config.TIME_SCALER*config.TIME_STEP)))
+    [ts, poly_traj, yd, ydd] = config.generatePolynomialTrajectory(ts,start,0,0,goal,0,0)
+    path_x = poly_traj[:,0]
+    path_y = poly_traj[:,1]
+    path = [(path_x[i], path_y[i]) for i in range(len(ts))]
+    formation = np.array([[0, 0],[0, 10.0], [0, -10.0]])
+    cpf_control = cpf.CooperativePathFollowing(formation, config.N_AUV,)
+    
     # Set the AUV and the TARGET to the initial conditions
     robot_1.set_start_target_poses(pose_start_1, pose_target)
     # Instantiate the object Robot 
     robots: list[robot.Robot] = [robot_1]
     # Generate Trajectory given the target start pos and waypoints
-    ts = np.linspace(0,config.TIME_DURATION+1000,round(config.TIME_DURATION+1000/(config.TIME_SCALER*config.TIME_STEP)))
-    [ts, poly_traj, vel, acc] = config.generatePolynomialTrajectory(ts, target_start, 0, 0, target_goal, 0, 0)
+    
+    
     # Run The Simulation
     if config.OPTIMIZATION_ON == True:
         rospy.loginfo('LAUNCH THE OPTIMIZATION')
@@ -287,7 +273,7 @@ def main():
     else:
         rospy.loginfo('STARTED SIMULATION - OPTIMIZATION OFF')
 
-    run_simulation(robots, tr, auv, pub, poly_traj)
+    run_simulation(robots, tr, auv, pub, path, cpf_control, path)
 
 if __name__ == '__main__':
     main()

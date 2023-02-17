@@ -33,7 +33,7 @@ BASELINE_X = 0 #valori presi dall'esperimento sulla comunicazione (veicoli lonta
 PLATFORM_INIT_POSE = [500, 0, 0] #[x,y,theta]
 ALONG_BAR_FORMATION = True
 AUV_VEL = 1.0 #(m/s)
-CONTROLLER_GAIN = 0.1 #0.01
+CONTROLLER_GAIN = 0.07 #0.01
 # Target parameter: start, goal, min max vels
 TARGET_INIT = [+2000, +1500, -pi] #[x(m),y(m),theta(rad),linear vel(m/s)]
 TARGET_GOAL = [100, 100,TARGET_INIT[2]]
@@ -80,3 +80,4 @@ def generatePolynomialTrajectory(ts, y_from, yd_from, ydd_from, y_to, yd_to, ydd
         ydds /= pow(ts[n_time_steps - 1] - ts[0], 2)
 
         return ts, ys, yds, ydds
+
