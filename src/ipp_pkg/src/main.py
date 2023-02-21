@@ -58,14 +58,14 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
     t = 0    
     count1 = 0
     meas_table = []
-    cmds = []
+    cmds = [0,0,0,0]
     j = 0
-
+    k = 0
     # Init AUVs position and orientation according to given formation
     positions = np.zeros((len(auv),2))
     leader_pos = np.array([formation[0,0],formation[0,1]])
     for i in range(0, len(auv)):
-            positions[i] = leader_pos + formation[i+1]
+        positions[i] = leader_pos + formation[i+1]
     orientations = np.zeros(len(auv))
     leader_ori =init_orientation
     for i in range(len(auv)):
@@ -75,13 +75,13 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
     while t <= config.TIME_DURATION:
         rospy.loginfo('SIMULATION TIME(s)')
         rospy.loginfo(t)
+        rospy.loginfo(count1)
 
         # Simulate Sensor Measuraments
         for j in range(config.N_AUV):
 
             [measure_, rel_bearing_, meas_pos] = auv[j].measureBearing(target.pose_target.x,target.pose_target.y,positions[j], orientations[j])
-            print(meas_pos[1])
-
+            
             if count1 % config.MEAS_UPDATE == 0:
                 # Write a row of the measurament table
                 arr = [t,measure_,meas_pos[0],meas_pos[1]]
@@ -112,25 +112,29 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
             rospy.loginfo('SENDING DATA')
             pub[0].publish(np.array(curr_est4,dtype=np.float32))
             rospy.sleep(config.TIME_STEP*5)
-            pub[1].publish(np.array(leader_pos,dtype=np.float32))
+            tmp = [leader_pos[0],leader_pos[1],leader_ori]
+            pub[1].publish(np.array(tmp,dtype=np.float32))
             rospy.sleep(config.TIME_STEP*5)
             phi = []
             for i in range(len(y4)):        
                 tmp = phi4[i]
                 for j in range(4):
                     phi.append(tmp[j])
-            pub[2].publish(np.array(phi4,dtype=np.float32))
+            pub[2].publish(np.array(phi,dtype=np.float32))
             rospy.sleep(config.TIME_STEP*5)
             pub[3].publish(np.array(y4,dtype=np.float32))
             rospy.sleep(config.TIME_STEP*5)
             cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))
             cmds = cmds.data
-            
-            rospy.loginfo('RECEIVED CMDS')
+            rospy.loginfo('RECEIVED CMDS -------------------------------------------------------------------------------')
+        
+            #rospy.loginfo('RECEIVED CMDS -------------------------------------------------------------------------------')
+        
         ##################################################################################################################
              
         ######################################### MOVE THE ROBOTS #######################################################
-        [leader_pos, positions, orientations] = cpf_control.move_agents(leader_pos, leader_ori,cmds, config.TIME_STEP*config.TIME_SCALER, positions, orientations)
+        #print(cmds)
+        [leader_pos,leader_ori, positions, orientations] = cpf_control.move_agents(leader_pos,cmds[0], config.TIME_STEP*config.TIME_SCALER, positions, orientations, count1)
         target.move_target(config.TIME_STEP*config.TIME_SCALER)
         
         #################################################################################################################
@@ -243,11 +247,7 @@ def main():
     for i in range(config.N_AUV): #TODO: AUV up to 6 consider
         auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS))
 
-    
-    formation = np.array([[config.PLATFORM_INIT_POSE[0], config.PLATFORM_INIT_POSE[1]],[config.BASELINE_X, -config.BASELINE_Y], 
-                            [config.BASELINE_X, config.BASELINE_Y], 
-                            [config.BASELINE_X, -config.BASELINE_Y*2], 
-                            [config.BASELINE_X, config.BASELINE_Y*2]])
+        
     # Init trackers 
     trackers = []
     tracker1 = tracker.Tracker('first_observer', False)
@@ -260,7 +260,7 @@ def main():
     trackers.append(tracker4)
         
     # Cooperative Path Following initialization
-    cpf_control = cpf.CooperativePathFollowing(formation, config.N_AUV, config.PLATFORM_INIT_POSE[2], config.K_att, config.K_rep, config.d_rep, config.AUV_VEL)
+    cpf_control = cpf.CooperativePathFollowing(config.formation, config.N_AUV, config.PLATFORM_INIT_POSE[2], config.K_att, config.K_rep, config.d_rep, config.AUV_VEL)
     
     
     # Run The Simulation
@@ -271,7 +271,7 @@ def main():
     else:
         rospy.loginfo('STARTED SIMULATION - OPTIMIZATION OFF')
     
-    run_simulation(target_, trackers, auv, pub, cpf_control, formation, config.PLATFORM_INIT_POSE[2])
+    run_simulation(target_, trackers, auv, pub, cpf_control, config.formation, config.PLATFORM_INIT_POSE[2])
 
 if __name__ == '__main__':
     main()

@@ -32,15 +32,18 @@ def generatePolynomialTrajectory(ts, y_from, yd_from, ydd_from, y_to, yd_to, ydd
 
         return ts, ys, yds, ydds
 
-def potential_field(leader_pos, pos, formation, num_robots, K_att, K_rep, d_rep):
+def potential_field2(leader_pos, leader_ori, pos, BASELINE_X, BASELINE_Y, num_robots, K_att, K_rep, d_rep):
     # Calculate the desired positions of the followers in the formation
  
-    formation = np.array([[0, 0],[0, 250.0], [0, -250.0], [0, 500.0], [0, -500.0]])
+    formation = np.array([[0, 0],[BASELINE_X, BASELINE_Y], [BASELINE_X, -BASELINE_Y], [BASELINE_X, 2*BASELINE_Y], [BASELINE_X, -2*BASELINE_Y]])
     desired_positions = np.zeros_like(pos)
 
     for i in range(0, num_robots-1):
-        desired_positions[i] = leader_pos + formation[i+1]
-    
+        desired_positions[i,0] = leader_pos[0] + formation[i+1,0]*np.cos(leader_ori)+formation[i+1,1]*np.sin(leader_ori)
+        desired_positions[i,1] = leader_pos[1] + formation[i+1,0]*np.sin(leader_ori)-formation[i+1,1]*np.cos(leader_ori)
+    #print('leader pos',leader_pos)
+    #print('desired_position',desired_positions)
+
     # Calculate the attractive potential for each robot
     F_att = -K_att * (pos - desired_positions)
     
@@ -55,7 +58,42 @@ def potential_field(leader_pos, pos, formation, num_robots, K_att, K_rep, d_rep)
     
     # Calculate the total force for each robot
     F_total = F_att + F_rep
+    #print('F_total',F_total)
+    
+    return F_total, desired_positions
 
+
+def potential_field(leader_pos, pos, formation, num_robots, K_att, K_rep, d_rep):
+    # Calculate the desired positions of the followers in the formation
+    F_total = np.zeros(num_robots)
+    F_total = []
+    #formation = np.array([[0, 0],[0, 250.0], [0, -250.0], [0, 500.0], [0, -500.0]])
+    desired_positions = np.zeros_like(pos)
+    desired_positions = leader_pos+formation
+    #for i in range(0, num_robots-1):
+    #    desired_positions[i] = leader_pos + formation[i+1]
+    
+    # Calculate the attractive potential for each robot
+    for i in range(num_robots-1):
+        F_attx = -(pos[i,0] - desired_positions[i,0])
+        F_atty = -(pos[i,1] - desired_positions[i,1])
+        F_total.append([F_attx,F_atty])
+    #F_att = -K_att * (pos - desired_positions)
+    
+    # Calculate the repulsive potential for each robot
+    '''F_rep = np.zeros_like(F_att)
+    for i in range(num_robots-1):
+        for j in range(i+1, num_robots-1):
+            d = np.linalg.norm(pos[i] - pos[j])
+            if d < d_rep:
+                F_rep[i] += K_rep * (1/d - 1/d_rep) * (pos[i] - pos[j]) / d
+                F_rep[j] += K_rep * (1/d - 1/d_rep) * (pos[j] - pos[i]) / d'''
+    
+    # Calculate the total force for each robot
+    #F_total = F_att #+ F_rep
+
+    print(F_total)
+    #time.sleep(5000)
     return F_total, desired_positions
 
 def compute_orientations(desired_pos, pos, num_robots, orientations):
@@ -68,6 +106,15 @@ def compute_orientations(desired_pos, pos, num_robots, orientations):
 
     return angular_vel
 
+def saturateVel(vel):
+    VEL_MAX = 10
+    
+    if vel > VEL_MAX:
+        vel = VEL_MAX
+    if vel < -VEL_MAX:
+        vel = -VEL_MAX
+        time.sleep
+    return vel
 def main():
     # Define the path for the leader robot to follow
     path_length = 10
@@ -78,9 +125,10 @@ def main():
 
     # Define the number of robots in the group
     num_robots = 5
-
+    BASELINE_X = 0.0
+    BASELINE_Y = 250.0
     # Define the desired formation (equilateral triangle)
-    formation = np.array([[0, 0],[0, 250.0], [0, -250.0], [0, 500.0], [0, -500.0]])
+    formation = np.array([[0, 0],[BASELINE_X, BASELINE_Y], [BASELINE_X, -BASELINE_Y], [BASELINE_X, 2*BASELINE_Y], [BASELINE_X, -2*BASELINE_Y]])
 
     # Define the initial position and orientation of the robots
     theta = 0
@@ -92,7 +140,7 @@ def main():
 
     # Define the gains for the control law
     K_att = 1.0 # Attractive gain
-    K_rep = 50.0 # Repulsive gain
+    K_rep = 1.0 # Repulsive gain
     d_rep = 0.2 # Distance threshold for repulsion
 
     pos1_x = []
@@ -109,17 +157,19 @@ def main():
     v_lin = 1
     # Define the simulation loop
     # Define the simulation time and time step
-    t_end = 100
-    dt = 0.01
+    t_end = 1000
+    dt = 0.1
     t = 0
     count = 0
     angular_vel_leader = 0
     theta_goal = 0
-    ko = 1.0
+    ko = 5.0
+    count2 = 0
     while t < t_end:
-        if count % 100 == 0:
-            theta_goal += 0
+        if count % 1000 == 0:
+            theta_goal += pi/15
             angular_vel_leader = ko*(theta_goal - orientations[0])
+            count2 += 1
         # Update the position and orientation of the leader robot
         
         theta_leader = orientations[0] + angular_vel_leader*dt
@@ -127,16 +177,21 @@ def main():
         leader_pos[1] = leader_pos[1] + v_lin*np.sin(theta_leader)*dt
 
         # Update the position and orientation of the follower robots
-        F_total_follower, desired_position = potential_field(leader_pos, positions, formation, num_robots, K_att, K_rep, d_rep)
+        F_total_follower, desired_position = potential_field2(leader_pos, theta_leader, positions, BASELINE_X, BASELINE_Y, num_robots, K_att, K_rep, d_rep)
         # Compute the heading according to the desired position
         angular_vel = compute_orientations(desired_position,positions, num_robots, orientations[1:num_robots])
         for i in range(num_robots-1):
             orientations[i] = angular_vel[i]*dt
-            tmp1 = positions[i,0] + (v_lin*np.cos(orientations[i]) + F_total_follower[i,0]*dt)*dt 
-            tmp2 = positions[i,1] + (v_lin*np.sin(orientations[i]) + F_total_follower[i,1]*dt)*dt 
+            tmp1 = saturateVel((v_lin*np.cos(orientations[i]) + F_total_follower[i,0]*dt)*dt)
+            tmp2 = saturateVel((v_lin*np.sin(orientations[i]) + F_total_follower[i,1]*dt)*dt)
+            tmp1 = positions[i,0] + tmp1#(v_lin*np.cos(orientations[i]) + F_total_follower[i,0]*dt)*dt 
+            tmp2 = positions[i,1] + tmp2#(v_lin*np.sin(orientations[i]) + F_total_follower[i,1]*dt)*dt 
             positions[i,0] = tmp1
             positions[i,1] = tmp2
         # Update the simulation time and data structures for plot
+        #if t > 500:
+        #    time.sleep(50000)
+        
         pos1_x.append(leader_pos[0])
         pos1_y.append(leader_pos[1])
         tmp1 = positions[0]
@@ -157,12 +212,13 @@ def main():
         t += dt
         count +=1
         print(count)
+    print(count2)
     plt.figure()
     plt.plot(pos1_x,pos1_y)
-    plt.plot(pos2_x,pos2_y)
-    plt.plot(pos3_x,pos3_y)
-    plt.plot(pos4_x,pos4_y)
-    plt.plot(pos5_x,pos5_y)
+    plt.plot(pos2_x,pos2_y,'r')
+    plt.plot(pos3_x,pos3_y,'g')
+    plt.plot(pos4_x,pos4_y,'m')
+    plt.plot(pos5_x,pos5_y,'k')
     plt.scatter(pos1_x[0],pos1_y[0])
     plt.scatter(pos2_x[0],pos2_y[0])
     plt.scatter(pos3_x[0],pos3_y[0])

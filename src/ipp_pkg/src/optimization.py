@@ -22,9 +22,9 @@ spec.loader.exec_module(tracker)
 spec = importlib.util.spec_from_file_location("module.sensor_cpf", class_path+"/sensor_cpf.py")
 sensor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sensor)
-spec = importlib.util.spec_from_file_location("module.controller", class_path+"/controller.py")
-controller = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(controller)
+spec = importlib.util.spec_from_file_location("module.cpf", class_path+"/cpf.py")
+cpf = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(cpf)
 # FOLDER PATH DEFINITION
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 # Init global variables for callbacks
@@ -34,74 +34,6 @@ t_est_x, t_est_y, auv = [], [], []
 key1, key2, key3, key4, key5 = -pi/12, -pi/15, 0, +pi/15, +pi/12 #-15°, -12°, 0°, +12°, +15°
 DELTA = 10**15
 ctrl_cmd = [key1, key2, key3, key4, key5]
-
-'''def sensorPlacement():
-    
-    for i in range(config.N_AUV): #TODO: AUV up to 6 consider
-        if config.ALONG_BAR_FORMATION == False:
-            if (i+1) % 2 == 0:
-                if i+1 > 3:
-                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
-                        -1,config.BASELINE_X, config.BASELINE_Y-config.BASELINE_Y/2))#freq,mean,variance,displachement
-                else:   
-                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
-                        -1,0,config.BASELINE_Y))#freq,mean,variance,displachement
-            if (i+1) % 2 == 1:
-                if i+1 > 2:
-                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,1,
-                        config.BASELINE_X, config.BASELINE_Y-config.BASELINE_Y/2))#freq,mean,variance,displachement
-                else:   
-                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
-                        1,0,config.BASELINE_Y))#freq,mean,variance,displachement
-        else:
-            if (i+1) % 2 == 0:
-                if i+1 > 3:
-                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
-                        -1,config.BASELINE_X,config.BASELINE_Y*2))#freq,mean,variance,displachement \\ -1,0,config.BASELINE_Y
-                else:   
-                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
-                        -1,config.BASELINE_X,config.BASELINE_Y))#freq,mean,variance,displachement \\ -1,0,config.BASELINE_Y/2
-            if (i+1) % 2 == 1:
-                if i+1 > 2:
-                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,1,
-                        config.BASELINE_X,config.BASELINE_Y))#freq,mean,variance,displachement \\ 1,0,config.BASELINE_Y/2
-                else:   
-                    auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS,
-                        1,config.BASELINE_X,config.BASELINE_Y*2))#freq,mean,variance,displachement \\ 1,0,config.BASELINE_Y'''
-    
-
-class Platform():
-    def __init__(self, init_vector, path_finder_controller_auv):
-        
-        self.x = init_vector[0]
-        self.y = init_vector[1]
-        self.theta = init_vector[2]
-        self.auv_controller = path_finder_controller_auv
-        self.vl = config.AUV_VEL
-        self.dt = config.OPTIMIZATION_TIME_STEP/8
-
-    def retrieve_state(self):
-        return[self.x,self.y,self.theta]
-
-    def update_state(self, delta, t, old_ori):
-
-
-        heading_change = delta 
-        if t == 0:
-            goal_theta = heading_change + old_ori
-            linear_velocity, angular_velocity = \
-            self.auv_controller.calc_control_command(
-                0,
-                0,
-                self.theta, goal_theta)
-            self.ang_vel = angular_velocity
-        if t == 8:
-            self.ang_vel = 0
-        self.theta = (self.theta + self.ang_vel)
-        self.x = self.x + cos(self.theta)*self.vl*self.dt
-        self.y = self.y + sin(self.theta)*self.vl*self.dt
-        
-        return [self.x, self.y, self.theta]
 
 class Target():
     def __init__(self, init_vector):
@@ -119,29 +51,39 @@ class Target():
         self.y = self.y + self.vly*self.dt
         return [self.x, self.y, self.vlx, self.vly]
 
-def simulation(control_input, target_est, platform_pose, phi, y):
+def simulation(control_input, target_est, platform_pose, phi, y, sensor, controller):
 
     tracker_ = tracker.Tracker('1', True, phi, y)
-    controller_auv = controller.Controller(1, config.CONTROLLER_GAIN) #0.01
-    platform = Platform(platform_pose, controller_auv)
+    #print('platform pose',platform_pose)
+    #print('target_est',target_est)
+    #print('control_input',control_input)
+    #controller_auv = controller.Controller(1, config.CONTROLLER_GAIN) #0.01
+    #platform = Platform(platform_pose, controller_auv)
+    positions = np.zeros((4,2))
+    tmp2 = np.array([platform_pose[0],platform_pose[0]])
+    for i in range(0, 4):
+        positions[i] = tmp2 + config.formation[i+1]
+    orientations = np.zeros(4)
+    for i in range(4):
+        orientations[i] = platform_pose[2]
     target = Target(target_est)
     variable = 0
     meas_table = []
     j = 0
     propagation = False
-    [x_pos,y_pos, old_ori] = platform.retrieve_state()
-
+    controller.update_leader_ori(platform_pose[2])
     for t in range(0,8):
         if t == 0:
-            platform_state = platform.update_state(control_input,t,old_ori) 
+
+            [platform_pose, tmp, positions, orientations] = controller.move_agents(platform_pose, control_input, config.OPTIMIZATION_TIME_STEP/8, positions, orientations,t,True)
+            platform_pose = [platform_pose[0],platform_pose[1],tmp]
         else:
-            platform_state = platform.update_state(0,t,old_ori) 
+            [platform_pose, tmp, positions, orientations] = controller.move_agents(platform_pose, 0, config.OPTIMIZATION_TIME_STEP/8, positions, orientations,t,True)
+            platform_pose = [platform_pose[0],platform_pose[1],tmp]
         target_state = target.update_state()
         if t >= 0 and t < 8:
-            auv[j].vehiclePose(platform_state[0], platform_state[1], platform_state[2])
-            auv[j].targetPoseReal(target_state[0], target_state[1], 0)
-            [measure, vehicle_pose, rel_bearing1] = auv[j].measureBearing()
-            arr = [variable,measure,vehicle_pose[0],vehicle_pose[1]]
+            [measure_, rel_bearing_, meas_pos] = sensor[j].measureBearing(target_state[0],target_state[1],positions[j], orientations[j])
+            arr = [variable,measure_,meas_pos[0],meas_pos[1]]
             meas_table.append(arr)
             j = j + 1
             if j == 4:
@@ -157,7 +99,7 @@ def simulation(control_input, target_est, platform_pose, phi, y):
         variable += config.OPTIMIZATION_TIME_STEP/8
     [state, phi, y] = tracker_.state
     state = [state[0,0], state[1,0], state[2,0], state[3,0]]
-    return state, phi, y, platform_state
+    return state, phi, y, platform_pose #platform_state
 
 def compute_cost(phi,length_y):
 
@@ -171,7 +113,7 @@ def compute_cost(phi,length_y):
     return cost
 
 class Simple(pybnb.Problem):
-    def __init__(self,x_hat, s, phi, y,initial_cost):
+    def __init__(self,x_hat, s, phi, y,initial_cost,sensors, cpf_control):
         # aggiungi un livello per imporre un orizzonte finito 
         self._x_hat = x_hat
         self._s = s
@@ -185,6 +127,8 @@ class Simple(pybnb.Problem):
         self._bound = 0 #lower bound 
         self._objective = 0 #real obj
         self.choices = []
+        self.sensors = sensors
+        self.controller = cpf_control
 
     # required methods
     def sense(self):
@@ -207,11 +151,11 @@ class Simple(pybnb.Problem):
 
         x_hat, s, phi, y = self._x_hat, self._s, self._phi, self.__y
         
-        x1, phi1, y1, s1 = simulation(ctrl_cmd[0], x_hat, s, phi, y)
-        x2, phi2, y2, s2 = simulation(ctrl_cmd[1], x_hat, s, phi, y)
-        x3, phi3, y3, s3 = simulation(ctrl_cmd[2], x_hat, s, phi, y)
-        x4, phi4, y4, s4 = simulation(ctrl_cmd[3], x_hat, s, phi, y)
-        x5, phi5, y5, s5 = simulation(ctrl_cmd[4], x_hat, s, phi, y)
+        x1, phi1, y1, s1 = simulation(ctrl_cmd[0], x_hat, s, phi, y, self.sensors, self.controller)
+        x2, phi2, y2, s2 = simulation(ctrl_cmd[1], x_hat, s, phi, y, self.sensors, self.controller)
+        x3, phi3, y3, s3 = simulation(ctrl_cmd[2], x_hat, s, phi, y, self.sensors, self.controller)
+        x4, phi4, y4, s4 = simulation(ctrl_cmd[3], x_hat, s, phi, y, self.sensors, self.controller)
+        x5, phi5, y5, s5 = simulation(ctrl_cmd[4], x_hat, s, phi, y, self.sensors, self.controller)
         
         child = pybnb.Node()
         cost1 = compute_cost(phi1,len(y1))
@@ -267,7 +211,7 @@ class Simple(pybnb.Problem):
 
 def main():
 
-    global target_est, platform_state
+    global target_est
     # Ros Initialization
     rospy.init_node('optimization')
 
@@ -278,9 +222,14 @@ def main():
     ctrl_opt = []
     ctrl_plot = []
     #sensorPlacement()
-    auv = []
-    for i in range(config.N_AUV): #TODO: AUV up to 6 consider
-        auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS))
+    sensors = []
+
+    # Cooperative Path Following initialization
+    cpf_control = cpf.CooperativePathFollowing(config.formation, config.N_AUV, config.PLATFORM_INIT_POSE[2], config.K_att, config.K_rep, config.d_rep, config.AUV_VEL)
+
+
+    for i in range(config.N_AUV): 
+        sensors.append(sensor.Sensor(str(i),1,0,0.005))#config.SIGMA_MEAS
     if config.OPTIMIZATION_ON == True:
         rospy.loginfo('STARTED OPTIMIZATION')
     
@@ -297,8 +246,7 @@ def main():
         output = output.data
 
         # Compute the best solution solving the optimization with BnB or Greedy search
-        #time.sleep(50000)
-        problem = Simple(t_est, s_state,regressor,output, DELTA)
+        problem = Simple(t_est, s_state,regressor,output, DELTA, sensors, cpf_control)
         solver = pybnb.Solver()
         limit = len(ctrl_cmd)**4 + len(ctrl_cmd)**3 + len(ctrl_cmd)**2 + len(ctrl_cmd)**1 + 1
 

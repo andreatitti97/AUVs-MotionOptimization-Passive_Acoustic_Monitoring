@@ -9,17 +9,25 @@ spec = importlib.util.spec_from_file_location("module.config", class_path+"/conf
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
 
+
+count2, prev_count = 0, 0
+goal_theta, old_pose = 0, 0
+angular_velocity = 0
+
 class CooperativePathFollowing:
 
     def __init__(self, formation, n_agents, init_orientation, k_att, k_rep, d_rep,lin_vel):
         self.formation = formation
         self.n_agents = n_agents
-        self.init_orientation = init_orientation
+        self.theta = init_orientation
         self.k_att = k_att
         self.k_rep = k_rep
         self.d_rep = d_rep
         self.desired_vel = lin_vel
 
+    def update_leader_ori(self,updated_ori):
+        self.theta = updated_ori
+        
     def potential_field(self,leader_pos, pos):
         # Calculate the desired positions of the followers in the formation
     
@@ -60,21 +68,40 @@ class CooperativePathFollowing:
 
         return angular_vel
 
-    def move_agents(self, leader_pos, leader_ori, ctrl_cmd, dt, positions, orientations):
+    def move_agents(self, leader_pos, ctrl_cmd, dt, positions, orientations, count1, bool=False):
         
-        '''if ctrl_cmd != []:
-            ko = config.CONTROLLER_GAIN
-            theta_goal = ctrl_cmd
-            angular_vel_leader = ko*(theta_goal - orientations[0])
-        else:
-            angular_vel_leader = 0'''
-        angular_vel_leader = 0
-        theta_leader = leader_ori + angular_vel_leader*dt
+        global count2, prev_count, goal_theta, old_pose, angular_velocity
+        
+        
+        if bool == True:
+            if (np.abs(np.round(goal_theta,3) - np.round(self.theta,3)) < 0.02) and count1 == 8:         
+                count2 = 0
+                angular_vel_leader = 0
+            else:
+                count2  = 1
+        else: 
+            if (np.abs(np.round(goal_theta,3) - np.round(self.theta,3)) < 0.02) and count1 > 15:         
+                count2 = 0
+                angular_vel_leader = 0            
+            if count1%config.STATE_PROPAGATION == 0 and count1 >= config.STATE_PROPAGATION:
+                count2 = 1    
+        # Compute the angular velocity after received the command
+        if prev_count != count2 and config.OPTIMIZATION_ON == True:
 
+            ko = config.CONTROLLER_GAIN
+
+            goal_theta = ctrl_cmd + old_pose
+            angular_vel_leader = ko*(goal_theta - self.theta)
+        else:
+            angular_vel_leader = 0
+            old_pose = self.theta
+
+        # Update Leader Position
+        self.theta = (self.theta + angular_vel_leader*dt)
         
-        tmp1 = leader_pos[0] + self.desired_vel*np.cos(theta_leader)*dt
-        tmp2 = leader_pos[1] + self.desired_vel*np.sin(theta_leader)*dt
- 
+        tmp1 = leader_pos[0] + self.desired_vel*np.cos(self.theta)*dt
+        tmp2 = leader_pos[1] + self.desired_vel*np.sin(self.theta)*dt
+
         leader_pos = [tmp1, tmp2]
 
         # Update the position and orientation of the follower robots
@@ -87,7 +114,4 @@ class CooperativePathFollowing:
             tmp2 = positions[i,1] + (self.desired_vel*np.sin(orientations[i]) + F_total_follower[i,1]*dt)*dt 
             positions[i,0] = tmp1
             positions[i,1] = tmp2
-        
-        print('POSITIONS',positions)
-        #time.sleep(5)
-        return leader_pos, positions, orientations
+        return leader_pos, self.theta, positions, orientations

@@ -294,3 +294,7 @@ plt.text(0,err_medio2 , 'ERRORE MEDIO ON:'+str(err_medio2), fontsize=1.5*scaling
 plt.grid()
 plt.show()
 
+plt.plot(opt_x,opt_y)
+plt.plot(real_x,real_y)
+plt.grid()
+plt.show()
