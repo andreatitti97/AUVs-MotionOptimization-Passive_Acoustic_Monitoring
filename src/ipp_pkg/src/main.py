@@ -43,11 +43,6 @@ est1_x, est1_y, est2_x, est2_y,est3_x, est3_y,est4_x, est4_y = [], [], [], [], [
 auv1_x, auv1_y, auv2_x, auv2_y,auv3_x,auv3_y,auv4_x,auv4_y  = [], [], [], [], [], [], [], []
 rmse, bearing1, bearing2 = [], [], []
 
-
-def sensorPlacement(auv):
-    
-    return auv
-
 def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientation):
     """Simulate the sensor platform and the moving target"""
     global count1
@@ -65,8 +60,11 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
     positions = np.zeros((len(auv),2))
     leader_pos = np.array([formation[0,0],formation[0,1]])
     for i in range(0, len(auv)):
-        positions[i] = leader_pos + formation[i+1]
+        positions[i,0] = leader_pos[0] + formation[i+1,0]
+        positions[i,1] = leader_pos[1] + formation[i+1,1]
     orientations = np.zeros(len(auv))
+    print('INITI',positions)
+    
     leader_ori =init_orientation
     for i in range(len(auv)):
         orientations[i] = init_orientation
@@ -74,8 +72,8 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
     ## SIMULATION LOOP 
     while t <= config.TIME_DURATION:
         rospy.loginfo('SIMULATION TIME(s)')
-        rospy.loginfo(t)
         rospy.loginfo(count1)
+        
 
         # Simulate Sensor Measuraments
         for j in range(config.N_AUV):
@@ -126,15 +124,17 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
             rospy.sleep(config.TIME_STEP*5)
             cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))
             cmds = cmds.data
-            rospy.loginfo('RECEIVED CMDS -------------------------------------------------------------------------------')
-        
-            #rospy.loginfo('RECEIVED CMDS -------------------------------------------------------------------------------')
+            print('RECEIVED CMDS -------------------------------------------------',cmds)
+        #if count1%(config.STATE_PROPAGATION) == 0:
+        #    cmds = [+pi/12, 0, 0, 0]
+        #    rospy.loginfo('RECEIVED CMDS -------------------------------------------------------------------------------')
         
         ##################################################################################################################
              
         ######################################### MOVE THE ROBOTS #######################################################
         #print(cmds)
-        [leader_pos,leader_ori, positions, orientations] = cpf_control.move_agents(leader_pos,cmds[0], config.TIME_STEP*config.TIME_SCALER, positions, orientations, count1)
+        #cpf_control.update_leader_ori(leader_ori)
+        [leader_pos,leader_ori, positions, orientations] = cpf_control.move_agents(leader_pos,cmds[0], config.TIME_STEP*config.TIME_SCALER, positions, orientations, count1, False)
         target.move_target(config.TIME_STEP*config.TIME_SCALER)
         
         #################################################################################################################
@@ -152,6 +152,8 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
         auv3_y.append(positions[2,1])
         auv4_x.append(positions[3,0])
         auv4_y.append(positions[3,1])
+
+        #time.sleep(5000)
         target_x_traj.append(target.pose_target.x)
         target_y_traj.append(target.pose_target.y)
 
@@ -175,7 +177,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
             norma_err = np.sqrt(err_x**2+err_y**2)
             rmse.append(norma_err)
         ##################################################################################################################
-
+        
 
         #  Stop simulation and save data to .txt files ###################################################################
         if int(t) == (config.TIME_DURATION-1):

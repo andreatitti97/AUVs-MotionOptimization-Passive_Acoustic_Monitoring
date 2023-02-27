@@ -12,7 +12,9 @@ spec.loader.exec_module(config)
 
 count2, prev_count = 0, 0
 goal_theta, old_pose = 0, 0
-angular_velocity = 0
+angular_vel_leader = 0
+debug_counter = 0
+flag = False
 
 class CooperativePathFollowing:
 
@@ -23,27 +25,46 @@ class CooperativePathFollowing:
         self.k_att = k_att
         self.k_rep = k_rep
         self.d_rep = d_rep
+        self.ko = config.CONTROLLER_GAIN
         self.desired_vel = lin_vel
 
     def update_leader_ori(self,updated_ori):
+        #if bool == True:
         self.theta = updated_ori
+
+    def saturateVel(self,vel):
+        VEL_MAX = 50000
+        
+        if vel > VEL_MAX:
+            #print('SATURATED',print(vel))
+            vel = VEL_MAX
+            
+            #time.sleep(1)
+        if vel < -VEL_MAX:
+            #print('SATURATED',vel)
+            vel = -VEL_MAX
+            
+            #time.sleep(1)
+            
+        
+        return vel
         
     def potential_field(self,leader_pos, pos):
         # Calculate the desired positions of the followers in the formation
     
-        formation = np.array([[config.PLATFORM_INIT_POSE[0], config.PLATFORM_INIT_POSE[1]],[config.BASELINE_X, -config.BASELINE_Y], 
-                            [config.BASELINE_X, config.BASELINE_Y], 
-                            [config.BASELINE_X, -config.BASELINE_Y*2], 
-                            [config.BASELINE_X, config.BASELINE_Y*2]])
+        formation = np.array([[config.PLATFORM_INIT_POSE[0], config.PLATFORM_INIT_POSE[1]],[config.BASELINE_X, +config.BASELINE_Y], 
+                            [config.BASELINE_X, -config.BASELINE_Y], 
+                            [config.BASELINE_X, config.BASELINE_Y*2], 
+                            [config.BASELINE_X, -config.BASELINE_Y*2]])
 
         desired_positions = np.zeros_like(pos)
-
+        # Compute the desired absolute pos of the agents according to leader pos and given formation
         for i in range(0, self.n_agents):
-            desired_positions[i] = leader_pos + formation[i+1]
-        
+            desired_positions[i,0] = leader_pos[0] + formation[i+1,0]*np.cos(self.theta)+formation[i+1,1]*np.sin(self.theta)
+            desired_positions[i,1] = leader_pos[1] + formation[i+1,0]*np.sin(self.theta)-formation[i+1,1]*np.cos(self.theta)
+               
         # Calculate the attractive potential for each robot
         F_att = -self.k_att * (pos - desired_positions)
-        
         # Calculate the repulsive potential for each robot
         F_rep = np.zeros_like(F_att)
         for i in range(self.n_agents):
@@ -56,6 +77,7 @@ class CooperativePathFollowing:
         # Calculate the total force for each robot
         F_total = F_att + F_rep
 
+        
         return F_total, desired_positions
 
     def compute_orientations(self, desired_pos, pos, num_robots, orientations):
@@ -64,37 +86,58 @@ class CooperativePathFollowing:
         for i in range(self.n_agents):
             # Compute the direction vector from the follower's current position to its desired position
             orientations_goal[i] = atan2(desired_pos[i,1]-pos[i,1],desired_pos[i,0]-pos[i,0])
-            angular_vel[i] = orientations_goal[i] - orientations[i]
+            angular_vel[i] = (orientations_goal[i] - orientations[i])#config.CONTROLLER_GAIN*
 
         return angular_vel
 
-    def move_agents(self, leader_pos, ctrl_cmd, dt, positions, orientations, count1, bool=False):
+    def move_agents(self, leader_pos, ctrl_cmd, dt, positions, orientations, count1, bool=False, opt_scaler=8):
         
-        global count2, prev_count, goal_theta, old_pose, angular_velocity
-        
-        
-        if bool == True:
-            if (np.abs(np.round(goal_theta,3) - np.round(self.theta,3)) < 0.02) and count1 == 8:         
-                count2 = 0
-                angular_vel_leader = 0
-            else:
-                count2  = 1
-        else: 
-            if (np.abs(np.round(goal_theta,3) - np.round(self.theta,3)) < 0.02) and count1 > 15:         
-                count2 = 0
-                angular_vel_leader = 0            
-            if count1%config.STATE_PROPAGATION == 0 and count1 >= config.STATE_PROPAGATION:
-                count2 = 1    
-        # Compute the angular velocity after received the command
-        if prev_count != count2 and config.OPTIMIZATION_ON == True:
+        global count2, prev_count, goal_theta, old_pose, angular_vel_leader, debug_counter, flag
 
-            ko = config.CONTROLLER_GAIN
+        
+        if config.OPTIMIZATION_ON == True:
+            
+            if bool == True:
+                
+                if count1 == 0:
+                    #print('RECEIVED NEW CMD',ctrl_cmd)
+                    old_pose = leader_pos[2]
+                    goal_theta = ctrl_cmd + old_pose
 
-            goal_theta = ctrl_cmd + old_pose
-            angular_vel_leader = ko*(goal_theta - self.theta)
-        else:
-            angular_vel_leader = 0
-            old_pose = self.theta
+                if (np.abs(np.round(goal_theta,3) - np.round(self.theta,3)) < 0.02) or count1 == (opt_scaler-1):         
+                    count2 = 0
+                    angular_vel_leader = 0
+                    #print('REACHED_GOAL',goal_theta)
+                    #print('WITH THETA:',self.theta)
+
+                    #time.sleep(5)
+                else:
+                    count2  = 1
+                    
+            else: 
+                
+                if (np.abs(np.round(goal_theta,3) - np.round(self.theta,3)) < 0.02) and count1 >= config.STATE_PROPAGATION:         
+                    count2 = 0
+                    angular_vel_leader = 0  
+                    #print('REACHED_GOAL',goal_theta)
+                    #print('WITH THETA:',self.theta)   
+                    #time.sleep(2)      
+
+                if count1%config.STATE_PROPAGATION == 0 and count1 >= config.STATE_PROPAGATION:
+                    #print('CTRLCMD',ctrl_cmd)
+                    count2 = 1    
+                    old_pose = self.theta
+                    goal_theta = ctrl_cmd + old_pose
+
+            # Compute the angular velocity after received the command
+            if prev_count != count2:
+                if bool == True:
+                    angular_vel_leader = 0.5*(goal_theta - self.theta)#self.ko*
+                else: 
+                    angular_vel_leader = 0.5*(goal_theta - self.theta)
+            #print('GOAL_THETA',goal_theta)
+            #print('THETA',self.theta)
+                
 
         # Update Leader Position
         self.theta = (self.theta + angular_vel_leader*dt)
@@ -102,16 +145,26 @@ class CooperativePathFollowing:
         tmp1 = leader_pos[0] + self.desired_vel*np.cos(self.theta)*dt
         tmp2 = leader_pos[1] + self.desired_vel*np.sin(self.theta)*dt
 
+
         leader_pos = [tmp1, tmp2]
 
         # Update the position and orientation of the follower robots
         F_total_follower, desired_position = self.potential_field(leader_pos, positions)
         # Compute the heading according to the desired position
-        angular_vel = self.compute_orientations(desired_position,positions, self.n_agents, orientations)
+        error_angular = self.compute_orientations(desired_position,positions, self.n_agents, orientations)
         for i in range(self.n_agents):
-            orientations[i] = orientations[i] + angular_vel[i]*dt
-            tmp1 = positions[i,0] + (self.desired_vel*np.cos(orientations[i]) + F_total_follower[i,0]*dt)*dt 
-            tmp2 = positions[i,1] + (self.desired_vel*np.sin(orientations[i]) + F_total_follower[i,1]*dt)*dt 
+            orientations[i] = orientations[i] + 0.01*error_angular[i]*dt
+            tmp1 = self.saturateVel((self.desired_vel*np.cos(orientations[i]) + F_total_follower[i,0]*dt)*dt)
+            tmp2 = self.saturateVel((self.desired_vel*np.sin(orientations[i]) + F_total_follower[i,1]*dt)*dt)
+            #if bool == False:
+            #    print(tmp1)
+            #    print(tmp2)
+            tmp1 = positions[i,0] + tmp1
+            tmp2 = positions[i,1] + tmp2
             positions[i,0] = tmp1
             positions[i,1] = tmp2
+        #if bool == False:
+        #    print('F',F_total_follower)
+            #time.sleep(2)
+        
         return leader_pos, self.theta, positions, orientations

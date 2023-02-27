@@ -31,7 +31,7 @@ class Estimator:
             self.__phi = []
             self.__y = []
         self.__C = matlib.zeros((1,4))
-        self.__bool = bool
+        
         self.t_prev = 0
 
     @property

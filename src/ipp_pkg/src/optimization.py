@@ -30,10 +30,11 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 # Init global variables for callbacks
 platform_state, target_est = [], []
 t_est_x, t_est_y, auv = [], [], []
-# OPTIMIZATION PARAMETERS
-key1, key2, key3, key4, key5 = -pi/12, -pi/15, 0, +pi/15, +pi/12 #-15°, -12°, 0°, +12°, +15°
+s_state_x, s_state_y = [], []
+
 DELTA = 10**15
-ctrl_cmd = [key1, key2, key3, key4, key5]
+M = 3 #planning horizon
+opt_scaler = 8
 
 class Target():
     def __init__(self, init_vector):
@@ -42,8 +43,7 @@ class Target():
         
         self.vlx = init_vector[2]
         self.vly = init_vector[3]
-        
-        self.dt = config.OPTIMIZATION_TIME_STEP/8
+        self.dt = config.OPTIMIZATION_TIME_STEP/opt_scaler
 
     def update_state(self):
 
@@ -53,50 +53,43 @@ class Target():
 
 def simulation(control_input, target_est, platform_pose, phi, y, sensor, controller):
 
-    tracker_ = tracker.Tracker('1', True, phi, y)
-    #print('platform pose',platform_pose)
-    #print('target_est',target_est)
-    #print('control_input',control_input)
-    #controller_auv = controller.Controller(1, config.CONTROLLER_GAIN) #0.01
-    #platform = Platform(platform_pose, controller_auv)
+    tracker_ = tracker.Tracker('1', True, [], [])
     positions = np.zeros((4,2))
-    tmp2 = np.array([platform_pose[0],platform_pose[0]])
+    tmp2 = np.array([platform_pose[0],platform_pose[1]])
     for i in range(0, 4):
         positions[i] = tmp2 + config.formation[i+1]
     orientations = np.zeros(4)
     for i in range(4):
         orientations[i] = platform_pose[2]
     target = Target(target_est)
-    variable = 0
+    t = 0
     meas_table = []
     j = 0
-    propagation = False
     controller.update_leader_ori(platform_pose[2])
-    for t in range(0,8):
-        if t == 0:
-
-            [platform_pose, tmp, positions, orientations] = controller.move_agents(platform_pose, control_input, config.OPTIMIZATION_TIME_STEP/8, positions, orientations,t,True)
-            platform_pose = [platform_pose[0],platform_pose[1],tmp]
+    for i in range(0,opt_scaler):
+        if i == 0:
+            cmd = control_input
         else:
-            [platform_pose, tmp, positions, orientations] = controller.move_agents(platform_pose, 0, config.OPTIMIZATION_TIME_STEP/8, positions, orientations,t,True)
-            platform_pose = [platform_pose[0],platform_pose[1],tmp]
+            cmd = 0
+        # Update AUVs and target state
+        [platform_pose, tmp, positions, orientations] = controller.move_agents(platform_pose, cmd, config.OPTIMIZATION_TIME_STEP/opt_scaler, positions, orientations,i,True, opt_scaler)
+        platform_pose = [platform_pose[0],platform_pose[1],tmp]
         target_state = target.update_state()
-        if t >= 0 and t < 8:
+        if i >= 0 and i < (opt_scaler-1):
             [measure_, rel_bearing_, meas_pos] = sensor[j].measureBearing(target_state[0],target_state[1],positions[j], orientations[j])
-            arr = [variable,measure_,meas_pos[0],meas_pos[1]]
+            arr = [t,measure_,meas_pos[0],meas_pos[1]]
             meas_table.append(arr)
             j = j + 1
             if j == 4:
-                propagation = True
+                #propagation = True
                 j = 0
 
         # update  WITH NEW MEASURAMENT
-        if propagation ==  True:
+        else: 
             tracker_.processMeasurement(meas_table)
-            tracker_.propagate_estimation(variable)
-            propagation = False
+            tracker_.propagate_estimation(t)
 
-        variable += config.OPTIMIZATION_TIME_STEP/8
+        t += config.OPTIMIZATION_TIME_STEP/opt_scaler
     [state, phi, y] = tracker_.state
     state = [state[0,0], state[1,0], state[2,0], state[3,0]]
     return state, phi, y, platform_pose #platform_state
@@ -113,7 +106,7 @@ def compute_cost(phi,length_y):
     return cost
 
 class Simple(pybnb.Problem):
-    def __init__(self,x_hat, s, phi, y,initial_cost,sensors, cpf_control):
+    def __init__(self,x_hat, s, phi, y,initial_cost,sensors, cpf_control, ctrl_cmds):
         # aggiungi un livello per imporre un orizzonte finito 
         self._x_hat = x_hat
         self._s = s
@@ -129,6 +122,7 @@ class Simple(pybnb.Problem):
         self.choices = []
         self.sensors = sensors
         self.controller = cpf_control
+        self.ctrl_cmds = ctrl_cmds
 
     # required methods
     def sense(self):
@@ -151,27 +145,27 @@ class Simple(pybnb.Problem):
 
         x_hat, s, phi, y = self._x_hat, self._s, self._phi, self.__y
         
-        x1, phi1, y1, s1 = simulation(ctrl_cmd[0], x_hat, s, phi, y, self.sensors, self.controller)
-        x2, phi2, y2, s2 = simulation(ctrl_cmd[1], x_hat, s, phi, y, self.sensors, self.controller)
-        x3, phi3, y3, s3 = simulation(ctrl_cmd[2], x_hat, s, phi, y, self.sensors, self.controller)
-        x4, phi4, y4, s4 = simulation(ctrl_cmd[3], x_hat, s, phi, y, self.sensors, self.controller)
-        x5, phi5, y5, s5 = simulation(ctrl_cmd[4], x_hat, s, phi, y, self.sensors, self.controller)
+        x1, phi1, y1, s1 = simulation(self.ctrl_cmds[0], x_hat, s, phi, y, self.sensors, self.controller)
+        x2, phi2, y2, s2 = simulation(self.ctrl_cmds[1], x_hat, s, phi, y, self.sensors, self.controller)
+        x3, phi3, y3, s3 = simulation(self.ctrl_cmds[2], x_hat, s, phi, y, self.sensors, self.controller)
+        x4, phi4, y4, s4 = simulation(self.ctrl_cmds[3], x_hat, s, phi, y, self.sensors, self.controller)
+        x5, phi5, y5, s5 = simulation(self.ctrl_cmds[4], x_hat, s, phi, y, self.sensors, self.controller)
         
         child = pybnb.Node()
         cost1 = compute_cost(phi1,len(y1))
         self.tmp_bound = self._bound
-        tmp1 = [ctrl_cmd[0]]
+        tmp1 = [self.ctrl_cmds[0]]
         choices1 = self.choices + tmp1
-        tmp2 = [ctrl_cmd[1]]
+        tmp2 = [self.ctrl_cmds[1]]
         choices2 = self.choices + tmp2
-        tmp3 = [ctrl_cmd[2]]
+        tmp3 = [self.ctrl_cmds[2]]
         choices3 = self.choices + tmp3
-        tmp4 = [ctrl_cmd[3]]
+        tmp4 = [self.ctrl_cmds[3]]
         choices4 = self.choices + tmp4
-        tmp5 = [ctrl_cmd[4]]
+        tmp5 = [self.ctrl_cmds[4]]
         choices5 = self.choices + tmp5
 
-        if len(choices1) == 4 or len(choices2) == 4 or len(choices3) == 4:
+        if len(choices1) == M or len(choices2) == M or len(choices3) == M:
             self.value = self.value - DELTA #trick#TODO
             #self.value = 0 #UNCOMMENT IF YO WANT THE LAST BEST NODE WITHOUT CONSIDERING COST 
             # AGGIUNGI CHE CONDIZIONE PER NODO CON COVARIANZA FINALE SINGOLA, NON DELLA SEQUENZA
@@ -193,20 +187,22 @@ class Simple(pybnb.Problem):
         child.state = (x3, s3, phi3, y3, child3_value, self.tmp_bound, choices3)
         yield child
         
-        cost4 = compute_cost(phi4,len(y1))
+        cost4 = compute_cost(phi4,len(y4))
         child4_value = father_value + cost4
         child = pybnb.Node()
         child.state = (x4, s4, phi4, y4, child4_value, self.tmp_bound, choices4)
         yield child
 
-        cost5 = compute_cost(phi5,len(y1))
+        cost5 = compute_cost(phi5,len(y5))
         child5_value = father_value + cost5
         child = pybnb.Node()
         child.state = (x5, s5, phi5, y5, child5_value, self.tmp_bound, choices5)
         yield child
         if len(choices1) == 1:
-            t_est_x.append(x1[0])
-            t_est_y.append(x1[1])
+            t_est_x.append(x4[0])
+            t_est_y.append(x4[1])
+            s_state_x.append(s1[0])
+            s_state_y.append(s1[1])
 
 
 def main():
@@ -223,13 +219,23 @@ def main():
     ctrl_plot = []
     #sensorPlacement()
     sensors = []
-
+    old_ctrls = []
+    # OPTIMIZATION PARAMETERS
+    count_low = 0
+    count_max = 0
+    k_max = 10*pi/180 
+    delta_k = 3*pi/180 
+    U = 7
+    ctrl_cmd = [-k_max, -k_max*4/(U),-k_max*2/(U),0,k_max*2/(U),k_max*4/(U),k_max]
+    limit = 0.0
+    for i in range(M+1):
+        limit += U**i
+        print(limit)
     # Cooperative Path Following initialization
     cpf_control = cpf.CooperativePathFollowing(config.formation, config.N_AUV, config.PLATFORM_INIT_POSE[2], config.K_att, config.K_rep, config.d_rep, config.AUV_VEL)
 
-
     for i in range(config.N_AUV): 
-        sensors.append(sensor.Sensor(str(i),1,0,0.005))#config.SIGMA_MEAS
+        sensors.append(sensor.Sensor(str(i),1,0,0.001))#config.SIGMA_MEAS
     if config.OPTIMIZATION_ON == True:
         rospy.loginfo('STARTED OPTIMIZATION')
     
@@ -245,22 +251,48 @@ def main():
         regressor = regressor.data
         output = output.data
 
-        # Compute the best solution solving the optimization with BnB or Greedy search
-        problem = Simple(t_est, s_state,regressor,output, DELTA, sensors, cpf_control)
+        ######## Compute the best solution solving the optimization with BnB or Greedy search #####
+        problem = Simple(t_est, s_state,regressor,output, DELTA, sensors, cpf_control, ctrl_cmd)
         solver = pybnb.Solver()
-        limit = len(ctrl_cmd)**4 + len(ctrl_cmd)**3 + len(ctrl_cmd)**2 + len(ctrl_cmd)**1 + 1
-
         results = solver.solve(problem, node_limit=limit) 
         best_node_states = results.best_node.state
         ctrl_opt = best_node_states[6]
-    
+        ###########################################################################################
+
         pub.publish(np.array(ctrl_opt,dtype=np.float32))
-        for i in range(4):
-            ctrl_plot.append(ctrl_opt[i])
+        ctrl_plot.append(ctrl_opt[0])
+        old_ctrls.append(ctrl_opt[0])
+        print('LEN',len(old_ctrls))
+        # Adapt online the heading changes:
+        if len(old_ctrls) == 3:
+            for i in range(len(old_ctrls)):
+                if [0-(1e-3)] <=  np.abs(old_ctrls[i])-(1e-3) <= k_max*2/(U):
+                    count_low += 1 
+                    print(count_low)
+                    if count_low == 3:
+                        k_max = k_max - delta_k
+                        count_low = 0
+                        print(k_max)
+                        #time.sleep(5)
+                elif np.abs(old_ctrls[i]) >= k_max:
+                    count_max += 1
+                    if count_max == 3:
+                        k_max = k_max + delta_k
+                        count_max = 0
+                        
+                        #time.sleep(5)
+            count_low = 0
+            count_max = 0
+            old_ctrls = []
+            ctrl_cmd = [-k_max, -k_max*4/(U),-k_max*2/(U),0,k_max*2/(U),k_max*4/(U),k_max]
+
+        print('KMAX++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++',k_max)
         #SAVE DATA FOR PLOT    
         np.savetxt(plot_path+'/plot_cmds.txt',ctrl_plot)
         np.savetxt(plot_path+'/t_est_x_opt.txt',t_est_x)
         np.savetxt(plot_path+'/t_est_y_opt.txt',t_est_y)
+        np.savetxt(plot_path+'/s_state_x.txt',s_state_x)
+        np.savetxt(plot_path+'/s_state_y.txt',s_state_y)
         ctrl_opt = []
         rate.sleep()
     

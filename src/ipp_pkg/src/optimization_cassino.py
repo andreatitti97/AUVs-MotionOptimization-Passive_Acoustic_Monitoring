@@ -34,7 +34,7 @@ plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs
 platform_state, target_est = [], []
 t_est_x, t_est_y, auv = [], [], []
 # OPTIMIZATION PARAMETERS
-key1, key2, key3, key4, key5 = -pi/12, -pi/15, 0, +pi/15, +pi/12 #-15°, -12°, 0°, +12°, +15°
+key1, key2, key3, key4, key5 = -pi/6, -pi/8, 0, +pi/8, +pi/6 #-15°, -12°, 0°, +12°, +15°
 DELTA = 10**15
 ctrl_cmd = [key1, key2, key3, key4, key5]
 

@@ -57,11 +57,13 @@ auv4_y_off = np.loadtxt(lib_path+'/auv4_y_OFF.txt')
 ctrl_cmds = np.loadtxt(lib_path+'/plot_cmds.txt')
 opt_x = np.loadtxt(lib_path+'/t_est_x_opt.txt')
 opt_y = np.loadtxt(lib_path+'/t_est_y_opt.txt')
+s_opt_x = np.loadtxt(lib_path+'/s_state_x.txt')
+s_opt_y = np.loadtxt(lib_path+'/s_state_y.txt')
 # Load temporal vaiables
 n_sample = np.size(est1_x_ON)
 t = np.linspace(0,config.TIME_DURATION,n_sample)
 
-scaling = 10
+scaling = 1
 # PLOT THE RESULT OF THE SIMULATION without OPTIMIZATION
 plt.plot(s_x_off,s_y_off)
 plt.plot(real_x,real_y,linewidth=5,color='y')
@@ -96,7 +98,7 @@ plt.plot(auv2_x_off, auv2_y_off, 'k')
 plt.plot(auv3_x_off, auv3_y_off, 'k')
 plt.plot(auv4_x_off, auv4_y_off, 'k')
 j = 0
-ranges = 12
+ranges = 7
 for i in range(ranges):
     # plot LOS
     idx = (i+1)*5*ranges
@@ -158,10 +160,10 @@ legend_elements = [Line2D([0], [0], marker='X',color='b', lw=1, label='Formation
 
 plt.legend(handles=legend_elements, fontsize=20)
     
-#plt.plot(auv1_x_on, auv1_y_on, 'k')
-#plt.plot(auv2_x_on, auv2_y_on, 'k')
-#plt.plot(auv3_x_on, auv3_y_on, 'k')
-#plt.plot(auv4_x_on, auv4_y_on, 'k')
+plt.plot(auv1_x_on[10:-1], auv1_y_on[10:-1], 'k')
+plt.plot(auv2_x_on[10:-1], auv2_y_on[10:-1], 'k')
+plt.plot(auv3_x_on[10:-1], auv3_y_on[10:-1], 'k')
+plt.plot(auv4_x_on[10:-1], auv4_y_on[10:-1], 'k')
 j = 0
 lista = []
 for i in range(ranges):
@@ -202,7 +204,7 @@ plt.show()
 
 # PLTO BASELINE ANGLE
 baseline_angle = []
-for i in range(len(auv4_x_on)-16):
+for i in range(len(auv4_x_on)-8):
     tmp = (((real_x[i]-auv1_x_on[i])*(real_x[i]-auv4_x_on[i]))+((real_y[i]-auv1_y_on[i])*(real_y[i]-auv4_y_on[i]))
     )/(np.sqrt((real_x[i]-auv1_x_on[i])**2+(real_y[i]-auv1_y_on[i])**2)*np.sqrt((real_x[i]-auv4_x_on[i])**2+(
         real_y[i]-auv4_y_on[i])**2))
@@ -212,7 +214,7 @@ for i in range(len(auv4_x_on)-16):
     baseline_angle.append(angle)
 
 baseline_angle_off = []
-for i in range(len(auv4_x_off)-16):
+for i in range(len(auv4_x_off)-8):
     tmp = (((real_x[i]-auv1_x_off[i])*(real_x[i]-auv4_x_off[i]))+((real_y[i]-auv1_y_off[i])*(real_y[i]-auv4_y_off[i]))
     )/(np.sqrt((real_x[i]-auv1_x_off[i])**2+(real_y[i]-auv1_y_off[i])**2)*np.sqrt((real_x[i]-auv4_x_off[i])**2+(
         real_y[i]-auv4_y_off[i])**2))
@@ -256,15 +258,7 @@ plt.legend(['Angle','No Observability','Critical Observability','Good Observabil
 plt.grid()
 plt.show()
 
-# PLOT ctrl cmds from optimization
-'''n_sample1 = np.size(ctrl_cmds)
-t1 = np.linspace(640,config.TIME_DURATION,n_sample1)
-plt.plot(t1,ctrl_cmds*180/pi,'-ok',markerfacecolor='blue')
-plt.title('HEADING CHANGE COMMANDED',fontsize=20)
-plt.xlabel('Time (s)',fontsize=20)
-plt.ylabel('Heading Changes (deg)',fontsize=20)
-plt.grid()
-plt.show()'''
+
 
 # PLOT RMSE
 sum1 = 0
@@ -294,7 +288,20 @@ plt.text(0,err_medio2 , 'ERRORE MEDIO ON:'+str(err_medio2), fontsize=1.5*scaling
 plt.grid()
 plt.show()
 
+
+# PLOT ctrl cmds from optimization
+n_sample1 = np.size(ctrl_cmds)
+t1 = np.linspace(640,config.TIME_DURATION,n_sample1)
+plt.plot(t1,ctrl_cmds*180/pi,'-ok',markerfacecolor='blue')
+plt.title('HEADING CHANGE COMMANDED',fontsize=20)
+plt.xlabel('Time (s)',fontsize=20)
+plt.ylabel('Heading Changes (deg)',fontsize=20)
+plt.grid()
+plt.show()
+
+plt.plot(s_opt_x,s_opt_y)
 plt.plot(opt_x,opt_y)
 plt.plot(real_x,real_y)
 plt.grid()
+plt.axis('equal')
 plt.show()

@@ -28,7 +28,7 @@ class Tracker:
     def processMeasurement(self, table): #table = [tempo, misura, auv pos x, auv pos y]
         
         if self.bool == True:
-            self.__prev_time = 0
+            self.__prev_time = 0 ## TO CHECK 
             for i in range(len(table)):
                 tmp = table[i]
                 self.__estimator.iteration(tmp[0], tmp[1], tmp[2], tmp[3], self.__prev_time)
