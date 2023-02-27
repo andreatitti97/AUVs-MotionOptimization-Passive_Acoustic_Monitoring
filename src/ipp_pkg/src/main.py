@@ -50,29 +50,24 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
     Hz = 1/(config.TIME_STEP) #NB: different from sampling rate for move things, this is ros rate
     rate = rospy.Rate(Hz)
     # Init Time Variables and counters
-    t = 0    
-    count1 = 0
+    t, count1, j = 0, 0, 0
     meas_table = []
     cmds = [0,0,0,0]
-    j = 0
-    k = 0
     # Init AUVs position and orientation according to given formation
     positions = np.zeros((len(auv),2))
     leader_pos = np.array([formation[0,0],formation[0,1]])
     for i in range(0, len(auv)):
         positions[i,0] = leader_pos[0] + formation[i+1,0]
         positions[i,1] = leader_pos[1] + formation[i+1,1]
-    orientations = np.zeros(len(auv))
-    print('INITI',positions)
-    
+    orientations = np.zeros(len(auv))   
     leader_ori =init_orientation
     for i in range(len(auv)):
         orientations[i] = init_orientation
 
-    ## SIMULATION LOOP 
+    ## SIMULATION LOOP ############################################################################################################
     while t <= config.TIME_DURATION:
         rospy.loginfo('SIMULATION TIME(s)')
-        rospy.loginfo(count1)
+        rospy.loginfo(t)
         
 
         # Simulate Sensor Measuraments
@@ -94,46 +89,30 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
             
         # SIMULATE the ESTIMATIONS
         if propagation == True and count1 % config.STATE_PROPAGATION == 0: 
-            for i in range(len(auv)):
-                obs[i].processMeasurement(meas_table)
-                obs[i].propagate_estimation(t)
+
+            obs[0].processMeasurement(meas_table)
+            obs[0].propagate_estimation(t)
             propagation == False
             # Retrieve Estimation
-            curr_est1, phi1, y1 = obs[0].state
-            curr_est2, phi2, y2 = obs[1].state  
-            curr_est3, phi3, y3 = obs[2].state
-            curr_est4, phi4, y4 = obs[3].state
+            curr_est, phi, y = obs[0].state
 
         ############################################# TRIGGER OPTIMIZATION ##############################################
         if count1%(config.STATE_PROPAGATION) == 0 and config.OPTIMIZATION_ON == True and count1 != 0: 
             
             rospy.loginfo('SENDING DATA')
-            pub[0].publish(np.array(curr_est4,dtype=np.float32))
+            pub[0].publish(np.array(curr_est,dtype=np.float32))
             rospy.sleep(config.TIME_STEP*5)
             tmp = [leader_pos[0],leader_pos[1],leader_ori]
             pub[1].publish(np.array(tmp,dtype=np.float32))
             rospy.sleep(config.TIME_STEP*5)
-            phi = []
-            for i in range(len(y4)):        
-                tmp = phi4[i]
-                for j in range(4):
-                    phi.append(tmp[j])
-            pub[2].publish(np.array(phi,dtype=np.float32))
-            rospy.sleep(config.TIME_STEP*5)
-            pub[3].publish(np.array(y4,dtype=np.float32))
-            rospy.sleep(config.TIME_STEP*5)
+            
             cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))
             cmds = cmds.data
-            print('RECEIVED CMDS -------------------------------------------------',cmds)
-        #if count1%(config.STATE_PROPAGATION) == 0:
-        #    cmds = [+pi/12, 0, 0, 0]
-        #    rospy.loginfo('RECEIVED CMDS -------------------------------------------------------------------------------')
+            print('RECEIVED CMDS -------------------------------------------------',cmds*180/pi)
         
         ##################################################################################################################
              
         ######################################### MOVE THE ROBOTS #######################################################
-        #print(cmds)
-        #cpf_control.update_leader_ori(leader_ori)
         [leader_pos,leader_ori, positions, orientations] = cpf_control.move_agents(leader_pos,cmds[0], config.TIME_STEP*config.TIME_SCALER, positions, orientations, count1, False)
         target.move_target(config.TIME_STEP*config.TIME_SCALER)
         
@@ -158,22 +137,16 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
         target_y_traj.append(target.pose_target.y)
 
         if count1 >= config.STATE_PROPAGATION: # you can start saving estimation after the first state propagation
-            est1_x.append(curr_est1[0,0])
-            est1_y.append(curr_est1[1,0])
-
-            est2_x.append(curr_est2[0,0])
-            est2_y.append(curr_est2[1,0])
-            est3_x.append(curr_est3[0,0])
-            est3_y.append(curr_est3[1,0])
-            est4_x.append(curr_est4[0,0])
-            est4_y.append(curr_est4[1,0])
+            
+            est4_x.append(curr_est[0,0])
+            est4_y.append(curr_est[1,0])
             
             target_state_real = [target.pose_target.x,target.pose_target.y, 
                 target.lin_vel_target*np.cos(target.pose_target.theta),
                 target.lin_vel_target*np.sin(target.pose_target.theta)]
                     
-            err_x = np.sqrt(((target_state_real[0] - curr_est1[0,0])**2))
-            err_y = np.sqrt(((target_state_real[1] - curr_est1[1,0])**2))
+            err_x = np.sqrt(((target_state_real[0] - curr_est[0,0])**2))
+            err_y = np.sqrt(((target_state_real[1] - curr_est[1,0])**2))
             norma_err = np.sqrt(err_x**2+err_y**2)
             rmse.append(norma_err)
         ##################################################################################################################
@@ -187,8 +160,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
             np.savetxt(plot_path+'/target_y_traj.txt',target_y_traj)
 
             if config.OPTIMIZATION_ON == True:
-                np.savetxt(plot_path+'/est1_x_ON.txt',est1_x)
-                np.savetxt(plot_path+'/est1_y_ON.txt',est1_y)
+
                 np.savetxt(plot_path+'/est4_x_ON.txt',est4_x)
                 np.savetxt(plot_path+'/est4_y_ON.txt',est4_y)
                 np.savetxt(plot_path+'/rmse_ON.txt',rmse)
@@ -204,8 +176,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
                 np.savetxt(plot_path+'/auv4_y_ON.txt',auv4_y)
             else:
 
-                np.savetxt(plot_path+'/est1_x_OFF.txt',est1_x)
-                np.savetxt(plot_path+'/est1_y_OFF.txt',est1_y)
+
                 np.savetxt(plot_path+'/est4_x_OFF.txt',est4_x)
                 np.savetxt(plot_path+'/est4_y_OFF.txt',est4_y)
                 np.savetxt(plot_path+'/rmse_OFF.txt',rmse)
@@ -231,12 +202,9 @@ def main():
     pub = []
     pub_estimation = rospy.Publisher('estimation', numpy_msg(Floats), queue_size=10)
     pub_platform_state = rospy.Publisher('platform_state', numpy_msg(Floats), queue_size=100)
-    pub_regressor = rospy.Publisher('regressor', numpy_msg(Floats), queue_size=100)
-    pub_uscita = rospy.Publisher('output', numpy_msg(Floats), queue_size=100)
+
     pub.append(pub_estimation)
     pub.append(pub_platform_state)
-    pub.append(pub_regressor)
-    pub.append(pub_uscita)
 
     # Initial Conditions
     pose_target = config.Pose(config.TARGET_INIT[0], config.TARGET_INIT[1],  config.TARGET_INIT[2])
@@ -252,13 +220,7 @@ def main():
         
     # Init trackers 
     trackers = []
-    tracker1 = tracker.Tracker('first_observer', False)
-    tracker2 = tracker.Tracker('second_observer', False)
-    tracker3 = tracker.Tracker('third_observer', False)
     tracker4 = tracker.Tracker('forth_observer', False)
-    trackers.append(tracker1)
-    trackers.append(tracker2)
-    trackers.append(tracker3)
     trackers.append(tracker4)
         
     # Cooperative Path Following initialization

@@ -12,15 +12,12 @@ target_init = config.TARGET_INIT
 
 #LOAD LOG FILES
 # Estimation vs Real (in time)
-est1_x_ON = np.loadtxt(lib_path+'/est1_x_ON.txt')
-est1_y_ON = np.loadtxt(lib_path+'/est1_y_ON.txt')
+
 est4_x_ON = np.loadtxt(lib_path+'/est4_x_ON.txt')
 est4_y_ON = np.loadtxt(lib_path+'/est4_y_ON.txt')
 real_y = np.loadtxt(lib_path+'/target_y_traj.txt')
 real_x = np.loadtxt(lib_path+'/target_x_traj.txt')
 
-est1_x_OFF = np.loadtxt(lib_path+'/est1_x_OFF.txt')
-est1_y_OFF = np.loadtxt(lib_path+'/est1_y_OFF.txt')
 est4_x_OFF = np.loadtxt(lib_path+'/est4_x_OFF.txt')
 est4_y_OFF = np.loadtxt(lib_path+'/est4_y_OFF.txt')
 
@@ -60,7 +57,7 @@ opt_y = np.loadtxt(lib_path+'/t_est_y_opt.txt')
 s_opt_x = np.loadtxt(lib_path+'/s_state_x.txt')
 s_opt_y = np.loadtxt(lib_path+'/s_state_y.txt')
 # Load temporal vaiables
-n_sample = np.size(est1_x_ON)
+n_sample = np.size(est4_x_ON)
 t = np.linspace(0,config.TIME_DURATION,n_sample)
 
 scaling = 1

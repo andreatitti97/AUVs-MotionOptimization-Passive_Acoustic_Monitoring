@@ -18,18 +18,15 @@ def state_vector_to_scalars(state_vector):
     return (state_vector[0][0,0],state_vector[1][0,0],state_vector[2][0,0],state_vector[3][0,0])    
     
 class Estimator:
-    def __init__(self, bool, phi=0, y=0):
+    def __init__(self, bool):
         '''
         Each object being tracked will result in the creation of a new ExtendedKalmanFilter instance.
         '''
         self.__x = None
         self.__bool = bool
-        if self.__bool == True:
-            self.__phi = phi
-            self.__y = y
-        else:
-            self.__phi = []
-            self.__y = []
+
+        self.__phi = []
+        self.__y = []
         self.__C = matlib.zeros((1,4))
         
         self.t_prev = 0

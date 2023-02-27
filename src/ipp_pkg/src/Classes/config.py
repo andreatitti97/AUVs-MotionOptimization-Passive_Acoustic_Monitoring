@@ -48,6 +48,12 @@ formation = np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],[BASELINE_X
 # Optimization Parameters
 OPTIMIZATION_ON = True
 OPTIMIZATION_TIME_STEP = STATE_PROPAGATION*(TIME_SCALER*TIME_STEP) #VA INTESO COME delta_k (planning stage)in secondi
+k_max = 10*pi/180 
+delta_k = 3*pi/180 
+U = 7 #number of control choices
+M = 3 # planning horizon
+ctrl_cmd = [-k_max, -k_max*4/(U),-k_max*2/(U),0,k_max*2/(U),k_max*4/(U),k_max]
+
 # Cooperative Path Following Params
 K_att = 1.0 # Attractive gain
 K_rep = 0.0 # Repulsive gain

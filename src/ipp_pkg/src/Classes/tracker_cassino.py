@@ -11,12 +11,10 @@ class Tracker:
     The Tracker class is created everytime we detect a target.
     It contains the entire state of the tracked object.
     '''
-    def __init__(self, id, bool, phi=0, y=0):
+    def __init__(self, id, bool):
         self.bool = bool
-        if self.bool == True:
-            self.__estimator = dekf.Estimator(bool, phi, y)
-        else:
-            self.__estimator = dekf.Estimator(bool)
+        
+        self.__estimator = dekf.Estimator(bool)
         self.id  = id
         self.__curr_time = 0
         self.__prev_time = 0
@@ -29,13 +27,10 @@ class Tracker:
         
         if self.bool == True:
             self.__prev_time = 0 ## TO CHECK 
-            for i in range(len(table)):
-                tmp = table[i]
-                self.__estimator.iteration(tmp[0], tmp[1], tmp[2], tmp[3], self.__prev_time)
-        else:
-            for i in range(len(table)):
-                meas_data = table[i]
-                self.__estimator.iteration(meas_data[0], meas_data[1], meas_data[2], meas_data[3], self.__prev_time)
+
+        for i in range(len(table)):
+            meas_data = table[i]
+            self.__estimator.iteration(meas_data[0], meas_data[1], meas_data[2], meas_data[3], self.__prev_time)
 
     def propagate_estimation(self, curr_time):
 
