@@ -14,7 +14,7 @@ class Tracker:
     def __init__(self, id, bool):
         self.bool = bool
         
-        self.__estimator = dekf.Estimator(bool)
+        self.__estimator = dekf.Estimator(bool,id)
         self.id  = id
         self.__curr_time = 0
         self.__prev_time = 0
@@ -25,18 +25,24 @@ class Tracker:
 
     def processMeasurement(self, table): #table = [tempo, misura, auv pos x, auv pos y]
         
-        if self.bool == True:
-            self.__prev_time = 0 ## TO CHECK 
-
         for i in range(len(table)):
             meas_data = table[i]
-            self.__estimator.iteration(meas_data[0], meas_data[1], meas_data[2], meas_data[3], self.__prev_time)
+            if self.bool == True:
+                self.__estimator.iteration(meas_data[0], meas_data[1], meas_data[2], meas_data[3], 0)
+            else: 
+                self.__estimator.iteration(meas_data[0], meas_data[1], meas_data[2], meas_data[3], self.__prev_time)
+
 
     def propagate_estimation(self, curr_time):
 
-        self.__curr_time = curr_time
-        self.__estimator.propagation(self.__curr_time, self.__prev_time)
-        self.__prev_time = self.__curr_time
+        if self.bool == True:
+            self.__curr_time = curr_time
+            self.__estimator.propagation(self.__curr_time, self.__prev_time)
+            self.__prev_time = 0
+        else:
+            self.__curr_time = curr_time
+            self.__estimator.propagation(self.__curr_time, self.__prev_time)
+            self.__prev_time = self.__curr_time
 
 
         

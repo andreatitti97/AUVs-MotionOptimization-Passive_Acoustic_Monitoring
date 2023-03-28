@@ -9,7 +9,6 @@ class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Cla
 spec = importlib.util.spec_from_file_location("module.config", class_path+"/config.py")
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
-tmp = []
 
 def state_vector_to_scalars(state_vector):
     '''
@@ -18,13 +17,13 @@ def state_vector_to_scalars(state_vector):
     return (state_vector[0][0,0],state_vector[1][0,0],state_vector[2][0,0],state_vector[3][0,0])    
     
 class Estimator:
-    def __init__(self, bool):
+    def __init__(self, bool, id):
         '''
         Each object being tracked will result in the creation of a new ExtendedKalmanFilter instance.
         '''
         self.__x = None
         self.__bool = bool
-
+        self.__id = id
         self.__phi = []
         self.__y = []
         self.__C = matlib.zeros((1,4))
@@ -53,7 +52,7 @@ class Estimator:
                               [0,1,0,dt],
                               [0,0,1,0],
                               [0,0,0,1]])
-        self.__x = self.__F*self.__x
+        #self.__x = self.__F*self.__x
 
     def iteration(self, t_meas, measures, auv_position_x, auv_position_y, prev_t):
 

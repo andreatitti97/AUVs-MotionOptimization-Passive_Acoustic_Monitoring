@@ -1,7 +1,7 @@
 from math import pi
 import numpy as np
 # Simulation parameters
-TIME_DURATION = 200 # (s)
+TIME_DURATION = 600 # (s)
 TIME_STEP = 0.01
 TIME_SCALER = 80# MAX for communication purpose 
 
@@ -22,34 +22,41 @@ while before propagate the estimation around 16 seconds
 
 # Estimation Parameters
 
-TP = 10 # regressor MAX length
+TP = 50 # regressor MAX length
 STATE_PROPAGATION = 8 #time between each propagation of the estimation (in real case a consensus (?))
 # Team parameter: number of agents, baselines_XY, inital position, type of formation
-SIGMA_MEAS = 0.01 #0.005 # uncertainty = 1° --> sigma^2 = (uncertainty*2*pi/180)^2  per ora 3 gradi -- TO DECIDE!!
+SIGMA_MEAS = 0.02 #0.005 # uncertainty = 1° --> sigma^2 = (uncertainty*2*pi/180)^2  per ora 3 gradi -- TO DECIDE!!
 MEAS_UPDATE = STATE_PROPAGATION/4 # MEAS_UPDATE (s)= meas_update*(TIME_SCALER*TIME_STEP)
 N_AUV = 4
-BASELINE_Y = 25 #(m)
+BASELINE_Y = 100 #(m)
 BASELINE_X = 0 #valori presi dall'esperimento sulla comunicazione (veicoli lontani)
-PLATFORM_INIT_POSE = [300, -100, 0] #[x,y,theta]
-ALONG_BAR_FORMATION = True
-AUV_VEL = 3.0 #(m/s)
+PLATFORM_INIT_POSE = [0, 0, 0] #[x,y,theta]
+
+AUV_VEL = 1.0 #(m/s)
 CONTROLLER_GAIN = 0.5
 # Target parameter: start, goal, min max vels
-TARGET_INIT = [-200, -400, pi/4]#[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [1200, 1000, pi/2] #[x(m),y(m),theta(rad),linear vel(m/s)]
 TARGET_GOAL = [100, 100,TARGET_INIT[2]]
-TARGET_VEL = 10 #(m/s)
+TARGET_VEL = 3 #(m/s)
 MAX_TARGET_VEL = 3 #(m/s) (only for no costant vels)
 MIN_TARGET_VEL = 3 #(m/s)
 
-formation = np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],[BASELINE_X, BASELINE_Y], 
-                            [BASELINE_X, -BASELINE_Y], 
-                            [BASELINE_X,+BASELINE_Y*2], 
-                            [BASELINE_X, -BASELINE_Y*2]])
+formation = np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],[0, -50], 
+                            [0,50], 
+                            [50,-180], 
+                            [50,180]])
+
+
+formation = np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],[0, -100], 
+                            [0,100], 
+                            [0,-200], 
+                            [0, 200]])
+
 # Optimization Parameters
-OPTIMIZATION_ON = True
+OPTIMIZATION_ON = False
 OPTIMIZATION_TIME_STEP = STATE_PROPAGATION*(TIME_SCALER*TIME_STEP) #VA INTESO COME delta_k (planning stage)in secondi
-k_max = 10*pi/180 
-delta_k = 3*pi/180 
+k_max = 15*pi/180 
+delta_k = 0 #3*pi/180 
 U = 7 #number of control choices
 M = 3 # planning horizon
 ctrl_cmd = [-k_max, -k_max*4/(U),-k_max*2/(U),0,k_max*2/(U),k_max*4/(U),k_max]

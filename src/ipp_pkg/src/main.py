@@ -40,9 +40,10 @@ t = 0
 # INIT lists for plot
 target_x_traj, target_y_traj, platform_x, platform_y = [], [], [], []
 est1_x, est1_y, est2_x, est2_y,est3_x, est3_y,est4_x, est4_y = [], [], [], [], [], [], [], []
+est4_vx, est4_vy = [],[]
 auv1_x, auv1_y, auv2_x, auv2_y,auv3_x,auv3_y,auv4_x,auv4_y  = [], [], [], [], [], [], [], []
 rmse, bearing1, bearing2 = [], [], []
-
+cov1, cov2, cov3, cov4 = [],[],[],[]
 def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientation):
     """Simulate the sensor platform and the moving target"""
     global count1
@@ -95,7 +96,22 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
             propagation == False
             # Retrieve Estimation
             curr_est, phi, y = obs[0].state
-
+            R = np.zeros((len(y),len(y))) #matrice diagonale perchè errori sulle singole misure indipendenti tra loro
+            beta = np.zeros((len(y),1))
+            time = np.linspace(0,1,len(y))
+            beta = np.e**(time)
+            for i in range(len(y)):
+                for j in range(len(y)):
+                    if i == j:
+                        R[i,j] = (config.SIGMA_MEAS**2)/beta[i]
+                    else:
+                        R[i,j] = 0
+            
+            print(np.dot(np.dot(np.transpose(phi),np.linalg.inv(R)),phi))
+            if count1 > 0:
+                cov = np.linalg.inv(np.dot(np.dot(np.transpose(phi),np.linalg.inv(R)),phi))
+            else: 
+                cov = np.zeros((4,4))
         ############################################# TRIGGER OPTIMIZATION ##############################################
         if count1%(config.STATE_PROPAGATION) == 0 and config.OPTIMIZATION_ON == True and count1 != 0: 
             
@@ -105,10 +121,17 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
             tmp = [leader_pos[0],leader_pos[1],leader_ori]
             pub[1].publish(np.array(tmp,dtype=np.float32))
             rospy.sleep(config.TIME_STEP*5)
-            
+
+            tmp = []
+            for i in range(4):
+                for j in range(4):
+                    tmp.append(cov[i,j])
+            print('ARRAY COV', tmp)
+            pub[2].publish(np.array(tmp,dtype=np.float32))
+            rospy.sleep(config.TIME_STEP*5)
             cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))
             cmds = cmds.data
-            print('RECEIVED CMDS -------------------------------------------------',cmds*180/pi)
+            print('RECEIVED CMDS (deg) -------------------------------------------------',cmds*180/pi)
         
         ##################################################################################################################
              
@@ -127,8 +150,10 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
         auv1_y.append(positions[0,1])
         auv2_x.append(positions[1,0])
         auv2_y.append(positions[1,1])
+
         auv3_x.append(positions[2,0])
         auv3_y.append(positions[2,1])
+
         auv4_x.append(positions[3,0])
         auv4_y.append(positions[3,1])
 
@@ -140,14 +165,22 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
             
             est4_x.append(curr_est[0,0])
             est4_y.append(curr_est[1,0])
+            est4_vx.append(curr_est[2,0])
+            est4_vy.append(curr_est[3,0])
+            cov1.append(cov[0,0])
+            cov2.append(cov[1,1])
+            cov3.append(cov[2,2])
+            cov4.append(cov[3,3])
             
             target_state_real = [target.pose_target.x,target.pose_target.y, 
                 target.lin_vel_target*np.cos(target.pose_target.theta),
                 target.lin_vel_target*np.sin(target.pose_target.theta)]
                     
-            err_x = np.sqrt(((target_state_real[0] - curr_est[0,0])**2))
-            err_y = np.sqrt(((target_state_real[1] - curr_est[1,0])**2))
+            err_x = (target_state_real[0] - curr_est[0,0])**2
+            err_y = (target_state_real[1] - curr_est[1,0])**2
+            
             norma_err = np.sqrt(err_x**2+err_y**2)
+            norma_err = err_x+err_y
             rmse.append(norma_err)
         ##################################################################################################################
         
@@ -174,6 +207,12 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
                 np.savetxt(plot_path+'/auv3_y_ON.txt',auv3_y)
                 np.savetxt(plot_path+'/auv4_x_ON.txt',auv4_x)
                 np.savetxt(plot_path+'/auv4_y_ON.txt',auv4_y)
+                np.savetxt(plot_path+'/cov1',cov1)
+                np.savetxt(plot_path+'/cov2',cov2)
+                np.savetxt(plot_path+'/cov3',cov3)
+                np.savetxt(plot_path+'/cov4',cov4)
+                np.savetxt(plot_path+'/vx.txt',est4_vx)
+                np.savetxt(plot_path+'/vy.txt',est4_vy)
             else:
 
 
@@ -190,6 +229,12 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
                 np.savetxt(plot_path+'/auv3_y_OFF.txt',auv3_y)
                 np.savetxt(plot_path+'/auv4_x_OFF.txt',auv4_x)
                 np.savetxt(plot_path+'/auv4_y_OFF.txt',auv4_y)
+                np.savetxt(plot_path+'/cov1',cov1)
+                np.savetxt(plot_path+'/cov2',cov2)
+                np.savetxt(plot_path+'/cov3',cov3)
+                np.savetxt(plot_path+'/cov4',cov4)
+                np.savetxt(plot_path+'/vx.txt',est4_vx)
+                np.savetxt(plot_path+'/vy.txt',est4_vy)
         
         t += config.TIME_STEP*config.TIME_SCALER
         
@@ -202,10 +247,10 @@ def main():
     pub = []
     pub_estimation = rospy.Publisher('estimation', numpy_msg(Floats), queue_size=10)
     pub_platform_state = rospy.Publisher('platform_state', numpy_msg(Floats), queue_size=100)
-
+    pub_covariance = rospy.Publisher('covariance', numpy_msg(Floats), queue_size=100)
     pub.append(pub_estimation)
     pub.append(pub_platform_state)
-
+    pub.append(pub_covariance)
     # Initial Conditions
     pose_target = config.Pose(config.TARGET_INIT[0], config.TARGET_INIT[1],  config.TARGET_INIT[2])
     # Set the AUV and the TARGET to the initial conditions

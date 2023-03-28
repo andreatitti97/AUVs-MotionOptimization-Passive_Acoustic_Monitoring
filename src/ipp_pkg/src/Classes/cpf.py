@@ -28,7 +28,7 @@ class CooperativePathFollowing:
         self.theta = updated_ori
 
     def saturateVel(self,vel):
-        VEL_MAX = 50000
+        VEL_MAX = 20000
         
         if vel > VEL_MAX:
             vel = VEL_MAX
@@ -40,10 +40,7 @@ class CooperativePathFollowing:
     def potential_field(self,leader_pos, pos):
         # Calculate the desired positions of the followers in the formation
     
-        formation = np.array([[config.PLATFORM_INIT_POSE[0], config.PLATFORM_INIT_POSE[1]],[config.BASELINE_X, +config.BASELINE_Y], 
-                            [config.BASELINE_X, -config.BASELINE_Y], 
-                            [config.BASELINE_X, config.BASELINE_Y*2], 
-                            [config.BASELINE_X, -config.BASELINE_Y*2]])
+        formation = config.formation
 
         desired_positions = np.zeros_like(pos)
         # Compute the desired absolute pos of the agents according to leader pos and given formation
@@ -108,10 +105,10 @@ class CooperativePathFollowing:
 
             # Compute the angular velocity after received the command
             if count2 != 0:
-                if bool == True:
-                    angular_vel_leader = self.ko*(goal_theta - self.theta)#self.ko*
-                else: 
-                    angular_vel_leader = self.ko*(goal_theta - self.theta)
+                
+                angular_vel_leader = self.ko*(goal_theta - self.theta)
+
+                    
 
         # Update Leader Position
         self.theta = (self.theta + angular_vel_leader*dt)
