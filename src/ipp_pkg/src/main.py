@@ -18,13 +18,13 @@ class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Cla
 spec = importlib.util.spec_from_file_location("module.config", class_path+"/config.py")
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
-spec = importlib.util.spec_from_file_location("module.tracker", class_path+"/tracker_cassino.py")
+spec = importlib.util.spec_from_file_location("module.tracker", class_path+"/tracker.py")
 tracker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tracker)
 spec = importlib.util.spec_from_file_location("module.controller", class_path+"/controller.py")
 controller = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(controller)
-spec = importlib.util.spec_from_file_location("module.sensor", class_path+"/sensor_cpf.py")
+spec = importlib.util.spec_from_file_location("module.sensor", class_path+"/sensor.py")
 sensor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sensor)
 spec = importlib.util.spec_from_file_location("module.target", class_path+"/target.py")
@@ -106,8 +106,6 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
                         R[i,j] = (config.SIGMA_MEAS**2)/beta[i]
                     else:
                         R[i,j] = 0
-            
-            print(np.dot(np.dot(np.transpose(phi),np.linalg.inv(R)),phi))
             if count1 > 0:
                 cov = np.linalg.inv(np.dot(np.dot(np.transpose(phi),np.linalg.inv(R)),phi))
             else: 
@@ -126,7 +124,6 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
             for i in range(4):
                 for j in range(4):
                     tmp.append(cov[i,j])
-            print('ARRAY COV', tmp)
             pub[2].publish(np.array(tmp,dtype=np.float32))
             rospy.sleep(config.TIME_STEP*5)
             cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))

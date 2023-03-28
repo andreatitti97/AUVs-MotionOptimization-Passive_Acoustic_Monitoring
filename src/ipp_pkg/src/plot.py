@@ -66,48 +66,9 @@ vy = np.loadtxt(lib_path+'/vy.txt')
 # Load temporal vaiables
 n_sample = np.size(est4_x_ON)
 t = np.linspace(0,config.TIME_DURATION,n_sample)
+scaling = 3 #scale the width of the drawn lines (i.e. 3 suitable for 10km X 10km area)
+ranges = 12 #scale the number of printed AUVs (ie.e 12 suitable for 600 s of simulation)
 
-
-
-#PLOTA COVARIANCE OBSERVATIONS
-
-plt.subplot(2,1,1)
-plt.plot(t,cov1)
-
-plt.plot(t,cov2)
-plt.legend(['x','y'])
-plt.grid()
-plt.subplot(2,1,2)
-plt.plot(t,cov3)
-
-
-plt.plot(t,cov4)
-
-
-plt.legend(['vx','vy'])
-
-
-plt.show()
-
-
-plt.plot(t,vx)
-real_vel = config.TARGET_VEL
-vx_real = real_vel*np.cos(config.TARGET_INIT[2])
-vy_real = real_vel*np.sin(config.TARGET_INIT[2])
-y1 = []
-y2 = []
-for i in range(len(t)):
-    y1.append(vx_real)
-    y2.append(vy_real)
-
-plt.plot(t,vy)
-plt.plot(t,y1)
-plt.plot(t,y2)
-plt.legend(['vx','vy','real_x','real_y'])
-plt.grid()
-plt.show()
-
-scaling = 3
 plt.title('TOPOLOGY of the NETWORK with IN-LINE FORMATION',fontsize=30)
 plt.plot(auv1_x_off[0],auv1_y_off[0])
 circle4 = plt.Circle((auv1_x_off[0],auv1_y_off[0]),1*scaling,color='k')
@@ -134,22 +95,9 @@ plt.show()
 plt.plot(s_x_off,s_y_off)
 plt.plot(real_x,real_y,linewidth=5,color='y')
 plt.plot(est4_x_OFF,est4_y_OFF,'r',linewidth=3)
-#plt.title('OPTIMIZATION OFF',fontsize=30)
 plt.xlabel('x (m)',fontsize=30)
 plt.ylabel('y (m)',fontsize=30)
 
-'''circle3 = plt.Circle((s_x_off[0],s_y_off[0]),1*scaling,color='b')
-circle4 = plt.Circle((auv1_x_off[0],auv1_y_off[0]),1*scaling,color='k')
-circle5 = plt.Circle((auv2_x_off[0],auv2_y_off[0]),1*scaling,color='k')
-circle6 = plt.Circle((auv3_x_off[0],auv3_y_off[0]),1*scaling,color='k')
-circle7 = plt.Circle((auv4_x_off[0],auv4_y_off[0]),1*scaling,color='k')
-plt.gca().add_patch(circle3)
-plt.gca().add_patch(circle4)
-plt.gca().add_patch(circle5)
-plt.gca().add_patch(circle6)
-plt.gca().add_patch(circle7)'''
-
-#plt.gca().add_patch(circle3)
 legend_elements = [Line2D([0], [0], marker='X',color='b', lw=1, label='Formation Reference Path'),
                     Line2D([0], [0], color='yellow', lw=5, label='Target Real Path'),
                     Line2D([0], [0], color='r', lw=1, label='Target Estimation'),
@@ -158,17 +106,15 @@ legend_elements = [Line2D([0], [0], marker='X',color='b', lw=1, label='Formation
                     Line2D([0], [0], color='k', ls='--', label='LOS AUVs')]
 
 plt.legend(handles=legend_elements,fontsize=20)
-
 plt.plot(auv1_x_off[10:-1], auv1_y_off[10:-1], 'k')
 plt.plot(auv2_x_off[10:-1], auv2_y_off[10:-1], 'k')
 plt.plot(auv3_x_off[10:-1], auv3_y_off[10:-1], 'k')
 plt.plot(auv4_x_off[10:-1], auv4_y_off[10:-1], 'k')
+
 j = 0
-ranges = 4
 for i in range(ranges):
     # plot LOS
     idx = (i+1)*5*ranges
-    
     if i == ranges:
         idx = -1
     plt.plot([auv3_x_off[idx],
@@ -196,26 +142,12 @@ plt.show()
 
 # PLOT THE RESULT OF THE SIMULATION with OPTIMIZATION
 
-
 plt.plot(s_x_on,s_y_on)
 plt.plot(real_x,real_y,linewidth=5,color='y')
 plt.plot(est4_x_ON,est4_y_ON,'r',linewidth=3)
 #plt.title('SIMULATION - OPTIMIZATION ON',fontsize=30)
 plt.xlabel('x (m)',fontsize=30)
 plt.ylabel('y (m)',fontsize=30)
-
-'''circle3 = plt.Circle((s_x_on[0],s_y_on[0]),1*scaling,color='b')#100
-circle4 = plt.Circle((auv1_x_on[0],auv1_y_on[0]),1*scaling,color='k')#200
-circle5 = plt.Circle((auv2_x_on[0],auv2_y_on[0]),1*scaling,color='k')
-circle6 = plt.Circle((auv3_x_on[0],auv3_y_on[0]),1*scaling,color='k')
-circle7 = plt.Circle((auv4_x_on[0],auv4_y_on[0]),1*scaling,color='k')
-
-plt.gca().add_patch(circle3)
-plt.gca().add_patch(circle4)
-plt.gca().add_patch(circle5)
-plt.gca().add_patch(circle6)
-plt.gca().add_patch(circle7)'''
-
 
 legend_elements = [Line2D([0], [0], marker='X',color='b', lw=1, label='Formation Reference Path'),
                     Line2D([0], [0], color='yellow', lw=5, label='Target Real Path'),
@@ -235,14 +167,13 @@ lista = []
 for i in range(ranges):
 
     # plot LOS
-    idx = (i+1)*5*ranges#500
+    idx = (i+1)*5*ranges
     if i == ranges:
         idx = -1
     plt.plot([auv3_x_on[idx],
         real_x[idx]],[auv3_y_on[idx],real_y[idx]],'k--',linewidth=1)
     plt.plot([auv4_x_on[idx],real_x[idx]],[auv4_y_on[idx],
         real_y[idx]],'k--',linewidth=1)
-    # = plt.Circle((auv4_x_on[0],auv4_y_on[0]),1*scaling,color='k')
     # plot AUVs
     plt.plot(auv1_x_on[idx],auv1_y_on[idx],'ok',linewidth=20)
     plt.plot(auv2_x_on[idx],auv2_y_on[idx],'ok',linewidth=20)
@@ -261,13 +192,42 @@ for i in range(ranges):
     j += 1 
 plt.axis('equal')
 idx1 = int(len(real_x)/2) 
-
 plt.arrow(real_x[np.round(0)],real_y[np.round(0)],+5.0*scaling*np.cos(target_init[2]), 5.0*scaling*np.sin(target_init[2]),width=2*scaling,color='y')
-
 plt.grid()
 plt.yticks(fontsize=25, rotation=0)#to set dimension and orientation of tick labels
 plt.xticks(fontsize=25, rotation=0)#to set dimension and orientation of tick labels
 plt.show()
+
+# PLOT COVARIANCE OBERVATIONS
+
+plt.subplot(2,1,1)
+plt.plot(t,cov1)
+plt.plot(t,cov2)
+plt.legend(['x','y'])
+plt.grid()
+plt.subplot(2,1,2)
+plt.plot(t,cov3)
+plt.plot(t,cov4)
+plt.legend(['vx','vy'])
+plt.grid()
+plt.show()
+
+real_vel = config.TARGET_VEL
+vx_real = real_vel*np.cos(config.TARGET_INIT[2])
+vy_real = real_vel*np.sin(config.TARGET_INIT[2])
+y1 = []
+y2 = []
+for i in range(len(t)):
+    y1.append(vx_real)
+    y2.append(vy_real)
+plt.plot(t,vx)
+plt.plot(t,vy)
+plt.plot(t,y1,'r--')
+plt.plot(t,y2,'r:')
+plt.legend(['vx','vy','real_x','real_y'])
+plt.grid()
+plt.show()
+
 
 # PLTO BASELINE ANGLE
 baseline_angle = []
@@ -292,36 +252,18 @@ for i in range(len(auv4_x_off)-8):
 
 y = np.zeros(n_sample)
 plt.subplot(3,1,1)
-#plt.title('ESTIMATION PERFORMANCES COMPARISON', fontsize=30)
 plt.title('OPTIMIZATION ON',fontsize=15)
 plt.plot(t,baseline_angle,'k',markerfacecolor='yellow')
 plt.ylabel('Angle LOS1 & LOS4 (deg)',fontsize=20)
-'''for i in range(n_sample): y[i] = 0
-plt.plot(t,y,'r--',linewidth=2)
-for i in range(n_sample): y[i] = 5
-plt.plot(t,y,'y--',linewidth=2)
-for i in range(n_sample): y[i] = 10
-plt.plot(t,y,'g--',linewidth=2)'''
 plt.yticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
 plt.xticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
-#plt.legend(['Angle','No Observability','Critical Observability','Good Observability'],fontsize=20)
-
 plt.grid()
 
 plt.subplot(3,1,2)
 plt.title('OPTIMIZATION OFF',fontsize=15)
 plt.plot(t,baseline_angle_off,'k',markerfacecolor='yellow')
-#plt.ylabel('Angle formed by LOS1 & LOS4 (deg)',fontsize=15)
-'''for i in range(n_sample): y[i] = 0
-plt.plot(t,y,'r--',linewidth=2)
-for i in range(n_sample): y[i] = 5
-plt.plot(t,y,'y--',linewidth=2)
-for i in range(n_sample): y[i] = 10
-plt.plot(t,y,'g--',linewidth=2)'''
 plt.yticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
 plt.xticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
-#plt.xlabel('Time (s)',fontsize=20)
-#plt.legend(['Angle','No Observability','Critical Observability','Good Observability'],fontsize=20)
 plt.grid()
 
 # PLOT RMSE
@@ -347,14 +289,7 @@ plt.xlabel('Time (s)',fontsize=30)
 plt.ylabel('RMSE (m)',fontsize=30)
 plt.yticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
 plt.xticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
-
-#plt.text(0,err_medio1-30, 'ERRORE MEDIO OFF:'+str(err_medio1), fontsize=1.5*scaling, color='k')
-#plt.text(0,err_medio2 , 'ERRORE MEDIO ON:'+str(err_medio2), fontsize=1.5*scaling, color='r')
 plt.grid()
-#plt.show()
-
-
-
 plt.show()
 
 # PLOT ctrl cmds from optimization

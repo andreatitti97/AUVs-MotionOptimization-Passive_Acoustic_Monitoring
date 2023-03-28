@@ -16,10 +16,10 @@ class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Cla
 spec = importlib.util.spec_from_file_location("module.config", class_path+"/config.py")
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
-spec = importlib.util.spec_from_file_location("module.tracker_optimization", class_path+"/tracker_cassino.py")
+spec = importlib.util.spec_from_file_location("module.tracker_optimization", class_path+"/tracker.py")
 tracker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tracker)
-spec = importlib.util.spec_from_file_location("module.sensor_cpf", class_path+"/sensor_cpf.py")
+spec = importlib.util.spec_from_file_location("module.sensor_cpf", class_path+"/sensor.py")
 sensor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sensor)
 spec = importlib.util.spec_from_file_location("module.cpf", class_path+"/cpf.py")
@@ -88,7 +88,7 @@ class Target():
         # calcola i sigma points
         sigma_points = np.zeros((num_sigma_points, n))
         sigma_points[0] = np.squeeze(x)
-        sqrt_P = np.linalg.cholesky(self.cov)
+        sqrt_P = np.linalg.cholesky(self.cov) #Cholesky decomposition
         for i in range(n):
             sigma_points[i+1] = np.squeeze(x + sqrt_P[i])
             sigma_points[n+i+1] = np.squeeze(x - sqrt_P[i])
@@ -331,10 +331,11 @@ def main():
         t_est = t_est.data
         s_state = s_state.data
         cov = cov.data
-        covariance = np.zeros((4,4))
+        n = len(t_est)
+        covariance = np.zeros((n,n))
 
-        for i in range(4):
-         covariance[i,:] = cov[(i*4):(i*4)+4]
+        for i in range(n):
+            covariance[i,:] = cov[(i*n):(i*n)+n]
 
         ######## Compute the best solution solving the optimization with BnB or Greedy search #####
         problem = Simple(t_est, s_state, DELTA, sensors, cpf_control, ctrl_cmd, covariance)
