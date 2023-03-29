@@ -33,7 +33,7 @@ class Sensor:
 
         # Create the noise and add the noise to the measurament
         self.noise = np.random.uniform(-self.variance, self.variance)
-        #self.noise = np.random.normal(0,self.variance)
+        #self.noise = np.random.normal(0,self.variance) 
         self.abs_bearing = self.abs_bearing + self.noise #overwrite absolute bearing with the corrupted quantities
         return self.abs_bearing, rel_bearing, obs_pos
 

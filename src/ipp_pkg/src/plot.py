@@ -57,12 +57,18 @@ opt_y = np.loadtxt(lib_path+'/t_est_y_opt.txt')
 s_opt_x = np.loadtxt(lib_path+'/s_state_x.txt')
 s_opt_y = np.loadtxt(lib_path+'/s_state_y.txt')
 # Covariance data
-cov1 = np.loadtxt(lib_path+'/cov1')
-cov2 = np.loadtxt(lib_path+'/cov2')
-cov3 = np.loadtxt(lib_path+'/cov3')
-cov4 = np.loadtxt(lib_path+'/cov4')
-vx = np.loadtxt(lib_path+'/vx.txt')
-vy = np.loadtxt(lib_path+'/vy.txt')
+cov1 = np.loadtxt(lib_path+'/cov1_ON.txt')
+cov2 = np.loadtxt(lib_path+'/cov2_ON.txt')
+cov3 = np.loadtxt(lib_path+'/cov3_ON.txt')
+cov4 = np.loadtxt(lib_path+'/cov4_ON.txt')
+vx = np.loadtxt(lib_path+'/vx_ON.txt')
+vy = np.loadtxt(lib_path+'/vy_ON.txt')
+cov1 = np.loadtxt(lib_path+'/cov1_OFF.txt')
+cov2 = np.loadtxt(lib_path+'/cov2_OFF.txt')
+cov3 = np.loadtxt(lib_path+'/cov3_OFF.txt')
+cov4 = np.loadtxt(lib_path+'/cov4_OFF.txt')
+vx = np.loadtxt(lib_path+'/vx_OFF.txt')
+vy = np.loadtxt(lib_path+'/vy_OFF.txt')
 # Load temporal vaiables
 n_sample = np.size(est4_x_ON)
 t = np.linspace(0,config.TIME_DURATION,n_sample)
@@ -102,7 +108,6 @@ legend_elements = [Line2D([0], [0], marker='X',color='b', lw=1, label='Formation
                     Line2D([0], [0], color='yellow', lw=5, label='Target Real Path'),
                     Line2D([0], [0], color='r', lw=1, label='Target Estimation'),
                     Line2D([0], [0], marker='o',color='k',  label='AUVs'),
-
                     Line2D([0], [0], color='k', ls='--', label='LOS AUVs')]
 
 plt.legend(handles=legend_elements,fontsize=20)
@@ -157,7 +162,7 @@ legend_elements = [Line2D([0], [0], marker='X',color='b', lw=1, label='Formation
                     Line2D([0], [0], color='k', ls='--', label='LOS AUVs')]
 
 plt.legend(handles=legend_elements, fontsize=20)
-    
+
 plt.plot(auv1_x_on[10:-1], auv1_y_on[10:-1], 'k')
 plt.plot(auv2_x_on[10:-1], auv2_y_on[10:-1], 'k')
 plt.plot(auv3_x_on[10:-1], auv3_y_on[10:-1], 'k')

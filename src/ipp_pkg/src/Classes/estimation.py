@@ -26,13 +26,14 @@ class Estimator:
         self.__id = id
         self.__phi = []
         self.__y = []
+        self.__w = []
         self.__C = matlib.zeros((1,4))
         
         self.t_prev = 0
 
     @property
     def current_estimate(self):
-        return (self.__x, self.__phi, self.__y)
+        return (self.__x, self.__phi, self.__y, self.__w)
 
     def init_state_vector(self):
         return True
@@ -47,12 +48,14 @@ class Estimator:
             a = self.__phi[i]
             tmp_phi[i,:] = [a[0],a[1],a[2],a[3]]
         self.__x =  np.dot(np.linalg.pinv(tmp_phi),tmp_y)
+
+        '''
         dt = curr_time - prev_time #tempo attuale - tempo ultimo stato noto.
         self.__F = np.matrix([[1,0,dt,0],
                               [0,1,0,dt],
                               [0,0,1,0],
                               [0,0,0,1]])
-        #self.__x = self.__F*self.__x
+        self.__x = self.__F*self.__x'''
 
     def iteration(self, t_meas, measures, auv_position_x, auv_position_y, prev_t):
 
@@ -61,11 +64,27 @@ class Estimator:
             self.__y.pop(0)
 
         delta = (t_meas - prev_t)
+
+        range_ratio= np.tan(measures)
+        w = np.e**(-range_ratio)
+        self.__w.append(w)
+
         self.__C = [np.sin(measures), -np.cos(measures), delta*np.sin(measures), -delta*np.cos(measures)]
         self.__phi.append(self.__C)
 
         if len(self.__phi) > config.TP:
             self.__phi.pop(0)
+
+
+        
+
+        
+
+    
+        # TO DO  RE-WEIGTHED ESTIMATION (conviene farlo in ottimizzazione o proprio in generale come metodo di stima (FORSE più facile e conveniente))
+        # a =  exp^(-distanza) (fai sigmoide che varia in funzione della distanza target-osservatore)
+        # A = diag(a(dist)) genera una matrice diagonale di pesi tipo R sul main 
+        # USA IL REGRESSORE GIà in uso 
 
         
 

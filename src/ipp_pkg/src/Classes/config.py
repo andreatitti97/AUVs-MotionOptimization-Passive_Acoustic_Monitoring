@@ -4,13 +4,13 @@ import numpy as np
 TIME_DURATION = 600 # (s)
 TIME_STEP = 0.01
 TIME_SCALER = 80 # MAX for communication purpose 
-OPTIMIZATION_ON = True
+OPTIMIZATION_ON = False
 
 # Estimation Parameters
 TP = 50 # regressor MAX length
 STATE_PROPAGATION = 8 #time between each propagation of the estimation (in real case a consensus (?))
 # Team parameter: number of agents, baselines_XY, inital position, type of formation
-SIGMA_MEAS = 0.02 #0.005 # uncertainty = 1° --> sigma^2 = (uncertainty*2*pi/180)^2  per ora 3 gradi -- TO DECIDE!!
+SIGMA_MEAS = 0.005 #0.02 #0.005 # uncertainty = 1° --> sigma^2 = (uncertainty*2*pi/180)^2  per ora 3 gradi -- TO DECIDE!!
 MEAS_UPDATE = STATE_PROPAGATION/4 # MEAS_UPDATE (s)= meas_update*(TIME_SCALER*TIME_STEP)
 N_AUV = 4
 BASELINE_Y = 100 #(m)
@@ -41,9 +41,11 @@ formation = np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],[0, -50],
 OPTIMIZATION_TIME_STEP = STATE_PROPAGATION*(TIME_SCALER*TIME_STEP) #VA INTESO COME delta_k (planning stage)in secondi
 k_max = 15*pi/180 
 delta_k = 0#1.5*pi/180 
-U = 7 #number of control choices
+U = 5 #number of control choices
 M = 3 # planning horizon
-ctrl_cmd = [-k_max, -k_max*4/(U),-k_max*2/(U),0,k_max*2/(U),k_max*4/(U),k_max]
+ctrl_cmd = [-k_max, -k_max*4/(U),0,k_max*4/(U),k_max] #set of control actions
+#ctrl_cmd = [-k_max, -k_max*4/(U),-k_max*2/(U),0,k_max*2/(U),k_max*4/(U),k_max]
+
 
 # Cooperative Path Following Params
 K_att = 1.0 # Attractive gain

@@ -44,6 +44,7 @@ est4_vx, est4_vy = [],[]
 auv1_x, auv1_y, auv2_x, auv2_y,auv3_x,auv3_y,auv4_x,auv4_y  = [], [], [], [], [], [], [], []
 rmse, bearing1, bearing2 = [], [], []
 cov1, cov2, cov3, cov4 = [],[],[],[]
+
 def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientation):
     """Simulate the sensor platform and the moving target"""
     global count1
@@ -95,15 +96,20 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
             obs[0].propagate_estimation(t)
             propagation == False
             # Retrieve Estimation
-            curr_est, phi, y = obs[0].state
+            curr_est, phi, y, range_ratio = obs[0].state
+            # Compute Covariance of the target state - USING FORGETTING FACTOR and RE-WEIGHTED estimation over the range-ratio
             R = np.zeros((len(y),len(y))) #matrice diagonale perchè errori sulle singole misure indipendenti tra loro
             beta = np.zeros((len(y),1))
             time = np.linspace(0,1,len(y))
             beta = np.e**(time)
-            for i in range(len(y)):
+            w = np.zeros((len(range_ratio),1))
+            for i in range(len(range_ratio)):
+                w[i] = range_ratio[i]
+            gamma = np.e**(w)
+            for i in range(len(y)): 
                 for j in range(len(y)):
                     if i == j:
-                        R[i,j] = (config.SIGMA_MEAS**2)/beta[i]
+                        R[i,j] = (config.SIGMA_MEAS**2)/(beta[i]*gamma[i])
                     else:
                         R[i,j] = 0
             if count1 > 0:
@@ -138,7 +144,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
         
         #################################################################################################################
                       
-        ######################################## SAVE THE ESTIMATED STATE FOR PLOT #######################################
+        ##################### SAVE THE POSITIONS OF TEAM REFERENCE/AGENTS/TARGET/ STATE FOR PLOT ########################
         
             
         platform_x.append(leader_pos[0])
@@ -160,6 +166,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
 
         if count1 >= config.STATE_PROPAGATION: # you can start saving estimation after the first state propagation
             
+            # Saving DATA ABOUT ESTIMATION
             est4_x.append(curr_est[0,0])
             est4_y.append(curr_est[1,0])
             est4_vx.append(curr_est[2,0])
@@ -204,12 +211,12 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
                 np.savetxt(plot_path+'/auv3_y_ON.txt',auv3_y)
                 np.savetxt(plot_path+'/auv4_x_ON.txt',auv4_x)
                 np.savetxt(plot_path+'/auv4_y_ON.txt',auv4_y)
-                np.savetxt(plot_path+'/cov1',cov1)
-                np.savetxt(plot_path+'/cov2',cov2)
-                np.savetxt(plot_path+'/cov3',cov3)
-                np.savetxt(plot_path+'/cov4',cov4)
-                np.savetxt(plot_path+'/vx.txt',est4_vx)
-                np.savetxt(plot_path+'/vy.txt',est4_vy)
+                np.savetxt(plot_path+'/cov1_ON.txt',cov1)
+                np.savetxt(plot_path+'/cov2_ON.txt',cov2)
+                np.savetxt(plot_path+'/cov3_ON.txt',cov3)
+                np.savetxt(plot_path+'/cov4_ON.txt',cov4)
+                np.savetxt(plot_path+'/vx_ON.txt',est4_vx)
+                np.savetxt(plot_path+'/vy_ON.txt',est4_vy)
             else:
 
 
@@ -226,12 +233,12 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
                 np.savetxt(plot_path+'/auv3_y_OFF.txt',auv3_y)
                 np.savetxt(plot_path+'/auv4_x_OFF.txt',auv4_x)
                 np.savetxt(plot_path+'/auv4_y_OFF.txt',auv4_y)
-                np.savetxt(plot_path+'/cov1',cov1)
-                np.savetxt(plot_path+'/cov2',cov2)
-                np.savetxt(plot_path+'/cov3',cov3)
-                np.savetxt(plot_path+'/cov4',cov4)
-                np.savetxt(plot_path+'/vx.txt',est4_vx)
-                np.savetxt(plot_path+'/vy.txt',est4_vy)
+                np.savetxt(plot_path+'/cov1_OFF.txt',cov1)
+                np.savetxt(plot_path+'/cov2_OFF.txt',cov2)
+                np.savetxt(plot_path+'/cov3_OFF.txt',cov3)
+                np.savetxt(plot_path+'/cov4_OFF.txt',cov4)
+                np.savetxt(plot_path+'/vx_OFF.txt',est4_vx)
+                np.savetxt(plot_path+'/vy_OFF.txt',est4_vy)
         
         t += config.TIME_STEP*config.TIME_SCALER
         

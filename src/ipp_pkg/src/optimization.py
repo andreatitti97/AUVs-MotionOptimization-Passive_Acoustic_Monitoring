@@ -39,23 +39,15 @@ opt_scaler = config.STATE_PROPAGATION
 
 class Target():
     def __init__(self, init_vector, covariance):
-        self.x = init_vector[0]
-        self.y = init_vector[1]
-        
-        self.vlx = init_vector[2]
-        self.vly = init_vector[3]
+
+        self.x = init_vector
         self.dt = config.OPTIMIZATION_TIME_STEP/opt_scaler
         self.cov = covariance
-
-    def update_state(self):
-
-        self.x = self.x + self.vlx*self.dt
-        self.y = self.y + self.vly*self.dt
-        return [self.x, self.y, self.vlx, self.vly]
         
-    def state_transition(self, sigma_point, dt):
-        F = np.matrix([[1,0,dt,0],
-                        [0,1,0,dt],
+    def state_transition(self, sigma_point):
+        
+        F = np.matrix([[1,0,self.dt,0], # Target model
+                        [0,1,0,self.dt],
                         [0,0,1,0],
                         [0,0,0,1]])
         tmp = np.zeros((4,1))
@@ -64,58 +56,70 @@ class Target():
         predicted = F*tmp
 
         return [predicted[0], predicted[1], predicted[2], predicted[3]]
-     
-    def uscentedTransform(self, dt, cov):
-        # TO DO INGLOBA IL METODO UTILIZZANDO GLI ATTRIBUTI DELLA CLASSE
-        # definisci i parametri dell'Unscented Transformation
-        x = np.array([self.x, self.y, self.vlx, self.vly])
-        n = len(x) # dimensione dello spazio di stato
-        self.cov = cov 
-        alpha = 0.5 # parametro di scala
-        beta = 2.0 # parametro di priorità
-        kappa = 0.0 # parametro di modificazione
+    
+    def uscentedTransform(self, alpha=0.001, beta=2, kappa=0): #tipical tuning for gaussian process
+        """
+        Performs the unscented transform to propagate the state distribution through
+        a nonlinear function.
+        
+        Inputs:
+        - x: The current state estimate.
+        - P: The current state covariance.
+        - f: The state transition function, which takes a state vector x and a control
+            input vector u and returns the predicted state vector.
+        - Q: The covariance matrix associated with the process noise.
+        - alpha, beta, kappa: Tuning parameters for the unscented transform.
+        
+        Returns:
+        - x_pred: The predicted state estimate.
+        - P_pred: The predicted state covariance.
+        """
 
-        # calcola il numero di sigma points
-        num_sigma_points = 2 * n + 1
-
-        # calcola i pesi degli sigma points
+        x = self.x
+        P = self.cov
+        n = len(x) # dimsigma_pointsa points
+        m = 2 * n + 1  # Number of sigma points
         lambda_ = alpha**2 * (n + kappa) - n
-        weights = np.zeros(num_sigma_points)
-        weights[0] = lambda_ / (n + lambda_)
-        for i in range(1, num_sigma_points):
-            weights[i] = 1.0 / (2 * (n + lambda_))
-
-        # calcola i sigma points
-        sigma_points = np.zeros((num_sigma_points, n))
-        sigma_points[0] = np.squeeze(x)
-        sqrt_P = np.linalg.cholesky(self.cov) #Cholesky decomposition
+        U = np.linalg.cholesky((n + lambda_) * P)
+        X = np.zeros((m, n))
+        X[0] = x
         for i in range(n):
-            sigma_points[i+1] = np.squeeze(x + sqrt_P[i])
-            sigma_points[n+i+1] = np.squeeze(x - sqrt_P[i])
+            X[i+1] = x + U[i]
+            X[i+n+1] = x - U[i]
 
-        # Applica la funzione di transizione di stato ai sigma points
-        sigma_points_predicted = np.zeros((num_sigma_points, n))
-        for i in range(num_sigma_points):
-            sigma_points_predicted[i] = self.state_transition(sigma_points[i], dt)
-
-        # calcola la media e la covarianza dei nuovi sigma points
-        x_predicted = np.dot(weights,sigma_points_predicted)
-        P_predicted = np.zeros((n, n))
-        for i in range(num_sigma_points):
-            P_predicted += weights[i] * np.outer(sigma_points_predicted[i] - x_predicted, sigma_points_predicted[i] - x_predicted)
-
-        # calcola la media e la covarianza della previsione dello stato
-        x_predicted = np.squeeze(x_predicted)
-        P_predicted = np.squeeze(P_predicted)
-        self.x = x_predicted[0]
-        self.y = x_predicted[1]
-        self.cov = P_predicted
-        return x_predicted, P_predicted
-
-
+        # Calculate weights
+        w_m = np.zeros(m)
+        w_c = np.zeros(m)
+        w_m[0] = lambda_ / (n + lambda_)
+        w_c[0] = lambda_ / (n + lambda_) + (1 - alpha**2 + beta)
+        for i in range(1, m):
+            w_m[i] = 1 / (2 * (n + lambda_))
+            w_c[i] = 1 / (2 * (n + lambda_))
+        
+        # Propagate sigma points through the state transition function
+        X_pred = np.zeros((m, n))
+        for i in range(m):
+            #X_pred[i] = f(X[i], Q) #if you consider a gaussian disturbance for the state add Q
+            tmp = self.state_transition(X[i])
+            X_pred[i] = tmp
+        # Calculate predicted mean and covariance
+        x_pred = np.dot(w_m,X_pred)  
+        P_pred = np.zeros((n, n))
+        for i in range(m):
+            P_pred += w_c[i] * np.outer(X_pred[i] - x_pred, X_pred[i] - x_pred)
+        #P_pred += Q # if you consider a gaussian disturbance for the state
+        
+        self.x = x_pred
+        self.cov = P_pred
+        
+        #return x_pred, P_pred
+    
 def simulation(control_input, target_est, platform_pose, sensor, controller, covariance):
 
+    # Init classes for tracker and target
     tracker_ = tracker.Tracker('opt', True)
+    target = Target(target_est, covariance)
+    # Load agents state
     positions = np.zeros((4,2))
     tmp2 = np.array([platform_pose[0],platform_pose[1]])
     for i in range(0, 4):
@@ -123,11 +127,11 @@ def simulation(control_input, target_est, platform_pose, sensor, controller, cov
     orientations = np.zeros(4)
     for i in range(4):
         orientations[i] = platform_pose[2]
-    target = Target(target_est, covariance)
+    controller.update_leader_ori(platform_pose[2])
+    # Temporal Variable
     t, j = 0, 0 #time and counter init
     meas_table = []
-    controller.update_leader_ori(platform_pose[2])
-    cov = covariance
+    
     for i in range(0,opt_scaler):
         if i == 0:
             cmd = control_input
@@ -137,14 +141,13 @@ def simulation(control_input, target_est, platform_pose, sensor, controller, cov
         [platform_pose, tmp, positions, orientations] = controller.move_agents(platform_pose, cmd, config.OPTIMIZATION_TIME_STEP/opt_scaler, positions, orientations,i,True, opt_scaler)
         platform_pose = [platform_pose[0],platform_pose[1],tmp]
         #target_state = target.update_state()
-        target_state, cov = target.uscentedTransform(config.OPTIMIZATION_TIME_STEP/opt_scaler, cov)
+        target.uscentedTransform() 
         if i >= 0 and i < (opt_scaler-1):
-            [measure_, rel_bearing_, meas_pos] = sensor[j].measureBearing(target_state[0],target_state[1],positions[j], orientations[j])
+            [measure_, rel_bearing_, meas_pos] = sensor[j].measureBearing(target.x[0],target.x[1],positions[j], orientations[j])
             arr = [t,measure_,meas_pos[0],meas_pos[1]]
             meas_table.append(arr)
             j = j + 1
             if j == 4:
-                #propagation = True
                 j = 0
 
         # update  WITH NEW MEASURAMENT
@@ -152,10 +155,6 @@ def simulation(control_input, target_est, platform_pose, sensor, controller, cov
             tracker_.processMeasurement(meas_table)
             tracker_.propagate_estimation(t)
 
-            # NOW RE-WEIGTHED ESTIMATION (conviene farlo in ottimizzazione o proprio in generale come metodo di stima (FORSE più facile e conveniente))
-            # a =  exp^(-distanza) (fai sigmoide che varia in funzione della distanza target-osservatore)
-            # A = diag(a(dist)) genera una matrice diagonale di pesi tipo R sul main 
-            # USA IL REGRESSORE GIà in uso 
         t += config.OPTIMIZATION_TIME_STEP/opt_scaler
     [state, phi, y] = tracker_.state
     state = [state[0,0], state[1,0], state[2,0], state[3,0]]
@@ -213,8 +212,9 @@ class Simple(pybnb.Problem):
         x3, phi3, y3, s3 = simulation(self.ctrl_cmds[2], x_hat, s, self.sensors, self.controller, cov)
         x4, phi4, y4, s4 = simulation(self.ctrl_cmds[3], x_hat, s, self.sensors, self.controller, cov)
         x5, phi5, y5, s5 = simulation(self.ctrl_cmds[4], x_hat, s, self.sensors, self.controller, cov)
-        x6, phi6, y6, s6 = simulation(self.ctrl_cmds[5], x_hat, s, self.sensors, self.controller, cov)
-        x7, phi7, y7, s7 = simulation(self.ctrl_cmds[6], x_hat, s, self.sensors, self.controller, cov)
+        if (len(self.ctrl_cmds) > 5):
+            x6, phi6, y6, s6 = simulation(self.ctrl_cmds[5], x_hat, s, self.sensors, self.controller, cov)
+            x7, phi7, y7, s7 = simulation(self.ctrl_cmds[6], x_hat, s, self.sensors, self.controller, cov)
         
         child = pybnb.Node()
         cost1 = compute_cost(phi1,len(y1))
@@ -229,10 +229,11 @@ class Simple(pybnb.Problem):
         choices4 = self.choices + tmp4
         tmp5 = [self.ctrl_cmds[4]]
         choices5 = self.choices + tmp5
-        tmp6 = [self.ctrl_cmds[5]]
-        choices6 = self.choices + tmp6
-        tmp7 = [self.ctrl_cmds[6]]
-        choices7 = self.choices + tmp7
+        if (len(self.ctrl_cmds) > 5):
+            tmp6 = [self.ctrl_cmds[5]]
+            choices6 = self.choices + tmp6
+            tmp7 = [self.ctrl_cmds[6]]
+            choices7 = self.choices + tmp7
 
         if len(choices1) == M or len(choices2) == M or len(choices3) == M:
             self.value = self.value - DELTA #trick#TODO
@@ -268,17 +269,18 @@ class Simple(pybnb.Problem):
         child.state = (x5, s5, child5_value, self.tmp_bound, choices5)
         yield child
 
-        cost6 = compute_cost(phi6,len(y6))
-        child6_value = father_value + cost6
-        child = pybnb.Node()
-        child.state = (x6, s6, child6_value, self.tmp_bound, choices6)
-        yield child
+        if (len(self.ctrl_cmds) > 5):
+            cost6 = compute_cost(phi6,len(y6))
+            child6_value = father_value + cost6
+            child = pybnb.Node()
+            child.state = (x6, s6, child6_value, self.tmp_bound, choices6)
+            yield child
 
-        cost7 = compute_cost(phi7,len(y7))
-        child5_value = father_value + cost7
-        child = pybnb.Node()
-        child.state = (x7, s7, child5_value, self.tmp_bound, choices7)
-        yield child
+            cost7 = compute_cost(phi7,len(y7))
+            child5_value = father_value + cost7
+            child = pybnb.Node()
+            child.state = (x7, s7, child5_value, self.tmp_bound, choices7)
+            yield child
 
         if len(choices1) == 1:
             t_est_x.append(x4[0])
@@ -305,13 +307,9 @@ def main():
     # OPTIMIZATION PARAMETERS
     count_low = 0
     count_max = 0
-
-    ctrl_cmd = [-config.k_max , -config.k_max *4/(config.U),
-                -config.k_max *2/(config.U),
-                0,
-                config.k_max *2/(config.U),
-                config.k_max *4/(config.U),config.k_max ]
+    ctrl_cmd = config.ctrl_cmd
     limit = 0.0
+
     for i in range(M+1):
         limit += config.U**i
     # Cooperative Path Following initialization
@@ -368,9 +366,7 @@ def main():
             count_low = 0
             count_max = 0
             old_ctrls = []
-            ctrl_cmd = [-config.k_max , -config.k_max *4/(config.U),
-                        -config.k_max *2/(config.U),0,config.k_max *2/(config.U),
-                        config.k_max *4/(config.U),config.k_max ]
+            ctrl_cmd = config.ctrl_cmd
         #SAVE DATA FOR PLOT    
         np.savetxt(plot_path+'/plot_cmds.txt',ctrl_plot)
         np.savetxt(plot_path+'/t_est_x_opt.txt',t_est_x)

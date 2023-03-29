@@ -13,7 +13,6 @@ class Tracker:
     '''
     def __init__(self, id, bool):
         self.bool = bool
-        
         self.__estimator = dekf.Estimator(bool,id)
         self.id  = id
         self.__curr_time = 0
