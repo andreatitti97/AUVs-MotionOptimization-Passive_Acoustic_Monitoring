@@ -57,18 +57,26 @@ opt_y = np.loadtxt(lib_path+'/t_est_y_opt.txt')
 s_opt_x = np.loadtxt(lib_path+'/s_state_x.txt')
 s_opt_y = np.loadtxt(lib_path+'/s_state_y.txt')
 # Covariance data
-cov1 = np.loadtxt(lib_path+'/cov1_ON.txt')
-cov2 = np.loadtxt(lib_path+'/cov2_ON.txt')
-cov3 = np.loadtxt(lib_path+'/cov3_ON.txt')
-cov4 = np.loadtxt(lib_path+'/cov4_ON.txt')
-vx = np.loadtxt(lib_path+'/vx_ON.txt')
-vy = np.loadtxt(lib_path+'/vy_ON.txt')
-cov1 = np.loadtxt(lib_path+'/cov1_OFF.txt')
-cov2 = np.loadtxt(lib_path+'/cov2_OFF.txt')
-cov3 = np.loadtxt(lib_path+'/cov3_OFF.txt')
-cov4 = np.loadtxt(lib_path+'/cov4_OFF.txt')
-vx = np.loadtxt(lib_path+'/vx_OFF.txt')
-vy = np.loadtxt(lib_path+'/vy_OFF.txt')
+cov1_ON = np.loadtxt(lib_path+'/cov1_ON.txt')
+cov2_ON = np.loadtxt(lib_path+'/cov2_ON.txt')
+cov3_ON = np.loadtxt(lib_path+'/cov3_ON.txt')
+cov4_ON = np.loadtxt(lib_path+'/cov4_ON.txt')
+vx_ON = np.loadtxt(lib_path+'/vx_ON.txt')
+vy_ON = np.loadtxt(lib_path+'/vy_ON.txt')
+cov1_OFF = np.loadtxt(lib_path+'/cov1_OFF.txt')
+cov2_OFF = np.loadtxt(lib_path+'/cov2_OFF.txt')
+cov3_OFF = np.loadtxt(lib_path+'/cov3_OFF.txt')
+cov4_OFF = np.loadtxt(lib_path+'/cov4_OFF.txt')
+vx_OFF = np.loadtxt(lib_path+'/vx_OFF.txt')
+vy_OFF = np.loadtxt(lib_path+'/vy_OFF.txt')
+
+prova_x = np.loadtxt(lib_path+'/prova_x.txt')
+prova_y = np.loadtxt(lib_path+'/prova_y.txt')
+
+#err_on_improved = np.loadtxt(lib_path+'/rmse_improved_ON.txt')
+err_off_improved = np.loadtxt(lib_path+'/rmse_improved_OFF.txt')
+
+
 # Load temporal vaiables
 n_sample = np.size(est4_x_ON)
 t = np.linspace(0,config.TIME_DURATION,n_sample)
@@ -101,6 +109,7 @@ plt.show()
 plt.plot(s_x_off,s_y_off)
 plt.plot(real_x,real_y,linewidth=5,color='y')
 plt.plot(est4_x_OFF,est4_y_OFF,'r',linewidth=3)
+plt.plot(prova_x,prova_y,'g',linewidth=3)
 plt.xlabel('x (m)',fontsize=30)
 plt.ylabel('y (m)',fontsize=30)
 
@@ -205,15 +214,32 @@ plt.show()
 
 # PLOT COVARIANCE OBERVATIONS
 
-plt.subplot(2,1,1)
-plt.plot(t,cov1)
-plt.plot(t,cov2)
-plt.legend(['x','y'])
+if len(t) >= len(cov1_OFF):
+    n = len(cov1_OFF)
+elif len(t) < len(cov1_OFF):
+    n = len(t)
+
+print
+plt.subplot(4,1,1)
+
+plt.plot(t[0:n],cov1_ON[0:n])
+plt.plot(t[0:n],cov1_OFF[0:n])
+plt.legend(['x_ON','x_OFF'])
 plt.grid()
-plt.subplot(2,1,2)
-plt.plot(t,cov3)
-plt.plot(t,cov4)
-plt.legend(['vx','vy'])
+plt.subplot(4,1,2)
+plt.plot(t[0:n],cov2_ON[0:n])
+plt.plot(t[0:n],cov2_OFF[0:n])
+plt.legend(['y_ON','y_OFF'])
+plt.grid()
+plt.subplot(4,1,3)
+plt.plot(t[0:n],cov3_ON[0:n])
+plt.plot(t[0:n],cov3_OFF[0:n])
+plt.grid()
+plt.legend(['vx_ON','vx_ON'])
+plt.subplot(4,1,4)
+plt.plot(t[0:n],cov4_ON[0:n])
+plt.plot(t[0:n],cov4_OFF[0:n])
+plt.legend(['vy_ON','vy_ON'])
 plt.grid()
 plt.show()
 
@@ -222,21 +248,49 @@ vx_real = real_vel*np.cos(config.TARGET_INIT[2])
 vy_real = real_vel*np.sin(config.TARGET_INIT[2])
 y1 = []
 y2 = []
-for i in range(len(t)):
+for i in range(n):
     y1.append(vx_real)
     y2.append(vy_real)
-plt.plot(t,vx)
-plt.plot(t,vy)
-plt.plot(t,y1,'r--')
-plt.plot(t,y2,'r:')
-plt.legend(['vx','vy','real_x','real_y'])
+plt.subplot(2,1,1)
+plt.plot(t[0:n],vx_ON[0:n])
+plt.plot(t[0:n],vx_OFF[0:n])
+plt.plot(t[0:n],y1[0:n],'r--')
+plt.legend(['vx_ON','vx_OFF','real_x'])
+plt.grid()
+
+plt.subplot(2,1,2)
+plt.plot(t[0:n],vy_ON[0:n])
+plt.plot(t[0:n],vy_OFF[0:n])
+plt.plot(t[0:n],y2[0:n],'r--')
+plt.legend(['vy_ON','vy_OFF','real_y'])
 plt.grid()
 plt.show()
 
+'''plt.subplot(2,1,1)
+plt.plot(t[0:n],est4_x_OFF[0:n])
+plt.plot(t[0:n],est4_x_ON[0:n])
+plt.plot(t[0:n],real_x[0:n])
+plt.legend(['OFF','ON','REAL'])
+plt.grid()
+plt.subplot(2,1,2)
+plt.plot(t[0:n],est4_y_OFF[0:n])
+plt.plot(t[0:n],est4_y_ON[0:n])
+plt.plot(t[0:n],real_y[0:n])
+plt.legend(['OFF','ON','REAL'])
+plt.grid()
+plt.show()'''
 
-# PLTO BASELINE ANGLE
+# PLOT BASELINE ANGLE
+n_sample = len(auv1_x_off)
+t = np.linspace(0,config.TIME_DURATION,n_sample)
 baseline_angle = []
-for i in range(len(auv4_x_on)-8):
+
+if len(t) >= len(auv4_x_on):
+    n = len(auv4_x_on)
+elif len(t) < len(auv4_x_on):
+    n = len(t)
+
+for i in range(n):
     tmp = (((real_x[i]-auv3_x_on[i])*(real_x[i]-auv4_x_on[i]))+((real_y[i]-auv3_y_on[i])*(real_y[i]-auv4_y_on[i]))
     )/(np.sqrt((real_x[i]-auv3_x_on[i])**2+(real_y[i]-auv3_y_on[i])**2)*np.sqrt((real_x[i]-auv4_x_on[i])**2+(
         real_y[i]-auv4_y_on[i])**2))
@@ -246,7 +300,7 @@ for i in range(len(auv4_x_on)-8):
     baseline_angle.append(angle)
 
 baseline_angle_off = []
-for i in range(len(auv4_x_off)-8):
+for i in range(n):
     tmp = (((real_x[i]-auv3_x_off[i])*(real_x[i]-auv4_x_off[i]))+((real_y[i]-auv3_y_off[i])*(real_y[i]-auv4_y_off[i]))
     )/(np.sqrt((real_x[i]-auv3_x_off[i])**2+(real_y[i]-auv3_y_off[i])**2)*np.sqrt((real_x[i]-auv4_x_off[i])**2+(
         real_y[i]-auv4_y_off[i])**2))
@@ -274,21 +328,35 @@ plt.grid()
 # PLOT RMSE
 sum1 = 0
 sum2 = 0
-for i in range(len(err_off)):
+sum3 = 0
+n = 0
+if len(err_off) < len(err_on):
+    n = len(err_off)
+else:
+    n = len(err_on)
+
+for i in range(n):
     tmp1 = err_off[i]
     sum1 += tmp1
     tmp2 = err_on[i]
     sum2 += tmp2
+    tmp3 = err_off_improved[i]
+    sum3 += tmp3
 err_medio1 = np.sqrt(sum1/n_sample)
 err_medio2 = np.sqrt(sum2/n_sample)
-print('ERRORE MEDIO OFF:',err_medio1/10)
-print('ERRORE MEDIO ON:',err_medio2/10)
+err_medio3 = np.sqrt(sum3/n_sample)
+print('ERRORE MEDIO OFF:',err_medio1)
 
+print('ERRORE MEDIO OFF IMPROVED:',err_medio3)
+print('ERRORE MEDIO ON:',err_medio2)
+n_sample = n
+t = np.linspace(0,config.TIME_DURATION,n_sample)
 # COMPARE RMSE 
 plt.subplot(3,1,3)
-plt.plot(t,err_off[0:n_sample]/10,'b')
-plt.plot(t,err_on[0:n_sample]/10,'g')
-plt.legend(['optimization OFF','optimization ON'],fontsize=20)
+plt.plot(t,err_off[0:n_sample],'b')
+plt.plot(t,err_on[0:n_sample],'g')
+plt.plot(t,err_off_improved[0:n_sample],'r')
+plt.legend(['optimization OFF','optimization ON','IMPROVED'],fontsize=20)
 
 plt.xlabel('Time (s)',fontsize=30)
 plt.ylabel('RMSE (m)',fontsize=30)

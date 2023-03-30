@@ -42,8 +42,9 @@ target_x_traj, target_y_traj, platform_x, platform_y = [], [], [], []
 est1_x, est1_y, est2_x, est2_y,est3_x, est3_y,est4_x, est4_y = [], [], [], [], [], [], [], []
 est4_vx, est4_vy = [],[]
 auv1_x, auv1_y, auv2_x, auv2_y,auv3_x,auv3_y,auv4_x,auv4_y  = [], [], [], [], [], [], [], []
-rmse, bearing1, bearing2 = [], [], []
+rmse, rmse_, bearing1, bearing2 = [], [], [],[]
 cov1, cov2, cov3, cov4 = [],[],[],[]
+prova_x,prova_y = [], []
 
 def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientation):
     """Simulate the sensor platform and the moving target"""
@@ -54,7 +55,15 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
     # Init Time Variables and counters
     t, count1, j = 0, 0, 0
     meas_table = []
-    cmds = [0,0,0,0]
+    cmds = []
+    for i in range(config.M):
+        cmds.append(0)
+    delay = []
+    flags = []
+    for i in range(config.N_AUV):
+        delay.append(0.0)
+        flags.append(0) 
+
     # Init AUVs position and orientation according to given formation
     positions = np.zeros((len(auv),2))
     leader_pos = np.array([formation[0,0],formation[0,1]])
@@ -71,41 +80,49 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
         rospy.loginfo('SIMULATION TIME(s)')
         rospy.loginfo(t)
         
-
         # Simulate Sensor Measuraments
         for j in range(config.N_AUV):
-
-            [measure_, rel_bearing_, meas_pos] = auv[j].measureBearing(target.pose_target.x,target.pose_target.y,positions[j], orientations[j])
-            
+            # If time to transmit
             if count1 % config.MEAS_UPDATE == 0:
-                # Write a row of the measurament table
+                #Make measurements
+                [measure_, rel_bearing_, meas_pos] = auv[j].measureBearing(target.pose_target.x,target.pose_target.y,positions[j], orientations[j])
                 arr = [t,measure_,meas_pos[0],meas_pos[1]]
                 meas_table.append(arr)
-                j = j + 1
+                
                 if len(meas_table) > config.TP:
                     meas_table.pop(0)
-                if j == 4:
+            
+            # Compute the delay of the msg of heach auvs
+            if flags[j] == 0 and propagation == False:
+                delay[j] += config.TIME_STEP*config.TIME_SCALER    
+
+            # If the delay measured is equal to the expected one the msg is arrived to AUV4
+            sigma = np.random.uniform(-config.variance[j], config.variance[j])
+            if  delay[j] >= config.mean[j] + sigma:
+                delay[j] = 0.0
+                flags[j] = 1
+                if np.sum(delay) == 0.0 and np.sum(flags)==4:
                     propagation = True
-                    j = 0
-            
-            
+
         # SIMULATE the ESTIMATIONS
-        if propagation == True and count1 % config.STATE_PROPAGATION == 0: 
+        if propagation == True:
 
             obs[0].processMeasurement(meas_table)
+            
             obs[0].propagate_estimation(t)
-            propagation == False
+
+            flags = [0,0,0,0]
             # Retrieve Estimation
             curr_est, phi, y, range_ratio = obs[0].state
             # Compute Covariance of the target state - USING FORGETTING FACTOR and RE-WEIGHTED estimation over the range-ratio
             R = np.zeros((len(y),len(y))) #matrice diagonale perchè errori sulle singole misure indipendenti tra loro
             beta = np.zeros((len(y),1))
-            time = np.linspace(0,1,len(y))
-            beta = np.e**(time)
-            w = np.zeros((len(range_ratio),1))
+            time_ = np.linspace(0,1,len(y)) #pesi tempo
+            beta = np.e**(time_)
+            w = np.zeros((len(range_ratio),1)) 
             for i in range(len(range_ratio)):
                 w[i] = range_ratio[i]
-            gamma = np.e**(w)
+            gamma = np.e**(w) # pesi distanza
             for i in range(len(y)): 
                 for j in range(len(y)):
                     if i == j:
@@ -116,25 +133,31 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
                 cov = np.linalg.inv(np.dot(np.dot(np.transpose(phi),np.linalg.inv(R)),phi))
             else: 
                 cov = np.zeros((4,4))
-        ############################################# TRIGGER OPTIMIZATION ##############################################
-        if count1%(config.STATE_PROPAGATION) == 0 and config.OPTIMIZATION_ON == True and count1 != 0: 
             
-            rospy.loginfo('SENDING DATA')
-            pub[0].publish(np.array(curr_est,dtype=np.float32))
-            rospy.sleep(config.TIME_STEP*5)
-            tmp = [leader_pos[0],leader_pos[1],leader_ori]
-            pub[1].publish(np.array(tmp,dtype=np.float32))
-            rospy.sleep(config.TIME_STEP*5)
+            tmp_ = np.dot(np.transpose(phi),np.dot(np.linalg.inv(R),y))
+            tmp_2 = np.linalg.inv(np.dot(np.dot(np.transpose(phi),np.linalg.inv(R)),phi))
+            x = np.dot(tmp_2,tmp_) # stima pesata su distanza + forgetting factor
+             
+        ############################################# TRIGGER OPTIMIZATION ##############################################
+            if config.OPTIMIZATION_ON == True:
+                
+                rospy.loginfo('SENDING DATA')
+                pub[0].publish(np.array(curr_est,dtype=np.float32))
+                rospy.sleep(config.TIME_STEP*5)
+                tmp = [leader_pos[0],leader_pos[1],leader_ori]
+                pub[1].publish(np.array(tmp,dtype=np.float32))
+                rospy.sleep(config.TIME_STEP*5)
 
-            tmp = []
-            for i in range(4):
-                for j in range(4):
-                    tmp.append(cov[i,j])
-            pub[2].publish(np.array(tmp,dtype=np.float32))
-            rospy.sleep(config.TIME_STEP*5)
-            cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))
-            cmds = cmds.data
-            print('RECEIVED CMDS (deg) -------------------------------------------------',cmds*180/pi)
+                tmp = []
+                for i in range(4):
+                    for j in range(4):
+                        tmp.append(cov[i,j])
+                pub[2].publish(np.array(tmp,dtype=np.float32))
+                rospy.sleep(config.TIME_STEP*5)
+                cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))
+                cmds = cmds.data
+
+                print('RECEIVED CMDS (deg) -------------------------------------------------',cmds*180/pi)
         
         ##################################################################################################################
              
@@ -160,32 +183,48 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
         auv4_x.append(positions[3,0])
         auv4_y.append(positions[3,1])
 
-        #time.sleep(5000)
         target_x_traj.append(target.pose_target.x)
         target_y_traj.append(target.pose_target.y)
-
-        if count1 >= config.STATE_PROPAGATION: # you can start saving estimation after the first state propagation
+        
+        #time.sleep(5000)
+        
+        if propagation == True: #count1 >= config.STATE_PROPAGATION: # you can start saving estimation after the first state propagation
             
             # Saving DATA ABOUT ESTIMATION
             est4_x.append(curr_est[0,0])
             est4_y.append(curr_est[1,0])
             est4_vx.append(curr_est[2,0])
             est4_vy.append(curr_est[3,0])
+            
+            prova_x.append(x[0])
+            prova_y.append(x[1])
+
             cov1.append(cov[0,0])
             cov2.append(cov[1,1])
             cov3.append(cov[2,2])
             cov4.append(cov[3,3])
-            
+
+            # Uncomment for plot x-y comparison over time
+            #target_x_traj.append(target.pose_target.x)
+            #target_y_traj.append(target.pose_target.y)
+
             target_state_real = [target.pose_target.x,target.pose_target.y, 
                 target.lin_vel_target*np.cos(target.pose_target.theta),
                 target.lin_vel_target*np.sin(target.pose_target.theta)]
                     
+
             err_x = (target_state_real[0] - curr_est[0,0])**2
             err_y = (target_state_real[1] - curr_est[1,0])**2
-            
-            norma_err = np.sqrt(err_x**2+err_y**2)
+            err_x_ = (target_state_real[0] - x[0])**2
+            err_y_ = (target_state_real[1] - x[1])**2
+
             norma_err = err_x+err_y
+            norma_err_ = err_x_+err_y_
+
             rmse.append(norma_err)
+            rmse_.append(norma_err_)
+            
+            propagation = False
         ##################################################################################################################
         
 
@@ -201,6 +240,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
                 np.savetxt(plot_path+'/est4_x_ON.txt',est4_x)
                 np.savetxt(plot_path+'/est4_y_ON.txt',est4_y)
                 np.savetxt(plot_path+'/rmse_ON.txt',rmse)
+                np.savetxt(plot_path+'/rmse_improved_ON.txt',rmse_)
                 np.savetxt(plot_path+'/x_platform_ON.txt',platform_x)
                 np.savetxt(plot_path+'/y_platform_ON.txt',platform_y)
                 np.savetxt(plot_path+'/auv1_x_ON.txt',auv1_x)
@@ -223,6 +263,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
                 np.savetxt(plot_path+'/est4_x_OFF.txt',est4_x)
                 np.savetxt(plot_path+'/est4_y_OFF.txt',est4_y)
                 np.savetxt(plot_path+'/rmse_OFF.txt',rmse)
+                np.savetxt(plot_path+'/rmse_improved_OFF.txt',rmse_)
                 np.savetxt(plot_path+'/x_platform_OFF.txt',platform_x)
                 np.savetxt(plot_path+'/y_platform_OFF.txt',platform_y)
                 np.savetxt(plot_path+'/auv1_x_OFF.txt',auv1_x)
@@ -239,6 +280,8 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
                 np.savetxt(plot_path+'/cov4_OFF.txt',cov4)
                 np.savetxt(plot_path+'/vx_OFF.txt',est4_vx)
                 np.savetxt(plot_path+'/vy_OFF.txt',est4_vy)
+                np.savetxt(plot_path+'/prova_x.txt',prova_x)
+                np.savetxt(plot_path+'/prova_y.txt',prova_y)
         
         t += config.TIME_STEP*config.TIME_SCALER
         
@@ -266,7 +309,6 @@ def main():
     for i in range(config.N_AUV): #TODO: AUV up to 6 consider
         auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS))
 
-        
     # Init trackers 
     trackers = []
     tracker4 = tracker.Tracker('forth_observer', False)
@@ -274,7 +316,6 @@ def main():
         
     # Cooperative Path Following initialization
     cpf_control = cpf.CooperativePathFollowing(config.formation, config.N_AUV, config.PLATFORM_INIT_POSE[2], config.K_att, config.K_rep, config.d_rep, config.AUV_VEL)
-    
     
     # Run The Simulation
     if config.OPTIMIZATION_ON == True:

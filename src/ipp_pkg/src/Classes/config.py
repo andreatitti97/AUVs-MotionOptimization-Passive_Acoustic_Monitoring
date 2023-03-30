@@ -8,7 +8,7 @@ OPTIMIZATION_ON = False
 
 # Estimation Parameters
 TP = 50 # regressor MAX length
-STATE_PROPAGATION = 8 #time between each propagation of the estimation (in real case a consensus (?))
+STATE_PROPAGATION = 12 #time between each propagation of the estimation (in real case a consensus (?))
 # Team parameter: number of agents, baselines_XY, inital position, type of formation
 SIGMA_MEAS = 0.005 #0.02 #0.005 # uncertainty = 1° --> sigma^2 = (uncertainty*2*pi/180)^2  per ora 3 gradi -- TO DECIDE!!
 MEAS_UPDATE = STATE_PROPAGATION/4 # MEAS_UPDATE (s)= meas_update*(TIME_SCALER*TIME_STEP)
@@ -19,10 +19,11 @@ PLATFORM_INIT_POSE = [0, 0, 0] #[x,y,theta]
 
 AUV_VEL = 1.0 #(m/s)
 CONTROLLER_GAIN = 0.5
+
 # Target parameter: start, goal, min max vels
-TARGET_INIT = [1200, -500, pi/2] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [1800, -500, pi-pi/3] #[x(m),y(m),theta(rad),linear vel(m/s)]
 TARGET_GOAL = [100, 100,TARGET_INIT[2]]
-TARGET_VEL = 3 #(m/s)
+TARGET_VEL = 5 #(m/s)
 MAX_TARGET_VEL = 3 #(m/s) (only for no costant vels)
 MIN_TARGET_VEL = 3 #(m/s)
 
@@ -37,14 +38,18 @@ formation = np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],[0, -50],
                             [0,-100], 
                             [0, 100]])
 
+# Optimization Paramaters (to generalize) 
+mean = [8.0, 6.0, 3.0, 0.0] # medium latencies between each AUV and the 4th (in fact latencies 0.0 for the 4th).
+variance = [0.8, 0.6, 0.3, 0.0] # the same as before vor the variances.
+
 # Optimization Parameters
 OPTIMIZATION_TIME_STEP = STATE_PROPAGATION*(TIME_SCALER*TIME_STEP) #VA INTESO COME delta_k (planning stage)in secondi
 k_max = 15*pi/180 
-delta_k = 0#1.5*pi/180 
+delta_k = 1.5*pi/180 
 U = 5 #number of control choices
 M = 3 # planning horizon
 ctrl_cmd = [-k_max, -k_max*4/(U),0,k_max*4/(U),k_max] #set of control actions
-#ctrl_cmd = [-k_max, -k_max*4/(U),-k_max*2/(U),0,k_max*2/(U),k_max*4/(U),k_max]
+#ctrl_cmd = [-k_max, -k_max*4/(U),-k_max*2/(U),0,k_max*2/(U),k_max*4/(U),k_max] #set of control actions
 
 
 # Cooperative Path Following Params

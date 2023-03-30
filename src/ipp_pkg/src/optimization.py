@@ -101,7 +101,7 @@ class Target():
         for i in range(m):
             #X_pred[i] = f(X[i], Q) #if you consider a gaussian disturbance for the state add Q
             tmp = self.state_transition(X[i])
-            X_pred[i] = tmp
+            X_pred[i] = tmp # CHECK WARNING
         # Calculate predicted mean and covariance
         x_pred = np.dot(w_m,X_pred)  
         P_pred = np.zeros((n, n))
@@ -156,7 +156,7 @@ def simulation(control_input, target_est, platform_pose, sensor, controller, cov
             tracker_.propagate_estimation(t)
 
         t += config.OPTIMIZATION_TIME_STEP/opt_scaler
-    [state, phi, y] = tracker_.state
+    [state, phi, y, range_ratio] = tracker_.state
     state = [state[0,0], state[1,0], state[2,0], state[3,0]]
     return state, phi, y, platform_pose #platform_state
 
