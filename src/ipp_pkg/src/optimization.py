@@ -299,17 +299,13 @@ def main():
     Hz = 1/(config.TIME_STEP)
     rate = rospy.Rate(Hz)
     # Init array and cov matrix
-    ctrl_opt = []
-    ctrl_plot = []
-    #sensorPlacement()
-    sensors = []
-    old_ctrls = []
+    ctrl_opt, ctrl_plot, sensors, old_ctrls = [], [], [], []  
     # OPTIMIZATION PARAMETERS
-    count_low = 0
-    count_max = 0
+    count_low, count_max = 0,0
     ctrl_cmd = config.ctrl_cmd
     limit = 0.0
-
+    k_max = config.k_max
+    delta_k = config.delta_k
     for i in range(M+1):
         limit += config.U**i
     # Cooperative Path Following initialization
@@ -340,7 +336,6 @@ def main():
         solver = pybnb.Solver()
         results = solver.solve(problem, node_limit=limit) 
         best_node_states = results.best_node.state
-
         ctrl_opt = best_node_states[4]
         ###########################################################################################
 
@@ -354,19 +349,19 @@ def main():
                     count_low += 1 
 
                     if count_low == 3:
-                        config.k_max  = config.k_max  - config.delta_k
+                        k_max  = k_max  - delta_k
                         count_low = 0
 
-                elif np.abs(old_ctrls[i]) >= config.k_max :
+                elif np.abs(old_ctrls[i]) >= k_max :
                     count_max += 1
                     if count_max == 3:
-                        config.k_max  = config.k_max  + config.delta_k
+                        k_max  = k_max  + delta_k
                         count_max = 0
                         
             count_low = 0
             count_max = 0
             old_ctrls = []
-            ctrl_cmd = config.ctrl_cmd
+            ctrl_cmd = [-k_max, -k_max*4/(config.U),0,k_max*4/(config.U),k_max] 
         #SAVE DATA FOR PLOT    
         np.savetxt(plot_path+'/plot_cmds.txt',ctrl_plot)
         np.savetxt(plot_path+'/t_est_x_opt.txt',t_est_x)

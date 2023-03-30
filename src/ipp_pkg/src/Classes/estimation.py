@@ -75,16 +75,5 @@ class Estimator:
         if len(self.__phi) > config.TP:
             self.__phi.pop(0)
 
-
-        
-
-        
-
-    
-        # TO DO  RE-WEIGTHED ESTIMATION (conviene farlo in ottimizzazione o proprio in generale come metodo di stima (FORSE più facile e conveniente))
-        # a =  exp^(-distanza) (fai sigmoide che varia in funzione della distanza target-osservatore)
-        # A = diag(a(dist)) genera una matrice diagonale di pesi tipo R sul main 
-        # USA IL REGRESSORE GIà in uso 
-
         
 

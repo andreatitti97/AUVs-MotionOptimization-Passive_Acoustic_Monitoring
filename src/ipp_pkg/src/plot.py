@@ -345,8 +345,8 @@ for i in range(n):
 err_medio1 = np.sqrt(sum1/n_sample)
 err_medio2 = np.sqrt(sum2/n_sample)
 err_medio3 = np.sqrt(sum3/n_sample)
-print('ERRORE MEDIO OFF:',err_medio1)
 
+print('ERRORE MEDIO OFF:',err_medio1)
 print('ERRORE MEDIO OFF IMPROVED:',err_medio3)
 print('ERRORE MEDIO ON:',err_medio2)
 n_sample = n
