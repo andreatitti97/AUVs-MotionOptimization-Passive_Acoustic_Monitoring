@@ -40,7 +40,8 @@ class Target:
         #self.target_controller = path_finder_controller_target # FOR FOLLOWING A POLYNOMIAL TRAJECTORY
         self.pose_target = config.Pose(0,0,0)
         self.lin_vel_target = config.TARGET_VEL
-        self.ang_vel_target = 0
+        self.ang_vel_target = 0.0005
+        self.lin_acc = 0.002
 
     def set_start_target_poses(self, pose_target):
         """
@@ -65,10 +66,11 @@ class Target:
         dt : (float)
             time step
         """
+    
         self.pose_target.theta = self.pose_target.theta + self.ang_vel_target * dt
-        self.pose_target.x = self.pose_target.x + self.lin_vel_target * \
+        self.pose_target.x = self.pose_target.x + (self.lin_vel_target+self.ang_vel_target*dt) * \
             np.cos(self.pose_target.theta) * dt
-        self.pose_target.y = self.pose_target.y + self.lin_vel_target * \
+        self.pose_target.y = self.pose_target.y + (self.lin_vel_target+self.ang_vel_target*dt) * \
             np.sin(self.pose_target.theta) * dt
         
 

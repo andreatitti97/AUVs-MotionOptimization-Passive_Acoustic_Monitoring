@@ -126,7 +126,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
             for i in range(len(y)): 
                 for j in range(len(y)):
                     if i == j:
-                        R[i,j] = (config.SIGMA_MEAS**2)/(beta[i]*gamma[i])
+                        R[i,j] = (config.SIGMA_MEAS**2)/(gamma[i])#beta[i]*
                     else:
                         R[i,j] = 0
             if count1 > 0:

@@ -73,26 +73,51 @@ vy_OFF = np.loadtxt(lib_path+'/vy_OFF.txt')
 prova_x = np.loadtxt(lib_path+'/prova_x.txt')
 prova_y = np.loadtxt(lib_path+'/prova_y.txt')
 
+wall_times = np.loadtxt(lib_path+'/wall_times.txt')
+nodes = np.loadtxt(lib_path+'/nodes.txt')
+
+
+
+
+
 #err_on_improved = np.loadtxt(lib_path+'/rmse_improved_ON.txt')
 err_off_improved = np.loadtxt(lib_path+'/rmse_improved_OFF.txt')
+
+
+#OPTIMIZATION STATICS:
+avg_nodes = sum(nodes)/len(nodes)
+avg_wall_time = sum(wall_times)/len(wall_times)
+
+sum1 = 0
+sum2 = 0
+for i in range(len(nodes)):
+    sum1 += np.abs(nodes[i]-avg_nodes)
+    sum2 += wall_times[i]-avg_wall_time
+var_nodes = sum1/len(nodes)
+var_wall_time = sum2/len(wall_times) #varianza quadratica
+
+print('AVG NODES',avg_nodes)
+print('VAR NODES',np.sqrt(var_nodes))
+print('AVG TIME', avg_wall_time)
+print('VAR TIME',np.sqrt(avg_wall_time))
 
 
 # Load temporal vaiables
 n_sample = np.size(est4_x_ON)
 t = np.linspace(0,config.TIME_DURATION,n_sample)
-scaling = 3 #scale the width of the drawn lines (i.e. 3 suitable for 10km X 10km area)
+scaling = 6 #scale the width of the drawn lines (i.e. 3 suitable for 10km X 10km area)
 ranges = 12 #scale the number of printed AUVs (ie.e 12 suitable for 600 s of simulation)
 
-plt.title('TOPOLOGY of the NETWORK with IN-LINE FORMATION',fontsize=30)
-plt.plot(auv1_x_off[0],auv1_y_off[0])
-circle4 = plt.Circle((auv1_x_off[0],auv1_y_off[0]),1*scaling,color='k')
-plt.text(auv1_x_off[0],auv1_y_off[0],'     AUV2',fontsize=20)
-circle5 = plt.Circle((auv2_x_off[0],auv2_y_off[0]),1*scaling,color='k')
-plt.text(auv2_x_off[0],auv2_y_off[0],'     AUV3',fontsize=20)
-circle6 = plt.Circle((auv3_x_off[0],auv3_y_off[0]),1*scaling,color='k')
-plt.text(auv3_x_off[0],auv3_y_off[0],'     AUV1',fontsize=20)
-circle7 = plt.Circle((auv4_x_off[0],auv4_y_off[0]),1*scaling,color='k')
-plt.text(auv4_x_off[0],auv4_y_off[0],'     AUV4',fontsize=20)
+plt.title('TOPOLOGY of the NETWORK',fontsize=30)
+plt.plot(auv1_x_off[10],auv1_y_off[10])
+circle4 = plt.Circle((auv1_x_off[10],auv1_y_off[10]),1*scaling,color='k')
+plt.text(auv1_x_off[10],auv1_y_off[10],'     AUV2',fontsize=20)
+circle5 = plt.Circle((auv2_x_off[10],auv2_y_off[10]),1*scaling,color='k')
+plt.text(auv2_x_off[10],auv2_y_off[10],'     AUV3',fontsize=20)
+circle6 = plt.Circle((auv3_x_off[10],auv3_y_off[10]),1*scaling,color='k')
+plt.text(auv3_x_off[10],auv3_y_off[10],'     AUV1',fontsize=20)
+circle7 = plt.Circle((auv4_x_off[10],auv4_y_off[10]),1*scaling,color='k')
+plt.text(auv4_x_off[10],auv4_y_off[10],'     AUV4',fontsize=20)
 plt.gca().add_patch(circle7)
 plt.gca().add_patch(circle4)
 plt.gca().add_patch(circle5)
@@ -104,6 +129,29 @@ plt.xticks(fontsize=25, rotation=0)#to set dimension and orientation of tick lab
 plt.grid()
 plt.axis('equal')
 plt.show()
+
+'''plt.title('TOPOLOGY of the NETWORK with IN-LINE FORMATION',fontsize=30)
+#plt.plot(0,-50)
+
+circle4 = plt.Circle((0,-50),1*scaling,color='k')
+plt.text(0,-50,'     AUV2',fontsize=20)
+circle5 = plt.Circle((0,50),1*scaling,color='k')
+plt.text(0,50,'     AUV3',fontsize=20)
+circle6 = plt.Circle((60,-120),1*scaling,color='k')
+plt.text(50,-120,'     AUV1',fontsize=20)
+circle7 = plt.Circle((60,120),1*scaling,color='k')
+plt.text(50,120,'     AUV4',fontsize=20)
+plt.gca().add_patch(circle7)
+plt.gca().add_patch(circle4)
+plt.gca().add_patch(circle5)
+plt.gca().add_patch(circle6)
+plt.xlabel('x (m)',fontsize=30)
+plt.ylabel('y (m)',fontsize=30)
+plt.yticks(fontsize=25, rotation=0)#to set dimension and orientation of tick labels
+plt.xticks(fontsize=25, rotation=0)#to set dimension and orientation of tick labels
+plt.grid()
+plt.axis('equal')
+plt.show()'''
 
 # PLOT THE RESULT OF THE SIMULATION without OPTIMIZATION
 plt.plot(s_x_off,s_y_off)

@@ -38,6 +38,11 @@ formation = np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],[0, -50],
                             [0,-100], 
                             [0, 100]])
 
+formation = np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],[0, -60], 
+                            [0,60], 
+                            [0,-120], 
+                            [0, 120]])
+
 # Optimization Paramaters (to generalize) - for now v-sense data
 s = 1
 mean = [8.0/s, 6.0/s, 3.0/s, 0.0] # medium latencies between each AUV and the 4th (in fact latencies 0.0 for the 4th).
@@ -46,11 +51,11 @@ variance = [0.8, 0.6, 0.3, 0.0] # the same as before vor the variances.
 # Optimization Parameters
 OPTIMIZATION_TIME_STEP = STATE_PROPAGATION*(TIME_SCALER*TIME_STEP) #VA INTESO COME delta_k (planning stage)in secondi
 k_max = 15*pi/180 
-delta_k = 1.5*pi/180 
-U = 5 #number of control choices
-M = 3 # planning horizon
-ctrl_cmd = [-k_max, -k_max*4/(U),0,k_max*4/(U),k_max] #set of control actions
-#ctrl_cmd = [-k_max, -k_max*4/(U),-k_max*2/(U),0,k_max*2/(U),k_max*4/(U),k_max] #set of control actions
+delta_k = 0#1.5*pi/180 
+U = 7 #number of control choices
+M = 4 # planning horizon
+#ctrl_cmd = [-k_max, -k_max*4/(U),0,k_max*4/(U),k_max] #set of control actions
+ctrl_cmd = [-k_max, -k_max*4/(U),-k_max*2/(U),0,k_max*2/(U),k_max*4/(U),k_max] #set of control actions
 
 # Cooperative Path Following Params
 K_att = 1.0 # Attractive gain

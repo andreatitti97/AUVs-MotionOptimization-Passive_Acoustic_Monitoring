@@ -35,7 +35,7 @@ s_state_x, s_state_y = [], []
 # Global Variables
 DELTA = 10**15
 M = config.M #planning horizon
-opt_scaler = config.STATE_PROPAGATION
+opt_scaler = 5#config.STATE_PROPAGATION/2
 
 class Target():
     def __init__(self, init_vector, covariance):
@@ -173,14 +173,16 @@ def compute_cost(phi,length_y):
 
 class Simple(pybnb.Problem):
     def __init__(self,x_hat, s, initial_cost,sensors, cpf_control, ctrl_cmds, cov):
-        # aggiungi un livello per imporre un orizzonte finito 
+        
+        
+        inf = float("inf")
+        self.value = initial_cost #fake obj, completely arbitrary 
+        self._bound = -inf#initial_cost-100 #lower bound 
+
+        self.choices = []
+
         self._x_hat = x_hat
         self._s = s
-        
-        self.value = initial_cost #fake obj
-        self._bound = 0 #lower bound 
-        self._objective = 0 #real obj
-        self.choices = []
         self.sensors = sensors
         self.controller = cpf_control
         self.ctrl_cmds = ctrl_cmds
@@ -216,9 +218,8 @@ class Simple(pybnb.Problem):
             x6, phi6, y6, s6 = simulation(self.ctrl_cmds[5], x_hat, s, self.sensors, self.controller, cov)
             x7, phi7, y7, s7 = simulation(self.ctrl_cmds[6], x_hat, s, self.sensors, self.controller, cov)
         
-        child = pybnb.Node()
-        cost1 = compute_cost(phi1,len(y1))
-        self.tmp_bound = self._bound
+        
+   
         tmp1 = [self.ctrl_cmds[0]]
         choices1 = self.choices + tmp1
         tmp2 = [self.ctrl_cmds[1]]
@@ -235,51 +236,64 @@ class Simple(pybnb.Problem):
             tmp7 = [self.ctrl_cmds[6]]
             choices7 = self.choices + tmp7
 
+        
+        
         if len(choices1) == M or len(choices2) == M or len(choices3) == M:
-            self.value = self.value - DELTA #trick#TODO
-            #self.value = 0 #UNCOMMENT IF YO WANT THE LAST BEST NODE WITHOUT CONSIDERING COST 
-            # AGGIUNGI CHE CONDIZIONE PER NODO CON COVARIANZA FINALE SINGOLA, NON DELLA SEQUENZA
-        father_value = self.value
+            self.value = self.value - DELTA ##THIS IS MANDATORY FOR ADDITIVE COST ALONG THE SEQUENCE
+            self._bound = self.value #- cost1 
+            
+        father_value = self.value #THIS IS MANDATORY FOR ADDITIVE COST ALONG THE SEQUENCE
 
-        child1_value = father_value + cost1
-        child.state = (x1, s1, child1_value, self.tmp_bound, choices1)
+        cost1 = compute_cost(phi1,len(y1))
+        child1_value = father_value + cost1  
+        #self._bound = self._bound
+        child = pybnb.Node()
+        child.state = (x1, s1, child1_value, self._bound, choices1)
         yield child
 
+
+        #self._bound = child1_value
         cost2 = compute_cost(phi2,len(y2))
         child2_value = father_value + cost2
         child = pybnb.Node()
-        child.state = (x2, s2, child2_value, self.tmp_bound, choices2)
+        child.state = (x2, s2, child2_value, self._bound, choices2)
         yield child
 
+        #self._bound = child2_value
         cost3 = compute_cost(phi3,len(y3))
         child3_value = father_value + cost3
         child = pybnb.Node()
-        child.state = (x3, s3, child3_value, self.tmp_bound, choices3)
+        child.state = (x3, s3, child3_value, self._bound, choices3)
         yield child
         
+        #self._bound = child3_value
         cost4 = compute_cost(phi4,len(y4))
         child4_value = father_value + cost4
         child = pybnb.Node()
-        child.state = (x4, s4, child4_value, self.tmp_bound, choices4)
+        child.state = (x4, s4, child4_value, self._bound, choices4)
         yield child
 
+
+        #self._bound = child4_value
         cost5 = compute_cost(phi5,len(y5))
         child5_value = father_value + cost5
         child = pybnb.Node()
-        child.state = (x5, s5, child5_value, self.tmp_bound, choices5)
+        child.state = (x5, s5, child5_value, self._bound, choices5)
         yield child
+
+        self._bound = child3_value
 
         if (len(self.ctrl_cmds) > 5):
             cost6 = compute_cost(phi6,len(y6))
             child6_value = father_value + cost6
             child = pybnb.Node()
-            child.state = (x6, s6, child6_value, self.tmp_bound, choices6)
+            child.state = (x6, s6, child6_value, self._bound, choices6)
             yield child
 
             cost7 = compute_cost(phi7,len(y7))
             child5_value = father_value + cost7
             child = pybnb.Node()
-            child.state = (x7, s7, child5_value, self.tmp_bound, choices7)
+            child.state = (x7, s7, child5_value, self._bound, choices7)
             yield child
 
         if len(choices1) == 1:
@@ -287,7 +301,14 @@ class Simple(pybnb.Problem):
             t_est_y.append(x4[1])
             s_state_x.append(s1[0])
             s_state_y.append(s1[1])
-
+        
+        '''print('bound',self.bound)
+        print('value1',child1_value)
+        print('value2',child2_value)
+        print('value3',child3_value)
+        print('value4',child4_value)
+        print('value5',child5_value)'''
+        #time.sleep(3)
 
 def main():
 
@@ -300,6 +321,7 @@ def main():
     rate = rospy.Rate(Hz)
     # Init array and cov matrix
     ctrl_opt, ctrl_plot, sensors, old_ctrls = [], [], [], []  
+    avg_time, avg_nodes = [],[]
     # OPTIMIZATION PARAMETERS
     count_low, count_max = 0,0
     ctrl_cmd = config.ctrl_cmd
@@ -334,9 +356,19 @@ def main():
         ######## Compute the best solution solving the optimization with BnB or Greedy search #####
         problem = Simple(t_est, s_state, DELTA, sensors, cpf_control, ctrl_cmd, covariance)
         solver = pybnb.Solver()
-        results = solver.solve(problem, node_limit=limit) 
+        #ctrl_cmd_simply = [ctrl_cmd[0],ctrl_cmd[2],ctrl_cmd[-1]]
+        #problem_simplified = Simple(t_est, s_state, DELTA, sensors, cpf_control, ctrl_cmd, covariance)
+        
+        #results_preview = solver.solve(problem,queue_strategy="objective",node_limit=limit)#
+        #lower_bound = results_preview.objective
+        results = solver.solve(problem,queue_strategy="objective" ,objective_stop=7000,time_limit=35.0,node_limit=limit)#tnode_limit=limi #Uniform cost search con "objective"
         best_node_states = results.best_node.state
+        wall_time = results.wall_time
+        nodes = results.nodes
+        avg_nodes.append(nodes)
+        avg_time.append(wall_time)
         ctrl_opt = best_node_states[4]
+
         ###########################################################################################
 
         pub.publish(np.array(ctrl_opt,dtype=np.float32))
@@ -368,6 +400,9 @@ def main():
         np.savetxt(plot_path+'/t_est_y_opt.txt',t_est_y)
         np.savetxt(plot_path+'/s_state_x.txt',s_state_x)
         np.savetxt(plot_path+'/s_state_y.txt',s_state_y)
+        
+        np.savetxt(plot_path+'/wall_times.txt',avg_time)
+        np.savetxt(plot_path+'/nodes.txt',avg_nodes)
         ctrl_opt = []
         rate.sleep()
     
