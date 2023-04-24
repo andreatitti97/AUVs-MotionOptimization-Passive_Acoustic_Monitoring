@@ -4,6 +4,7 @@ import os, importlib
 from math import pi
 from matplotlib.lines import Line2D
 lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
+
 class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
 spec = importlib.util.spec_from_file_location("module.config", class_path+"/config.py")
 config = importlib.util.module_from_spec(spec)
@@ -70,54 +71,73 @@ cov4_OFF = np.loadtxt(lib_path+'/cov4_OFF.txt')
 vx_OFF = np.loadtxt(lib_path+'/vx_OFF.txt')
 vy_OFF = np.loadtxt(lib_path+'/vy_OFF.txt')
 
-prova_x = np.loadtxt(lib_path+'/prova_x.txt')
-prova_y = np.loadtxt(lib_path+'/prova_y.txt')
-
-wall_times = np.loadtxt(lib_path+'/wall_times.txt')
-nodes = np.loadtxt(lib_path+'/nodes.txt')
-
-
-
-
-
-#err_on_improved = np.loadtxt(lib_path+'/rmse_improved_ON.txt')
-err_off_improved = np.loadtxt(lib_path+'/rmse_improved_OFF.txt')
-
-
-#OPTIMIZATION STATICS:
-avg_nodes = sum(nodes)/len(nodes)
-avg_wall_time = sum(wall_times)/len(wall_times)
-
-sum1 = 0
-sum2 = 0
-for i in range(len(nodes)):
-    sum1 += np.abs(nodes[i]-avg_nodes)
-    sum2 += wall_times[i]-avg_wall_time
-var_nodes = sum1/len(nodes)
-var_wall_time = sum2/len(wall_times) #varianza quadratica
-
-print('AVG NODES',avg_nodes)
-print('VAR NODES',np.sqrt(var_nodes))
-print('AVG TIME', avg_wall_time)
-print('VAR TIME',np.sqrt(avg_wall_time))
-
-
-# Load temporal vaiables
-n_sample = np.size(est4_x_ON)
-t = np.linspace(0,config.TIME_DURATION,n_sample)
+# Plot Parameters
 scaling = 6 #scale the width of the drawn lines (i.e. 3 suitable for 10km X 10km area)
 ranges = 12 #scale the number of printed AUVs (ie.e 12 suitable for 600 s of simulation)
 
+# Plot Tracking Error and compute RMSE
+sum1, sum2, sum3 = 0,0,0
+if len(err_off) < len(err_on):
+    n = len(err_off)
+else:
+    n = len(err_on)
+
+err_off = np.sqrt(err_off) # tracking error
+err_on = np.sqrt(err_on)
+
+for i in range(len(err_off)):
+    tmp1 = err_off[i]
+    sum1 += tmp1
+for i in range(len(err_on)):
+    tmp2 = err_on[i]
+    sum2 += tmp2
+    
+rmse_off = np.sqrt(sum1/len(err_off))
+rmse_on = np.sqrt(sum2/len(err_on))
+
+print('ERRORE MEDIO OFF:',(rmse_off))
+print('ERRORE MEDIO ON:',(rmse_on))
+
+sum1,sum2,sum3 = 0,0,0
+# Variance of RMSE, TODO: distribution of the RMSE over more experiments
+for i in range(len(err_off)):
+    sum1 += np.abs(np.sqrt(err_off[i])-rmse_off)
+for i in range(len(err_on)):
+    sum2 += np.abs(np.sqrt(err_on[i])-rmse_on)
+err_var = sum1/len(err_off)
+err_var_on = sum2/len(err_on)
+
+# Magnitude Tracking Error plot
+t = np.linspace(0,config.TIME_DURATION,n)
+plt.plot(t,np.sqrt(err_off[0:n]),'b') #err_off contiene e(t) = ex + ey, dove ex = (x - x_hat)**2
+plt.plot(t,np.sqrt(err_on[0:n]),'g')
+y_on = []
+y_off = []
+for i in range(len(t)):
+    y_off.append(rmse_off)
+    y_on.append(rmse_on)
+plt.plot(t,y_off,'b--')
+plt.plot(t,y_on,'g--')
+plt.legend(['optimization OFF','optimization ON'],fontsize=20)
+
+plt.xlabel('Time (s)',fontsize=30)
+plt.ylabel('Residual Error (m)',fontsize=30)
+plt.yticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
+plt.xticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
+plt.grid()
+plt.show()
+
+# Plot Topology of the network
 plt.title('TOPOLOGY of the NETWORK',fontsize=30)
-plt.plot(auv1_x_off[10],auv1_y_off[10])
-circle4 = plt.Circle((auv1_x_off[10],auv1_y_off[10]),1*scaling,color='k')
-plt.text(auv1_x_off[10],auv1_y_off[10],'     AUV2',fontsize=20)
-circle5 = plt.Circle((auv2_x_off[10],auv2_y_off[10]),1*scaling,color='k')
-plt.text(auv2_x_off[10],auv2_y_off[10],'     AUV3',fontsize=20)
-circle6 = plt.Circle((auv3_x_off[10],auv3_y_off[10]),1*scaling,color='k')
-plt.text(auv3_x_off[10],auv3_y_off[10],'     AUV1',fontsize=20)
-circle7 = plt.Circle((auv4_x_off[10],auv4_y_off[10]),1*scaling,color='k')
-plt.text(auv4_x_off[10],auv4_y_off[10],'     AUV4',fontsize=20)
+plt.plot(auv1_x_off[0],auv1_y_off[0])
+circle4 = plt.Circle((auv1_x_off[0],auv1_y_off[0]),1*scaling,color='k')
+plt.text(auv1_x_off[0],auv1_y_off[0],'     AUV2',fontsize=20)
+circle5 = plt.Circle((auv2_x_off[0],auv2_y_off[0]),1*scaling,color='k')
+plt.text(auv2_x_off[0],auv2_y_off[0],'     AUV3',fontsize=20)
+circle6 = plt.Circle((auv3_x_off[0],auv3_y_off[0]),1*scaling,color='k')
+plt.text(auv3_x_off[0],auv3_y_off[0],'     AUV1',fontsize=20)
+circle7 = plt.Circle((auv4_x_off[0],auv4_y_off[0]),1*scaling,color='k')
+plt.text(auv4_x_off[0],auv4_y_off[0],'     AUV4',fontsize=20)
 plt.gca().add_patch(circle7)
 plt.gca().add_patch(circle4)
 plt.gca().add_patch(circle5)
@@ -130,34 +150,11 @@ plt.grid()
 plt.axis('equal')
 plt.show()
 
-'''plt.title('TOPOLOGY of the NETWORK with IN-LINE FORMATION',fontsize=30)
-#plt.plot(0,-50)
 
-circle4 = plt.Circle((0,-50),1*scaling,color='k')
-plt.text(0,-50,'     AUV2',fontsize=20)
-circle5 = plt.Circle((0,50),1*scaling,color='k')
-plt.text(0,50,'     AUV3',fontsize=20)
-circle6 = plt.Circle((60,-120),1*scaling,color='k')
-plt.text(50,-120,'     AUV1',fontsize=20)
-circle7 = plt.Circle((60,120),1*scaling,color='k')
-plt.text(50,120,'     AUV4',fontsize=20)
-plt.gca().add_patch(circle7)
-plt.gca().add_patch(circle4)
-plt.gca().add_patch(circle5)
-plt.gca().add_patch(circle6)
-plt.xlabel('x (m)',fontsize=30)
-plt.ylabel('y (m)',fontsize=30)
-plt.yticks(fontsize=25, rotation=0)#to set dimension and orientation of tick labels
-plt.xticks(fontsize=25, rotation=0)#to set dimension and orientation of tick labels
-plt.grid()
-plt.axis('equal')
-plt.show()'''
-
-# PLOT THE RESULT OF THE SIMULATION without OPTIMIZATION
+# PLOT THE OUTPUT OF THE SIMULATOR without OPTIMIZATION
 plt.plot(s_x_off,s_y_off)
 plt.plot(real_x,real_y,linewidth=5,color='y')
 plt.plot(est4_x_OFF,est4_y_OFF,'r',linewidth=3)
-plt.plot(prova_x,prova_y,'g',linewidth=3)
 plt.xlabel('x (m)',fontsize=30)
 plt.ylabel('y (m)',fontsize=30)
 
@@ -168,11 +165,17 @@ legend_elements = [Line2D([0], [0], marker='X',color='b', lw=1, label='Formation
                     Line2D([0], [0], color='k', ls='--', label='LOS AUVs')]
 
 plt.legend(handles=legend_elements,fontsize=20)
-plt.plot(auv1_x_off[10:-1], auv1_y_off[10:-1], 'k')
-plt.plot(auv2_x_off[10:-1], auv2_y_off[10:-1], 'k')
-plt.plot(auv3_x_off[10:-1], auv3_y_off[10:-1], 'k')
-plt.plot(auv4_x_off[10:-1], auv4_y_off[10:-1], 'k')
 
+plt.plot(s_x_off[0],s_y_off[0],'ob')
+plt.plot(auv1_x_off,auv1_y_off,'k')
+plt.plot(auv2_x_off,auv2_y_off,'k')
+plt.plot(auv3_x_off,auv3_y_off,'k')
+plt.plot(auv4_x_off,auv4_y_off,'k')
+
+plt.plot(auv1_x_off[0],auv1_y_off[0],'og',linewidth=20)
+plt.plot(auv2_x_off[0],auv2_y_off[0],'ob',linewidth=20)
+plt.plot(auv3_x_off[0],auv3_y_off[0],'or',linewidth=20)
+plt.plot(auv4_x_off[0],auv4_y_off[0],'om',linewidth=20)
 j = 0
 for i in range(ranges):
     # plot LOS
@@ -185,15 +188,16 @@ for i in range(ranges):
         real_y[idx]],'k--',linewidth=1)
     # plot AUVs
     plt.plot(auv1_x_off[idx],auv1_y_off[idx],'ok',linewidth=20)
-    plt.plot(auv2_x_off[idx],auv2_y_off[idx],'ok',linewidth=20)
-    plt.plot(auv3_x_off[idx],auv3_y_off[idx],'ok',linewidth=20)
-    plt.plot(auv4_x_off[idx],auv4_y_off[idx],'ok',linewidth=20)
+    plt.plot(auv2_x_off[idx],auv2_y_off[idx],'ob',linewidth=20)
+    plt.plot(auv3_x_off[idx],auv3_y_off[idx],'or',linewidth=20)
+    plt.plot(auv4_x_off[idx],auv4_y_off[idx],'om',linewidth=20)
     circle = plt.Circle((real_x[idx],real_y[idx]),10,color='y')
     plt.gca().add_patch(circle)
+    # plot TARGET and FORMATION REFERENCE
     plt.text(real_x[idx],real_y[idx],'t'+str(j+1),fontsize=20)
-    # plot REFERENCE
     plt.plot(s_x_off[idx],s_y_off[idx],'Xb',linewidth=1)  
     j += 1 
+
 scaling = 30
 plt.arrow(real_x[np.round(0)],real_y[np.round(0)],+5.0*scaling*np.cos(target_init[2]), 5.0*scaling*np.sin(target_init[2]),width=2*scaling,color='y')
 plt.axis('equal')
@@ -207,7 +211,6 @@ plt.show()
 plt.plot(s_x_on,s_y_on)
 plt.plot(real_x,real_y,linewidth=5,color='y')
 plt.plot(est4_x_ON,est4_y_ON,'r',linewidth=3)
-#plt.title('SIMULATION - OPTIMIZATION ON',fontsize=30)
 plt.xlabel('x (m)',fontsize=30)
 plt.ylabel('y (m)',fontsize=30)
 
@@ -220,12 +223,18 @@ legend_elements = [Line2D([0], [0], marker='X',color='b', lw=1, label='Formation
 
 plt.legend(handles=legend_elements, fontsize=20)
 
-plt.plot(auv1_x_on[10:-1], auv1_y_on[10:-1], 'k')
-plt.plot(auv2_x_on[10:-1], auv2_y_on[10:-1], 'k')
-plt.plot(auv3_x_on[10:-1], auv3_y_on[10:-1], 'k')
-plt.plot(auv4_x_on[10:-1], auv4_y_on[10:-1], 'k')
+plt.plot(auv1_x_on,auv1_y_on,'k')
+plt.plot(auv2_x_on,auv2_y_on,'b')
+plt.plot(auv3_x_on,auv3_y_on,'r')
+plt.plot(auv4_x_on,auv4_y_on,'m')
+
 j = 0
 lista = []
+plt.plot(s_x_on[0],s_x_on[1],'ob')
+plt.plot(auv1_x_on[0],auv1_y_on[0],'og',linewidth=20)
+plt.plot(auv2_x_on[0],auv2_y_on[0],'ob',linewidth=20)
+plt.plot(auv3_x_on[0],auv3_y_on[0],'or',linewidth=20)
+plt.plot(auv4_x_on[0],auv4_y_on[0],'om',linewidth=20)
 for i in range(ranges):
 
     # plot LOS
@@ -236,20 +245,22 @@ for i in range(ranges):
         real_x[idx]],[auv3_y_on[idx],real_y[idx]],'k--',linewidth=1)
     plt.plot([auv4_x_on[idx],real_x[idx]],[auv4_y_on[idx],
         real_y[idx]],'k--',linewidth=1)
+    if i == ranges:
+        idx = -1
+    plt.plot([auv1_x_on[idx],
+        s_x_on[idx]],[auv1_y_on[idx],s_y_on[idx]],'g--',linewidth=1)
+
     # plot AUVs
     plt.plot(auv1_x_on[idx],auv1_y_on[idx],'ok',linewidth=20)
-    plt.plot(auv2_x_on[idx],auv2_y_on[idx],'ok',linewidth=20)
-    plt.plot(auv3_x_on[idx],auv3_y_on[idx],'ok',linewidth=20)
-    plt.plot(auv4_x_on[idx],auv4_y_on[idx],'ok',linewidth=20)
+    plt.plot(auv2_x_on[idx],auv2_y_on[idx],'ob',linewidth=20)
+    plt.plot(auv3_x_on[idx],auv3_y_on[idx],'or',linewidth=20)
+    plt.plot(auv4_x_on[idx],auv4_y_on[idx],'om',linewidth=20)
     plt.plot(real_x[idx],real_y[idx],'oy',linewidth=5)#500
     circle = plt.Circle((real_x[idx],real_y[idx]),10,color='y')
     plt.gca().add_patch(circle)
+    # plot target and formation reference
     plt.text(real_x[idx],real_y[idx],'t'+str(j+1),fontsize=20)
-    # plot REFERENCE
     plt.plot(s_x_on[idx],s_y_on[idx],'Xb',linewidth=5) 
-    #tmp = np.sqrt((auv1_x_on[idx]-auv4_x_on[idx])**2+(auv1_y_on[idx]-auv4_y_on[idx])**2)
-    #circle = plt.Circle((s_x_on[idx],s_y_on[idx]),radius=tmp/2,fill=False)
-    #plt.scatter(s_x_on[idx],s_y_on[idx], s=tmp, facecolors='none', edgecolors='r')
     plt.gca().add_patch(circle)
     j += 1 
 plt.axis('equal')
@@ -267,9 +278,7 @@ if len(t) >= len(cov1_OFF):
 elif len(t) < len(cov1_OFF):
     n = len(t)
 
-print
 plt.subplot(4,1,1)
-
 plt.plot(t[0:n],cov1_ON[0:n])
 plt.plot(t[0:n],cov1_OFF[0:n])
 plt.legend(['x_ON','x_OFF'])
@@ -283,7 +292,7 @@ plt.subplot(4,1,3)
 plt.plot(t[0:n],cov3_ON[0:n])
 plt.plot(t[0:n],cov3_OFF[0:n])
 plt.grid()
-plt.legend(['vx_ON','vx_ON'])
+plt.legend(['vx_ON','vx_OFF'])
 plt.subplot(4,1,4)
 plt.plot(t[0:n],cov4_ON[0:n])
 plt.plot(t[0:n],cov4_OFF[0:n])
@@ -291,52 +300,14 @@ plt.legend(['vy_ON','vy_ON'])
 plt.grid()
 plt.show()
 
-real_vel = config.TARGET_VEL
-vx_real = real_vel*np.cos(config.TARGET_INIT[2])
-vy_real = real_vel*np.sin(config.TARGET_INIT[2])
-y1 = []
-y2 = []
-for i in range(n):
-    y1.append(vx_real)
-    y2.append(vy_real)
-plt.subplot(2,1,1)
-plt.plot(t[0:n],vx_ON[0:n])
-plt.plot(t[0:n],vx_OFF[0:n])
-plt.plot(t[0:n],y1[0:n],'r--')
-plt.legend(['vx_ON','vx_OFF','real_x'])
-plt.grid()
-
-plt.subplot(2,1,2)
-plt.plot(t[0:n],vy_ON[0:n])
-plt.plot(t[0:n],vy_OFF[0:n])
-plt.plot(t[0:n],y2[0:n],'r--')
-plt.legend(['vy_ON','vy_OFF','real_y'])
-plt.grid()
-plt.show()
-
-'''plt.subplot(2,1,1)
-plt.plot(t[0:n],est4_x_OFF[0:n])
-plt.plot(t[0:n],est4_x_ON[0:n])
-plt.plot(t[0:n],real_x[0:n])
-plt.legend(['OFF','ON','REAL'])
-plt.grid()
-plt.subplot(2,1,2)
-plt.plot(t[0:n],est4_y_OFF[0:n])
-plt.plot(t[0:n],est4_y_ON[0:n])
-plt.plot(t[0:n],real_y[0:n])
-plt.legend(['OFF','ON','REAL'])
-plt.grid()
-plt.show()'''
-
-# PLOT BASELINE ANGLE
-n_sample = len(auv1_x_off)
-t = np.linspace(0,config.TIME_DURATION,n_sample)
-baseline_angle = []
-
+# Compute TRACKING ANGLE
 if len(t) >= len(auv4_x_on):
     n = len(auv4_x_on)
 elif len(t) < len(auv4_x_on):
     n = len(t)
+
+t = np.linspace(0,config.TIME_DURATION,n)
+baseline_angle = []
 
 for i in range(n):
     tmp = (((real_x[i]-auv3_x_on[i])*(real_x[i]-auv4_x_on[i]))+((real_y[i]-auv3_y_on[i])*(real_y[i]-auv4_y_on[i]))
@@ -357,7 +328,8 @@ for i in range(n):
     angle = angle*180/pi
     baseline_angle_off.append(angle)
 
-y = np.zeros(n_sample)
+# Plot TRACKING ANGLE and TRACKING ERROR
+y = np.zeros(n)
 plt.subplot(3,1,1)
 plt.title('OPTIMIZATION ON',fontsize=15)
 plt.plot(t,baseline_angle,'k',markerfacecolor='yellow')
@@ -373,41 +345,20 @@ plt.yticks(fontsize=15, rotation=0)#to set dimension and orientation of tick lab
 plt.xticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
 plt.grid()
 
-# PLOT RMSE
-sum1 = 0
-sum2 = 0
-sum3 = 0
-n = 0
-if len(err_off) < len(err_on):
-    n = len(err_off)
-else:
-    n = len(err_on)
-
-for i in range(n):
-    tmp1 = err_off[i]
-    sum1 += tmp1
-    tmp2 = err_on[i]
-    sum2 += tmp2
-    tmp3 = err_off_improved[i]
-    sum3 += tmp3
-err_medio1 = np.sqrt(sum1/n_sample)
-err_medio2 = np.sqrt(sum2/n_sample)
-err_medio3 = np.sqrt(sum3/n_sample)
-
-print('ERRORE MEDIO OFF:',err_medio1)
-print('ERRORE MEDIO OFF IMPROVED:',err_medio3)
-print('ERRORE MEDIO ON:',err_medio2)
-n_sample = n
-t = np.linspace(0,config.TIME_DURATION,n_sample)
-# COMPARE RMSE 
 plt.subplot(3,1,3)
-plt.plot(t,err_off[0:n_sample],'b')
-plt.plot(t,err_on[0:n_sample],'g')
-plt.plot(t,err_off_improved[0:n_sample],'r')
-plt.legend(['optimization OFF','optimization ON','IMPROVED'],fontsize=20)
+plt.plot(t[0:n],np.sqrt(err_off[0:n]),'b') #err_off contiene e(t) = ex + ey, dove ex = (x - x_hat)**2
+plt.plot(t[0:n],np.sqrt(err_on[0:n]),'g')
+y_on = []
+y_off = []
+for i in range(len(t)):
+    y_off.append(rmse_off)
+    y_on.append(rmse_on)
+plt.plot(t,y_off,'b--')
+plt.plot(t,y_on,'g--')
+plt.legend(['optimization OFF','optimization ON','RMSE off','RMSE on'],fontsize=20)
 
 plt.xlabel('Time (s)',fontsize=30)
-plt.ylabel('RMSE (m)',fontsize=30)
+plt.ylabel('Tracking Error (m)',fontsize=30)
 plt.yticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
 plt.xticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
 plt.grid()
@@ -423,9 +374,57 @@ plt.ylabel('Heading Changes (deg)',fontsize=20)
 plt.grid()
 plt.show()
 
+# Output of the prediction phase during optimization:
+
 plt.plot(s_opt_x,s_opt_y)
 plt.plot(opt_x,opt_y)
 plt.plot(real_x,real_y)
 plt.grid()
 plt.axis('equal')
 plt.show()
+
+
+'''avg_nodes = sum(nodes)/len(nodes)
+avg_wall_time = sum(wall_times)/len(wall_times)
+
+sum1 = 0
+sum2 = 0
+for i in range(len(nodes)):
+    sum1 += np.abs(nodes[i]-avg_nodes)
+    sum2 += wall_times[i]-avg_wall_time
+var_nodes = sum1/len(nodes)
+var_wall_time = sum2/len(wall_times) #varianza quadratica
+
+print('AVG NODES',avg_nodes)
+print('VAR NODES',np.sqrt(var_nodes))
+print('AVG TIME', avg_wall_time)
+print('VAR TIME',np.sqrt(avg_wall_time))
+'''
+'''plt.subplot(2,1,1)
+plt.plot(t[0:n],est4_x_OFF[0:n])
+plt.plot(t[0:n],est4_x_ON[0:n])
+plt.plot(t[0:n],real_x[0:n])
+plt.legend(['OFF','ON','REAL'])
+plt.grid()
+plt.subplot(2,1,2)
+plt.plot(t[0:n],est4_y_OFF[0:n])
+plt.plot(t[0:n],est4_y_ON[0:n])
+plt.plot(t[0:n],real_y[0:n])
+plt.legend(['OFF','ON','REAL'])
+plt.grid()
+plt.show()'''
+
+'''
+# CPF DEBUG 
+des1_x = np.loadtxt(lib_path+'/des1_x')
+des1_y = np.loadtxt(lib_path+'/des1_y')
+des2_x = np.loadtxt(lib_path+'/des2_x')
+des2_y = np.loadtxt(lib_path+'/des2_y')
+des3_x = np.loadtxt(lib_path+'/des3_x')
+des3_y = np.loadtxt(lib_path+'/des3_y')
+des4_x = np.loadtxt(lib_path+'/des4_x')
+des4_y = np.loadtxt(lib_path+'/des4_y')
+
+# BnB stats
+wall_times = np.loadtxt(lib_path+'/wall_times.txt')
+nodes = np.loadtxt(lib_path+'/nodes.txt')'''

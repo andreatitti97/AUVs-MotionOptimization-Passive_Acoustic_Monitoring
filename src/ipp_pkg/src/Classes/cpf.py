@@ -14,42 +14,47 @@ goal_theta, old_pose,angular_vel_leader, count2 = 0, 0, 0, 0
 
 class CooperativePathFollowing:
 
-    def __init__(self, formation, n_agents, init_orientation, k_att, k_rep, d_rep,lin_vel):
+    def __init__(self, formation, n_agents, init_orientation, k_att, k_rep, d_rep,lin_vel,bool=False):
         self.formation = formation
         self.n_agents = n_agents
         self.theta = init_orientation
         self.k_att = k_att
         self.k_rep = k_rep
         self.d_rep = d_rep
-        self.ko = config.CONTROLLER_GAIN
+        self.ko = config.GAIN_YAW_RATE
+        self.v_max = config.AUV_MAX_VEL
         self.desired_vel = lin_vel
+        self.bool = bool
 
     def update_leader_ori(self,updated_ori):
         self.theta = updated_ori
 
     def saturateVel(self,vel):
-        VEL_MAX = 20000
-        
-        if vel > VEL_MAX:
-            vel = VEL_MAX
-        if vel < -VEL_MAX:
-            vel = -VEL_MAX
-        
+        if self.bool == False:
+            self.v_max = 3* self.v_max                
+        if vel > self.v_max:
+            print('SATURATED VELS +++++++++++++++++++++++++++++++++++++++++++++++++ ',vel)
+            vel = self.v_max
+
+        if vel < -self.v_max:
+            print('SATURATED VELS ------------------------------------------------- ',vel)
+            vel = -self.v_max         
         return vel
         
     def potential_field(self,leader_pos, pos):
         # Calculate the desired positions of the followers in the formation
-    
         formation = config.formation
-
         desired_positions = np.zeros_like(pos)
+        
         # Compute the desired absolute pos of the agents according to leader pos and given formation
         for i in range(0, self.n_agents):
-            desired_positions[i,0] = leader_pos[0] + formation[i+1,0]*np.cos(self.theta)+formation[i+1,1]*np.sin(self.theta)
-            desired_positions[i,1] = leader_pos[1] + formation[i+1,0]*np.sin(self.theta)-formation[i+1,1]*np.cos(self.theta)
-               
+
+            desired_positions[i,0] = leader_pos[0] + config.a*(formation[i+1,0]*np.cos(self.theta)+formation[i+1,1]*np.sin(self.theta))
+            desired_positions[i,1] = leader_pos[1] + config.b*(-formation[i+1,0]*np.sin(self.theta)+formation[i+1,1]*np.cos(self.theta))
+
         # Calculate the attractive potential for each robot
         F_att = -self.k_att * (pos - desired_positions)
+        
         # Calculate the repulsive potential for each robot
         F_rep = np.zeros_like(F_att)
         for i in range(self.n_agents):
@@ -61,8 +66,7 @@ class CooperativePathFollowing:
         
         # Calculate the total force for each robot
         F_total = F_att + F_rep
-
-        
+           
         return F_total, desired_positions
 
     def compute_orientations(self, desired_pos, pos, num_robots, orientations):
@@ -70,7 +74,7 @@ class CooperativePathFollowing:
         error_ang = np.zeros((self.n_agents))
         for i in range(self.n_agents):
             # Compute the direction vector from the follower's current position to its desired position
-            orientations_goal[i] = atan2(desired_pos[i,1]-pos[i,1],desired_pos[i,0]-pos[i,0])
+            orientations_goal[i] = atan2(pos[i,1]-desired_pos[i,1],pos[i,0]-desired_pos[i,0])
             error_ang[i] = (orientations_goal[i] - orientations[i])
 
         return error_ang
@@ -121,12 +125,16 @@ class CooperativePathFollowing:
         # Compute the heading according to the desired position
         error_angular = self.compute_orientations(desired_position,positions, self.n_agents, orientations)
         for i in range(self.n_agents):
-            orientations[i] = orientations[i] + self.ko/10*error_angular[i]*dt
+            orientations[i] = orientations[i] + self.ko/2*error_angular[i]*dt
             tmp1 = self.saturateVel((self.desired_vel*np.cos(orientations[i]) + F_total_follower[i,0]*dt)*dt)
             tmp2 = self.saturateVel((self.desired_vel*np.sin(orientations[i]) + F_total_follower[i,1]*dt)*dt)
+            
+            #tmp1 = self.saturateVel(F_total_follower[i,0]*dt*dt)
+            #tmp2 = self.saturateVel(F_total_follower[i,1]*dt*dt)
+            
             tmp1 = positions[i,0] + tmp1
             tmp2 = positions[i,1] + tmp2
             positions[i,0] = tmp1
             positions[i,1] = tmp2
 
-        return leader_pos, self.theta, positions, orientations
+        return leader_pos, self.theta, positions, orientations, desired_position

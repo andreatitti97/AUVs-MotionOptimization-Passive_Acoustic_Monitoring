@@ -40,8 +40,8 @@ class Target:
         #self.target_controller = path_finder_controller_target # FOR FOLLOWING A POLYNOMIAL TRAJECTORY
         self.pose_target = config.Pose(0,0,0)
         self.lin_vel_target = config.TARGET_VEL
-        self.ang_vel_target = 0.0005
-        self.lin_acc = 0.002
+        self.ang_vel_target = 0#0.0005
+        self.lin_acc = 0 #0.002
 
     def set_start_target_poses(self, pose_target):
         """

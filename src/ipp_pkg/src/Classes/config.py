@@ -9,63 +9,70 @@ OPTIMIZATION_ON = True
 # Estimation Parameters
 TP = 50 # regressor MAX length
 STATE_PROPAGATION = 12 #time between each propagation of the estimation (in real case a consensus (?))
-# Team parameter: number of agents, baselines_XY, inital position, type of formation
-SIGMA_MEAS = 0.005 #0.02 #0.005 # uncertainty = 1° --> sigma^2 = (uncertainty*2*pi/180)^2  per ora 3 gradi -- TO DECIDE!!
+
+SIGMA_MEAS = 0.005  # uncertainty = 1° --> sigma^2 = (uncertainty*2*pi/180)^2  per ora 3 gradi -- TO DECIDE!!
 MEAS_UPDATE = STATE_PROPAGATION/4 # MEAS_UPDATE (s)= meas_update*(TIME_SCALER*TIME_STEP)
+
+# Team parameter: num52467Xber of agents, baselines_XY, inital position, type of formation
 N_AUV = 4
-BASELINE_Y = 100 #(m)
-BASELINE_X = 0 #valori presi dall'esperimento sulla comunicazione (veicoli lontani)
-PLATFORM_INIT_POSE = [0, 0, 0] #[x,y,theta]
+PLATFORM_INIT_POSE = [600, +300, 0] #[x,y,theta]
+AUV_VEL = 2.0 #(m/s)
+AUV_MAX_VEL = 3.0 #(m/s) #3.0 -> in line
+GAIN_YAW_RATE = 0.1 #in line -> 0.1 #(a-dim)
 
-AUV_VEL = 1.0 #(m/s)
-CONTROLLER_GAIN = 0.5
-
-# Target parameter: start, goal, min max vels
-TARGET_INIT = [1800, -500, pi-pi/3] #[x(m),y(m),theta(rad),linear vel(m/s)]
+# Target parameter: start, 52467Xgoal, min max vels
+TARGET_INIT = [4000, 600, 140*pi/180] #[x(m),y(m),theta(rad),linear vel(m/s)]
 TARGET_GOAL = [100, 100,TARGET_INIT[2]]
-TARGET_VEL = 5 #(m/s)
-MAX_TARGET_VEL = 3 #(m/s) (only for no costant vels)
+TARGET_VEL = 10 #(m/s)
+MAX_TARGET_VEL = 3 #(m/s) (only if target no costant vels)
 MIN_TARGET_VEL = 3 #(m/s)
 
-formation = np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],[0, -50], 
-                            [0,50], 
-                            [50,-180], 
-                            [50,180]])
-
-
-formation = np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],[0, -50], 
-                            [0,50], 
-                            [0,-100], 
-                            [0, 100]])
-
-formation = np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],[0, -60], 
-                            [0,60], 
-                            [0,-120], 
-                            [0, 120]])
-
-# Optimization Paramaters (to generalize) - for now v-sense data
-s = 1
-mean = [8.0/s, 6.0/s, 3.0/s, 0.0] # medium latencies between each AUV and the 4th (in fact latencies 0.0 for the 4th).
-variance = [0.8, 0.6, 0.3, 0.0] # the same as before vor the variances.
+# Communication Paramaters (to generalize) - for now based on v-sense data
+s = 0.5
+mean = [4.0/s, 2.0/s, 1.0/s, 0.0]  # medium latencies between each AUV and the 4th (in fact latencies 0.0 for the 4th).
+variance = [0.6, 0.4, 0.2, 0.0] # the same as before vor the variances.
 
 # Optimization Parameters
 OPTIMIZATION_TIME_STEP = STATE_PROPAGATION*(TIME_SCALER*TIME_STEP) #VA INTESO COME delta_k (planning stage)in secondi
-k_max = 15*pi/180 
-delta_k = 0#1.5*pi/180 
-U = 7 #number of control choices
-M = 4 # planning horizon
-#ctrl_cmd = [-k_max, -k_max*4/(U),0,k_max*4/(U),k_max] #set of control actions
-ctrl_cmd = [-k_max, -k_max*4/(U),-k_max*2/(U),0,k_max*2/(U),k_max*4/(U),k_max] #set of control actions
+k_max = 8*pi/180 
+delta_k = 0 #3.0*pi/180 
+U = 5 #number of control choices
+M = 2 # planning horizon
+ctrl_cmd = [-k_max, -k_max*4/(U),0,k_max*4/(U),k_max] #set of control actions
+#ctrl_cmd = [-k_max, -k_max*4/(U),-k_max*2/(U),0,k_max*2/(U),k_max*4/(U),k_max] #set of control actions
 
 # Cooperative Path Following Params
-K_att = 1.0 # Attractive gain
-K_rep = 0.0 # Repulsive gain
-d_rep = 0.2 # Distance threshold for repulsion
+a, b = 1, -1
+K_att = 1.0# for in line -> 0.05 # Attractive gain
+K_rep = 0.0#1.0 #for in line -> 10.0 # Repulsive gain
+d_rep = 150 # Distance threshold for repulsion
+# CHOOSE THE GEOMETRY BETWEEN THE AGENTS
+geometry = 'polygon'
+
+if geometry == 'in line':
+    formation =  np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],
+                            [0,-100], 
+                            [0, 100], 
+                            [0,-300],
+                            [0, 300]]) # IN LINEA 
+    
+
+
+elif geometry == 'in column':
+    formation = np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],
+                            [-600, 0], 
+                            [-400,0], 
+                            [-200,0], 
+                            [0,0]]) # IN COLONNA
+elif geometry == 'polygon':
+    formation =  np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],
+                            [0, 100], 
+                            [0,-100], 
+                            [100,200], 
+                            [100,-200]]) # TRAPEZOIDALE
 
 
 'REMARK ABOUT SIMULATION TIME & COMMUNICATION PERFORMANCES'
-
-
 '''
 The time is scaled, so the following values are to be considered for the int counter,
 therefore real value in sec multiply for 0.8.
@@ -81,7 +88,6 @@ TOTAL communication time (without considering navigation data, will be another t
 is aout 16+4 = c.a. 20 seconds then we can trigger the optimization
 while before propagate the estimation around 16 seconds
 '''
-
 
 class Pose:
     """2D pose"""

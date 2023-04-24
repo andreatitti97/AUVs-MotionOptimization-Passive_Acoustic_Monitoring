@@ -33,7 +33,7 @@ class Estimator:
 
     @property
     def current_estimate(self):
-        return (self.__x, self.__phi, self.__y, self.__w)
+        return (self.__x, self.__phi, self.__y) #self.__w
 
     def init_state_vector(self):
         return True
@@ -65,9 +65,9 @@ class Estimator:
 
         delta = (t_meas - prev_t)
 
-        range_ratio= np.tan(measures)
-        w = np.e**(-range_ratio)
-        self.__w.append(w)
+        #range_ratio= np.tan(measures)
+        #w = np.e**(-range_ratio)
+        #self.__w.append(w)
 
         self.__C = [np.sin(measures), -np.cos(measures), delta*np.sin(measures), -delta*np.cos(measures)]
         self.__phi.append(self.__C)
