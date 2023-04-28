@@ -42,10 +42,11 @@ target_x_traj, target_y_traj, platform_x, platform_y = [], [], [], []
 est1_x, est1_y, est2_x, est2_y,est3_x, est3_y,est4_x, est4_y = [], [], [], [], [], [], [], []
 est4_vx, est4_vy = [],[]
 auv1_x, auv1_y, auv2_x, auv2_y,auv3_x,auv3_y,auv4_x,auv4_y  = [], [], [], [], [], [], [], []
-rmse, rmse_, bearing1, bearing2 = [], [], [],[]
+err_quad, err, bearing1, bearing2 = [], [], [],[]
 cov1, cov2, cov3, cov4 = [],[],[],[]
 prova_x,prova_y = [], []
 des1_x, des1_y, des2_x, des2_y, des3_x, des3_y, des4_x, des4_y = [], [], [], [], [], [], [], []
+
 def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientation):
     """Simulate the sensor platform and the moving target"""
     global count1
@@ -53,7 +54,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
     Hz = 1/(config.TIME_STEP) #NB: different from sampling rate for move things, this is ros rate
     rate = rospy.Rate(Hz)
     # Init Time Variables and counters
-    t, count1, j = 0, 0, 0
+    t, count1, j, count_measures = 0, 0, 0, 0
     meas_table = []
     cmds = []
     for i in range(config.M):
@@ -84,51 +85,43 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
         rospy.loginfo(t)
 
         # Simulate Sensor Measuraments
-        for j in range(config.N_AUV):
-            # If time to transmit
-            if count1 % config.MEAS_UPDATE == 0:
-                #Make measurements
-                [measure_, rel_bearing_, meas_pos] = auv[j].measureBearing(target.pose_target.x,target.pose_target.y,positions[j], orientations[j])
-                arr = [t,measure_,meas_pos[0],meas_pos[1]]
-                meas_table.append(arr)
-                
-                if len(meas_table) > config.TP:
-                    meas_table.pop(0)
-            
+        if count1 % config.MEAS_UPDATE == 0:
+        # If time to transmit
+            # Make measurements
+            [measure_, rel_bearing_, meas_pos] = auv[count_measures].measureBearing(target.pose_target.x,target.pose_target.y,positions[count_measures], orientations[count_measures])
+            arr = [t,measure_,meas_pos[0],meas_pos[1]]
+            meas_table.append(arr)
+            count_measures +=1
+            if count_measures == 2:
+                count_measures = 0
+
+        # Simulate the delays of the acoustic communication channel 
+        for j in range(config.N_AUV-1):
             # Compute the delay of the msg of heach auvs
             if flags[j] == 0 and propagation == False:
                 delay[j] += config.TIME_STEP*config.TIME_SCALER    
-
             # If the delay measured is equal to the expected one the msg is arrived to AUV4
             sigma = np.random.uniform(-config.variance[j], config.variance[j])
             if  delay[j] >= config.mean[j] + sigma:
                 delay[j] = 0.0
                 flags[j] = 1
-                if np.sum(delay) == 0.0 and np.sum(flags)==4:
+                if np.sum(delay) == 0.0 and np.sum(flags)==3:
                     propagation = True
 
         # SIMULATE the ESTIMATIONS
         if propagation == True:
-
+            [measure_, rel_bearing_, meas_pos] = auv[3].measureBearing(target.pose_target.x,target.pose_target.y,positions[3], orientations[3])
+            arr = [t,measure_,meas_pos[0],meas_pos[1]]
+            meas_table.append(arr)
+                
             obs[0].processMeasurement(meas_table)
             obs[0].propagate_estimation(t)
+            meas_table = []
             flags = [0,0,0,0]
             # Retrieve Estimation
             curr_est, phi, y = obs[0].state
             # Compute Covariance of the target state - USING FORGETTING FACTOR and RE-WEIGHTED estimation over the range-ratio
-            R = np.zeros((len(y),len(y))) #matrice diagonale perchè errori sulle singole misure indipendenti tra loro
-            
-            '''
-            UNCOMMENT FOR FORGETTING FACTOR AND RE-WEIGHTED ESTIMATION
-            beta = np.zeros((len(y),1))
-            time_ = np.linspace(0,1,len(y)) #pesi tempo
-            beta = np.e**(time_)
-            w = np.zeros((len(range_ratio),1)) 
-            for i in range(len(range_ratio)):
-                w[i] = range_ratio[i]
-            gamma = np.e**(w) # pesi distanza    
-            '''
-            
+            R = np.zeros((len(y),len(y))) #matrice diagonale perchè errori sulle singole misure indipendenti tra loro            
             for i in range(len(y)): 
                 for j in range(len(y)):
                     if i == j:
@@ -223,14 +216,16 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
 
             err_x = (target_state_real[0] - curr_est[0,0])
             err_y = (target_state_real[1] - curr_est[1,0])
-            err_x_ = (target_state_real[0] - x[0])**2
-            err_y_ = (target_state_real[1] - x[1])**2
+            
+            e = np.sqrt(err_x**2+err_y**2)
+            print('CURR EST',curr_est)
+            print('TARGET STATE',target_state_real)
+            print('ERR_-X',err_x)
+            print('ERR -Y',err_y)
+            print('ERR',e)
+            
+            err_quad.append(e)
 
-            e = err_x**2+err_y**2
-            e_ = err_x_**2+err_y_**2
-
-            rmse.append(e)
-            rmse_.append(e_)
             
             propagation = False
         ##################################################################################################################
@@ -247,8 +242,8 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
 
                 np.savetxt(plot_path+'/est4_x_ON.txt',est4_x)
                 np.savetxt(plot_path+'/est4_y_ON.txt',est4_y)
-                np.savetxt(plot_path+'/rmse_ON.txt',rmse)
-                np.savetxt(plot_path+'/rmse_improved_ON.txt',rmse_)
+                np.savetxt(plot_path+'/err_quad_ON.txt',err_quad)
+                np.savetxt(plot_path+'/err_ON.txt',err)
                 np.savetxt(plot_path+'/x_platform_ON.txt',platform_x)
                 np.savetxt(plot_path+'/y_platform_ON.txt',platform_y)
                 np.savetxt(plot_path+'/auv1_x_ON.txt',auv1_x)
@@ -278,8 +273,8 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
 
                 np.savetxt(plot_path+'/est4_x_OFF.txt',est4_x)
                 np.savetxt(plot_path+'/est4_y_OFF.txt',est4_y)
-                np.savetxt(plot_path+'/rmse_OFF.txt',rmse)
-                np.savetxt(plot_path+'/rmse_improved_OFF.txt',rmse_)
+                np.savetxt(plot_path+'/err_quad_OFF.txt',err_quad)
+                np.savetxt(plot_path+'/err_OFF.txt',err)
                 np.savetxt(plot_path+'/x_platform_OFF.txt',platform_x)
                 np.savetxt(plot_path+'/y_platform_OFF.txt',platform_y)
                 np.savetxt(plot_path+'/auv1_x_OFF.txt',auv1_x)
@@ -301,7 +296,6 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
                 
                 
         t += config.TIME_STEP*config.TIME_SCALER
-        
         count1 += 1
         rate.sleep()
 
@@ -346,3 +340,17 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+
+'''
+            UNCOMMENT FOR FORGETTING FACTOR AND RE-WEIGHTED ESTIMATION
+            beta = np.zeros((len(y),1))
+            time_ = np.linspace(0,1,len(y)) #pesi tempo
+            beta = np.e**(time_)
+            w = np.zeros((len(range_ratio),1)) 
+            for i in range(len(range_ratio)):
+                w[i] = range_ratio[i]
+            gamma = np.e**(w) # pesi distanza    
+            '''
+            

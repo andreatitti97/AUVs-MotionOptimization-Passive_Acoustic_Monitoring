@@ -21,14 +21,14 @@ class Estimator:
         '''
         Each object being tracked will result in the creation of a new ExtendedKalmanFilter instance.
         '''
-        self.__x = None
+        self.__x = []
         self.__bool = bool
         self.__id = id
         self.__phi = []
         self.__y = []
         self.__w = []
         self.__C = matlib.zeros((1,4))
-        
+        self.__t = []
         self.t_prev = 0
 
     @property
@@ -38,7 +38,7 @@ class Estimator:
     def init_state_vector(self):
         return True
 
-    def propagation(self, curr_time, prev_time):#propagation to the actual state
+    def propagation(self, curr_time, prev_time):#compute old state in the regressor and propagation to the actual state
 
         tmp_y = np.zeros((len(self.__y),1))
         for i in range(len(self.__y)):
@@ -46,34 +46,46 @@ class Estimator:
         tmp_phi = np.zeros((len(self.__y),4))
         for i in range(len(self.__y)):
             a = self.__phi[i]
-            tmp_phi[i,:] = [a[0],a[1],a[2],a[3]]
-        self.__x =  np.dot(np.linalg.pinv(tmp_phi),tmp_y)
+            tmp_phi[i,:] = [a[0],a[1],a[2],a[3]]    
+        # Compute Old State
+        self.__x =  np.dot(np.linalg.pinv(tmp_phi),tmp_y) #stato al tempo più vecchio nel regressore.
 
-        '''
-        dt = curr_time - prev_time #tempo attuale - tempo ultimo stato noto.
+        # Propagate the estimation
+        dt = curr_time - self.__t[0] #tempo attuale - tempo ultimo stato noto.
         self.__F = np.matrix([[1,0,dt,0],
                               [0,1,0,dt],
                               [0,0,1,0],
                               [0,0,0,1]])
-        self.__x = self.__F*self.__x'''
+        self.__x = self.__F*self.__x
 
     def iteration(self, t_meas, measures, auv_position_x, auv_position_y, prev_t):
-
+        
         self.__y.append(auv_position_x*np.sin(measures) - auv_position_y*np.cos(measures))
-        if len(self.__y) > config.TP:
-            self.__y.pop(0)
-
-        delta = (t_meas - prev_t)
-
-        #range_ratio= np.tan(measures)
-        #w = np.e**(-range_ratio)
-        #self.__w.append(w)
-
-        self.__C = [np.sin(measures), -np.cos(measures), delta*np.sin(measures), -delta*np.cos(measures)]
+        self.__t.append(t_meas)
+        prev_t = self.__t[0]
+        self.__C = [np.sin(measures), -np.cos(measures), (t_meas - self.__t[0])*np.sin(measures), -(t_meas - self.__t[0])*np.cos(measures)]
         self.__phi.append(self.__C)
 
-        if len(self.__phi) > config.TP:
-            self.__phi.pop(0)
+        if len(self.__y) == config.TP:
+            self.__y.pop(0) #SHIFT
+            self.__t.pop(0)
+            self.__phi.pop(0)          
+            for i in range(len(self.__phi)): # UPDATE REGRESSOR COLUMN
+                if prev_t!=self.__t[i]:
+                    tmp = self.__phi[i]
+
+                    tmp[2] = ((self.__t[i]-self.__t[0])/(self.__t[i]-prev_t))*tmp[2]
+                    tmp[3] = ((self.__t[i]-self.__t[0])/(self.__t[i]-prev_t))*tmp[3]
+                    self.__phi[i] = [tmp[0],tmp[1],tmp[2],tmp[3]]
+
+        
+
+
+'''range_ratio= np.tan(measures)
+        w = np.e**(-range_ratio)
+        self.__w.append(w)'''
+        
+        
 
         
 

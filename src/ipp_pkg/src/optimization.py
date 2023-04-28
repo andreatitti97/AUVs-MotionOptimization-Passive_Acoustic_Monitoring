@@ -111,8 +111,7 @@ class Target():
         
         self.x = x_pred
         self.cov = P_pred
-        
-        #return x_pred, P_pred
+
     
 def simulation(control_input, target_est, platform_pose, sensor, controller, covariance):
 
@@ -216,9 +215,7 @@ class Simple(pybnb.Problem):
         x5, phi5, y5, s5 = simulation(self.ctrl_cmds[4], x_hat, s, self.sensors, self.controller, cov)
         if (len(self.ctrl_cmds) > 5):
             x6, phi6, y6, s6 = simulation(self.ctrl_cmds[5], x_hat, s, self.sensors, self.controller, cov)
-            x7, phi7, y7, s7 = simulation(self.ctrl_cmds[6], x_hat, s, self.sensors, self.controller, cov)
-        
-        
+            x7, phi7, y7, s7 = simulation(self.ctrl_cmds[6], x_hat, s, self.sensors, self.controller, cov)      
    
         tmp1 = [self.ctrl_cmds[0]]
         choices1 = self.choices + tmp1
@@ -236,8 +233,7 @@ class Simple(pybnb.Problem):
             tmp7 = [self.ctrl_cmds[6]]
             choices7 = self.choices + tmp7
 
-        
-        
+
         if len(choices1) == M or len(choices2) == M or len(choices3) == M:
             self.value = self.value - DELTA ##THIS IS MANDATORY FOR ADDITIVE COST ALONG THE SEQUENCE
             self._bound = self.value #- cost1 
@@ -250,7 +246,6 @@ class Simple(pybnb.Problem):
         child = pybnb.Node()
         child.state = (x1, s1, child1_value, self._bound, choices1)
         yield child
-
 
         #self._bound = child1_value
         cost2 = compute_cost(phi2,len(y2))
@@ -272,7 +267,6 @@ class Simple(pybnb.Problem):
         child = pybnb.Node()
         child.state = (x4, s4, child4_value, self._bound, choices4)
         yield child
-
 
         #self._bound = child4_value
         cost5 = compute_cost(phi5,len(y5))
@@ -333,6 +327,7 @@ def main():
     while not rospy.is_shutdown():
 
         # INIT TARGET MODEL AND PLATFORM MODEL WITH THE LATEST ESTIMATION AND SENSOR POSITIONS 
+        
         t_est = rospy.wait_for_message('/estimation',numpy_msg(Floats))
         s_state = rospy.wait_for_message('/platform_state',numpy_msg(Floats))
         cov = rospy.wait_for_message('/covariance',numpy_msg(Floats))
@@ -350,11 +345,10 @@ def main():
         solver = pybnb.Solver()
         #ctrl_cmd_simply = [ctrl_cmd[0],ctrl_cmd[2],ctrl_cmd[-1]]
         #problem_simplified = Simple(t_est, s_state, DELTA, sensors, cpf_control, ctrl_cmd, covariance)
-        
         #results_preview = solver.solve(problem,queue_strategy="objective",node_limit=limit)#
         #lower_bound = results_preview.objective
-        results = solver.solve(problem,queue_strategy="objective" ,time_limit=5,node_limit=limit)#tnode_limit=limi #Uniform cost search con "objective"
-        best_node_states = results.best_node.state #objective_stop=4000000,
+        results = solver.solve(problem,queue_strategy="objective" ,node_limit=limit)#tnode_limit=limi #Uniform cost search con "objective"
+        best_node_states = results.best_node.state #objective_stop=4000000,time_limit=5
         wall_time = results.wall_time
         nodes = results.nodes
         avg_nodes.append(nodes)
@@ -362,7 +356,7 @@ def main():
         ctrl_opt = best_node_states[4]
 
         ###########################################################################################
-
+        #time.sleep(1)
         pub.publish(np.array(ctrl_opt,dtype=np.float32))
         ctrl_plot.append(ctrl_opt[0])
         old_ctrls.append(ctrl_opt[0])
@@ -415,3 +409,19 @@ def main():
 if __name__ == '__main__':
     
     main()
+
+
+'''
+cost function for using the trace of the covariance matrix
+def compute_cost2(phi,len_y):
+    R = np.zeros((len_y,len_y)) #matrice diagonale perchè errori sulle singole misure indipendenti tra loro
+    for i in range(len_y): 
+        for j in range(len_y):
+            if i == j:
+                R[i,j] = (config.SIGMA_MEAS**2)#/(gamma[i]*beta[i]) #for adding re-weighted and 
+            else:
+                R[i,j] = 0
+    #if count1 > 0:
+    cov = np.linalg.inv(np.dot(np.dot(np.transpose(phi),np.linalg.inv(R)),phi))
+    cost = np.trace(cov)
+    return cost'''

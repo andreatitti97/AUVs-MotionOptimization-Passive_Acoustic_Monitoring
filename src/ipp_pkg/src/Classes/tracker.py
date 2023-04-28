@@ -23,7 +23,6 @@ class Tracker:
         return self.__estimator.current_estimate
 
     def processMeasurement(self, table): #table = [tempo, misura, auv pos x, auv pos y]
-        
         for i in range(len(table)):
             meas_data = table[i]
             if self.bool == True:

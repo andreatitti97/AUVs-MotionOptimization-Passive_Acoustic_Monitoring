@@ -4,26 +4,31 @@ import numpy as np
 TIME_DURATION = 600 # (s)
 TIME_STEP = 0.01
 TIME_SCALER = 80 # MAX for communication purpose 
-OPTIMIZATION_ON = True
+OPTIMIZATION_ON = False
 
 # Estimation Parameters
-TP = 50 # regressor MAX length
+TP = 30 # regressor MAX length
 STATE_PROPAGATION = 12 #time between each propagation of the estimation (in real case a consensus (?))
-
-SIGMA_MEAS = 0.005  # uncertainty = 1° --> sigma^2 = (uncertainty*2*pi/180)^2  per ora 3 gradi -- TO DECIDE!!
+SIGMA_MEAS = 0.005#0.005 # uncertainty = 1° --> sigma^2 = (uncertainty*2*pi/180)^2  per ora 3 gradi -- TO DECIDE!!
 MEAS_UPDATE = STATE_PROPAGATION/4 # MEAS_UPDATE (s)= meas_update*(TIME_SCALER*TIME_STEP)
 
-# Team parameter: num52467Xber of agents, baselines_XY, inital position, type of formation
+# Team parameter: number of agents, baselines_XY, inital position, type of formation
 N_AUV = 4
-PLATFORM_INIT_POSE = [600, +300, 0] #[x,y,theta]
+PLATFORM_INIT_POSE = [0, 0, 0] #[x,y,theta]
 AUV_VEL = 2.0 #(m/s)
 AUV_MAX_VEL = 3.0 #(m/s) #3.0 -> in line
 GAIN_YAW_RATE = 0.1 #in line -> 0.1 #(a-dim)
 
 # Target parameter: start, 52467Xgoal, min max vels
-TARGET_INIT = [4000, 600, 140*pi/180] #[x(m),y(m),theta(rad),linear vel(m/s)]
+TARGET_INIT = [4500, 800, 140*pi/180] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 3
+TARGET_INIT = [4000, 600, 140*pi/180] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 1
+#TARGET_INIT = [5000, 0, pi] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 1
+#TARGET_INIT = [4500, 3500, pi] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 2
+#TARGET_INIT = [4500, 800, 140*pi/180] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 3
+#TARGET_INIT = [4500, 800, 140*pi/180] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 4
+#TARGET_INIT = [4500, 800, 140*pi/180] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 5
 TARGET_GOAL = [100, 100,TARGET_INIT[2]]
-TARGET_VEL = 10 #(m/s)
+TARGET_VEL = 8.0 #(m/s)
 MAX_TARGET_VEL = 3 #(m/s) (only if target no costant vels)
 MIN_TARGET_VEL = 3 #(m/s)
 
@@ -31,10 +36,11 @@ MIN_TARGET_VEL = 3 #(m/s)
 s = 0.5
 mean = [4.0/s, 2.0/s, 1.0/s, 0.0]  # medium latencies between each AUV and the 4th (in fact latencies 0.0 for the 4th).
 variance = [0.6, 0.4, 0.2, 0.0] # the same as before vor the variances.
-
+#mean = [1.0, 0.8, 0.6, 0.0 ]
+#variance = [0.2, 0.1, 0.1, 0.0]
 # Optimization Parameters
 OPTIMIZATION_TIME_STEP = STATE_PROPAGATION*(TIME_SCALER*TIME_STEP) #VA INTESO COME delta_k (planning stage)in secondi
-k_max = 8*pi/180 
+k_max = 10*pi/180 
 delta_k = 0 #3.0*pi/180 
 U = 5 #number of control choices
 M = 2 # planning horizon
@@ -47,29 +53,28 @@ K_att = 1.0# for in line -> 0.05 # Attractive gain
 K_rep = 0.0#1.0 #for in line -> 10.0 # Repulsive gain
 d_rep = 150 # Distance threshold for repulsion
 # CHOOSE THE GEOMETRY BETWEEN THE AGENTS
-geometry = 'polygon'
+geometry = 'line'
 
-if geometry == 'in line':
+if geometry == 'line':
     formation =  np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],
                             [0,-100], 
                             [0, 100], 
                             [0,-300],
                             [0, 300]]) # IN LINEA 
     
-
-
-elif geometry == 'in column':
+elif geometry == 'column':
     formation = np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],
                             [-600, 0], 
                             [-400,0], 
                             [-200,0], 
                             [0,0]]) # IN COLONNA
+    
 elif geometry == 'polygon':
     formation =  np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],
                             [0, 100], 
                             [0,-100], 
-                            [100,200], 
-                            [100,-200]]) # TRAPEZOIDALE
+                            [180,200], 
+                            [180,-200]]) # TRAPEZOIDALE
 
 
 'REMARK ABOUT SIMULATION TIME & COMMUNICATION PERFORMANCES'
