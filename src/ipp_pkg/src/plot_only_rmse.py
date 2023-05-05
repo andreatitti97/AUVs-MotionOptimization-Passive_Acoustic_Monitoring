@@ -78,28 +78,30 @@ ranges = 12 #scale the number of printed AUVs (ie.e 12 suitable for 600 s of sim
 # Plot Tracking Error and compute RMSE
 sum1, sum2, sum3 = 0,0,0
 
-mse_off = sum(err_off)/len(err_off)
-mse_on = sum(err_on)/len(err_on)
-print('MSE OFF',mse_off)
-print('MSE ON',mse_on)
-rmse_off = np.sqrt(mse_off)
-rmse_on = np.sqrt(mse_on)
+errore_medio_off = sum(err_off)/len(err_off)
+errore_medio_on = sum(err_on)/len(err_on)
+print('errore medio OFF',errore_medio_off)
+print('errore medio ON',errore_medio_on)
+print('MSE OFF',sum(err_off**2)/len(err_off))
+print('MSE ON',sum(err_on**2)/len(err_on))
+rmse_off = np.sqrt(sum(err_off**2)/len(err_off))
+rmse_on = np.sqrt(sum(err_on**2)/len(err_on))
 print('RMSE OFF:',np.round(rmse_off,3))
 print('RMSE ON:',np.round(rmse_on,3))
 
 sum1,sum2,sum3 = 0,0,0
 
 for i in range(len(err_off)):
-    sum1 += ((err_off[i])-mse_off)**2
+    sum1 += ((err_off[i])-errore_medio_off)**2
 for i in range(len(err_on)):
-    sum2 += ((err_on[i])-mse_on)**2
+    sum2 += ((err_on[i])-errore_medio_on)**2
 
 dev_std_off = np.sqrt(sum1/len(err_off))
 dev_std_on = np.sqrt(sum2/len(err_on))
 
-print('VARIANZA OFF',dev_std_off**2)
-print('VARIANZA ON',dev_std_on**2)
-print('DEV STD OFF',np.round(dev_std_off,3))
+print('VARIANZA OFF',np.float32(dev_std_off**2))
+print('VARIANZA ON',np.float32(dev_std_on**2))
+print('DEV STD OFF',np.float32(np.round(dev_std_off,3)))
 print('DEV STD ON',np.round(dev_std_on,3))
 
 # Magnitude Tracking Error plot
@@ -113,8 +115,8 @@ plt.plot(t,(err_on[0:n]),'g',marker='o',markerfacecolor='g')
 y_on = []
 y_off = []
 for i in range(len(t)):
-    y_off.append(mse_off)
-    y_on.append(mse_on)
+    y_off.append(errore_medio_off)
+    y_on.append(errore_medio_on)
 plt.plot(t,(y_off),'b--')
 plt.plot(t,(y_on),'g--')
 plt.legend(['optimization OFF','optimization ON'],fontsize=20)
@@ -124,4 +126,4 @@ plt.ylabel('Residual Error (m)',fontsize=30)
 plt.yticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
 plt.xticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
 plt.grid()
-plt.show()
+#plt.show()

@@ -37,12 +37,13 @@ class Target:
     def __init__(self): #path_finder_controller_target
 
         #self.target_controller = path_finder_controller_target # FOR FOLLOWING A POLYNOMIAL TRAJECTORY
-        self.pose_target = config.Pose(0,0,0)
-        self.lin_vel_target = config.TARGET_VEL
-        self.ang_vel_target = 0 #0.0005
+        self.pose = config.Pose(0,0,0)
+        self.lin_vel = config.TARGET_VEL
+        self.ang_vel = 0 #0.0005
         self.lin_acc = 0 #0.002
+        self.ang_acc = 0
 
-    def set_start_target_poses(self, pose_target):
+    def set_start_target_poses(self, pose):
         """
         Sets the start and target positions of the robot
 
@@ -50,10 +51,10 @@ class Target:
         ----------
         pose_start : (Pose)
             Start postion of the robot (see the Pose class)
-        pose_target : (Pose)
+        pose : (Pose)
             Target postion of the robot (see the Pose class)
         """
-        self.pose_target = pose_target
+        self.pose = pose
 
 
     def move_target(self, dt):
@@ -66,9 +67,9 @@ class Target:
             time step
         """
     
-        self.pose_target.theta = self.pose_target.theta + self.ang_vel_target * dt
-        self.pose_target.x = self.pose_target.x + (self.lin_vel_target+self.ang_vel_target*dt) * \
-            np.cos(self.pose_target.theta) * dt
-        self.pose_target.y = self.pose_target.y + (self.lin_vel_target+self.ang_vel_target*dt) * \
-            np.sin(self.pose_target.theta) * dt
+        self.pose.theta = self.pose.theta + self.ang_vel * dt
+        self.pose.x = self.pose.x + (self.lin_vel+self.ang_vel*dt) * \
+            np.cos(self.pose.theta) * dt
+        self.pose.y = self.pose.y + (self.lin_vel+self.ang_vel*dt) * \
+            np.sin(self.pose.theta) * dt
         

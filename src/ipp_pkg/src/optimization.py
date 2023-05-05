@@ -44,6 +44,16 @@ class Target():
         self.dt = config.OPTIMIZATION_TIME_STEP/opt_scaler
         self.cov = covariance
         
+    def update_state(self):
+        F = np.matrix([[1,0,self.dt,0], # Target model
+                        [0,1,0,self.dt],
+                        [0,0,1,0],
+                        [0,0,0,1]])
+        tmp = np.zeros((4,1))
+        for i in range(3):  
+            tmp[i]=self.x[i]
+        self.x = F*tmp
+
     def state_transition(self, sigma_point):
         
         F = np.matrix([[1,0,self.dt,0], # Target model
@@ -100,7 +110,6 @@ class Target():
         X_pred = np.zeros((m, n))
         for i in range(m):
             #X_pred[i] = f(X[i], Q) #if you consider a gaussian disturbance for the state add Q
-            #tmp = 
             X_pred[i] = self.state_transition(X[i])
         # Calculate predicted mean and covariance
         x_pred = np.dot(w_m,X_pred)  
@@ -112,21 +121,21 @@ class Target():
         self.x = x_pred
         self.cov = P_pred
 
-    
-def simulation(control_input, target_est, platform_pose, sensor, controller, covariance):
+def simulation(control_input, target_est, leader_pos, sensor, controller, covariance):
 
     # Init classes for tracker and target
     tracker_ = tracker.Tracker('opt', True)
     target = Target(target_est, covariance)
+
     # Load agents state
     positions = np.zeros((4,2))
-    tmp2 = np.array([platform_pose[0],platform_pose[1]])
-    for i in range(0, 4):
-        positions[i] = tmp2 + config.formation[i+1]
+    for i in range(0,config.N_AUV):       
+        positions[i,0] = leader_pos[0] + config.a*(config.formation[i+1,0]*np.cos(config.PLATFORM_INIT_POSE[2])+config.formation[i+1,1]*np.sin(config.PLATFORM_INIT_POSE[2]))
+        positions[i,1] = leader_pos[1] + config.b*(-config.formation[i+1,0]*np.sin(config.PLATFORM_INIT_POSE[2])+config.formation[i+1,1]*np.cos(config.PLATFORM_INIT_POSE[2]))
     orientations = np.zeros(4)
     for i in range(4):
-        orientations[i] = platform_pose[2]
-    controller.update_leader_ori(platform_pose[2])
+        orientations[i] = leader_pos[2]
+    controller.update_leader_ori(leader_pos[2])
     # Temporal Variable
     t, j = 0, 0 #time and counter init
     meas_table = []
@@ -137,27 +146,29 @@ def simulation(control_input, target_est, platform_pose, sensor, controller, cov
         else:
             cmd = 0
         # Update AUVs and target state
-        [platform_pose, tmp, positions, orientations, des_pose] = controller.move_agents(platform_pose, cmd, config.OPTIMIZATION_TIME_STEP/opt_scaler, positions, orientations,i,True, opt_scaler)
-        platform_pose = [platform_pose[0],platform_pose[1],tmp]
-        #target_state = target.update_state()
+        [leader_pos, tmp, positions, orientations, des_pose] = controller.move_agents(leader_pos, cmd, config.OPTIMIZATION_TIME_STEP/opt_scaler, positions, orientations,i,True, opt_scaler)
+        leader_pos = [leader_pos[0],leader_pos[1],tmp]
+        
+        #target.update_state()
         target.uscentedTransform() 
         if i >= 0 and i < (opt_scaler-1):
-            [measure_, rel_bearing_, meas_pos] = sensor[j].measureBearing(target.x[0],target.x[1],positions[j], orientations[j])
+            [measure_, rel_bearing_, meas_pos] = sensor[j].measureBearing(target.x[0],target.x[1],positions[j],orientations[j])
             arr = [t,measure_,meas_pos[0],meas_pos[1]]
             meas_table.append(arr)
             j = j + 1
             if j == 4:
                 j = 0
-
-        # update  WITH NEW MEASURAMENT
+        # update WITH NEW MEASURAMENT
         else: 
             tracker_.processMeasurement(meas_table)
             tracker_.propagate_estimation(t)
 
         t += config.OPTIMIZATION_TIME_STEP/opt_scaler
     [state, phi, y] = tracker_.state
-    state = [state[0,0], state[1,0], state[2,0], state[3,0]]
-    return state, phi, y, platform_pose 
+    state = [state[0,0],state[1,0],state[2,0],state[3,0]]
+    #print('STATE INSIDE OPT --- ',state)
+    #time.sleep(5000)
+    return state, phi, y, leader_pos 
 
 def compute_cost(phi,length_y):
 
@@ -175,8 +186,8 @@ class Simple(pybnb.Problem):
         
         
         inf = float("inf")
-        self.value = initial_cost #fake obj, completely arbitrary 
-        self._bound = -inf#initial_cost-100 #lower bound 
+        self.value = initial_cost # fake obj, completely arbitrary 
+        self._bound = -inf # initial_cost-100 #lower bound 
 
         self.choices = []
 
@@ -347,7 +358,7 @@ def main():
         #problem_simplified = Simple(t_est, s_state, DELTA, sensors, cpf_control, ctrl_cmd, covariance)
         #results_preview = solver.solve(problem,queue_strategy="objective",node_limit=limit)#
         #lower_bound = results_preview.objective
-        results = solver.solve(problem,queue_strategy="objective" ,node_limit=limit)#tnode_limit=limi #Uniform cost search con "objective"
+        results = solver.solve(problem,queue_strategy="objective" ,objective_stop=90000,node_limit=limit)#tnode_limit=limi #Uniform cost search con "objective"
         best_node_states = results.best_node.state #objective_stop=4000000,time_limit=5
         wall_time = results.wall_time
         nodes = results.nodes
@@ -356,7 +367,8 @@ def main():
         ctrl_opt = best_node_states[4]
 
         ###########################################################################################
-        #time.sleep(1)
+        
+        #time.sleep(0.1)
         pub.publish(np.array(ctrl_opt,dtype=np.float32))
         ctrl_plot.append(ctrl_opt[0])
         old_ctrls.append(ctrl_opt[0])
