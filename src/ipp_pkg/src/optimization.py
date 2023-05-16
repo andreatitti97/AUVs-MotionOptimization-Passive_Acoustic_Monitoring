@@ -128,12 +128,12 @@ def simulation(control_input, target_est, leader_pos, sensor, controller, covari
     target = Target(target_est, covariance)
 
     # Load agents state
-    positions = np.zeros((4,2))
+    positions = np.zeros((config.N_AUV,2))
     for i in range(0,config.N_AUV):       
         positions[i,0] = leader_pos[0] + config.a*(config.formation[i+1,0]*np.cos(config.PLATFORM_INIT_POSE[2])+config.formation[i+1,1]*np.sin(config.PLATFORM_INIT_POSE[2]))
         positions[i,1] = leader_pos[1] + config.b*(-config.formation[i+1,0]*np.sin(config.PLATFORM_INIT_POSE[2])+config.formation[i+1,1]*np.cos(config.PLATFORM_INIT_POSE[2]))
-    orientations = np.zeros(4)
-    for i in range(4):
+    orientations = np.zeros(config.N_AUV)
+    for i in range(config.N_AUV):
         orientations[i] = leader_pos[2]
     controller.update_leader_ori(leader_pos[2])
     # Temporal Variable
@@ -156,7 +156,7 @@ def simulation(control_input, target_est, leader_pos, sensor, controller, covari
             arr = [t,measure_,meas_pos[0],meas_pos[1]]
             meas_table.append(arr)
             j = j + 1
-            if j == 4:
+            if j == config.N_AUV:
                 j = 0
         # update WITH NEW MEASURAMENT
         else: 
@@ -358,8 +358,8 @@ def main():
         #problem_simplified = Simple(t_est, s_state, DELTA, sensors, cpf_control, ctrl_cmd, covariance)
         #results_preview = solver.solve(problem,queue_strategy="objective",node_limit=limit)#
         #lower_bound = results_preview.objective
-        results = solver.solve(problem,queue_strategy="objective" ,objective_stop=90000,node_limit=limit)#tnode_limit=limi #Uniform cost search con "objective"
-        best_node_states = results.best_node.state #objective_stop=4000000,time_limit=5
+        results = solver.solve(problem,queue_strategy="objective" ,node_limit=limit)#tnode_limit=limi #Uniform cost search con "objective"
+        best_node_states = results.best_node.state #objective_stop=90000,time_limit=5
         wall_time = results.wall_time
         nodes = results.nodes
         avg_nodes.append(nodes)
@@ -406,13 +406,16 @@ def main():
             print('COUNT LOW-------------------------------',count_low)
             print('COUNT MAX+++++++++++++++++++++++++++++++',count_max)
 
-        #SAVE DATA FOR PLOT    
-        np.savetxt(plot_path+'/plot_cmds.txt',ctrl_plot)
+        #SAVE DATA FOR PLOT
+        #if config.TROIA == True:       
+        #    np.savetxt(plot_path+'/plot_cmds.txt',ctrl_plot)
+        #else:
+        np.savetxt(plot_path+'/plot_cmds_off.txt',ctrl_plot)
         np.savetxt(plot_path+'/t_est_x_opt.txt',t_est_x)
         np.savetxt(plot_path+'/t_est_y_opt.txt',t_est_y)
         np.savetxt(plot_path+'/s_state_x.txt',s_state_x)
         np.savetxt(plot_path+'/s_state_y.txt',s_state_y)
-        
+
         np.savetxt(plot_path+'/wall_times.txt',avg_time)
         np.savetxt(plot_path+'/nodes.txt',avg_nodes)
         ctrl_opt = []

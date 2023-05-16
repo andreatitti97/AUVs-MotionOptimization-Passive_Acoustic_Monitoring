@@ -1,19 +1,19 @@
 from math import pi
 import numpy as np
 # Simulation parameters
-TIME_DURATION = 600 # (s)
+TIME_DURATION = 300 # (s)
 TIME_STEP = 0.01
 TIME_SCALER = 80 # MAX for communication purpose 
 OPTIMIZATION_ON = False
 
 # Estimation Parameters
 TP = 40 # regressor MAX length
-STATE_PROPAGATION = 12 #time between each propagation of the estimation (in real case a consensus (?))
+STATE_PROPAGATION = 6 #time between each propagation of the estimation (in real case a consensus (?))
 SIGMA_MEAS = 0.002 # uncertainty = 5° --> sigma^2 = (uncertainty*pi/180)^2
-MEAS_UPDATE = 3 #STATE_PROPAGATION/4 # MEAS_UPDATE (s)= meas_update*(TIME_SCALER*TIME_STEP)
+MEAS_UPDATE = 1#3 #STATE_PROPAGATION/4 # MEAS_UPDATE (s)= meas_update*(TIME_SCALER*TIME_STEP)
 
 # Team parameter: number of agents, baselines_XY, inital position, type of formation
-N_AUV = 4
+N_AUV = 2
 PLATFORM_INIT_POSE = [0, 0, 0] #[x,y,theta]
 AUV_VEL = 2.0 #(m/s)
 AUV_MAX_VEL = 4.0 #(m/s)
@@ -22,12 +22,14 @@ GAIN_YAW_RATE = 0.1
 # PARTE SEMPRE DA UNA DISTANZA COMPRESA TRA I 3.5 E 5 KM con velocità da 4 a 8 m/s
 # Target parameter: start, goal, min max vels
 
-
 #TARGET_INIT = [+1000,-2500, pi, 6.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 1
 #TARGET_INIT = [3000,-1500,pi/2,9.0]#[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 2
-#TARGET_INIT = [4000, 600, 140*pi/180, 8.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 3
+#TARGET_INIT = [4000, 200, 140*pi/180, 8.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 3
 #TARGET_INIT = [-3000, -2000, pi/2, 7.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 4
-TARGET_INIT = [-1500, 2000, pi/8, 5.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 5
+#TARGET_INIT = [-1500, 2000, pi/8, 5.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 5
+
+
+TARGET_INIT = [400,-200, pi/2, 3.0]
 
 TARGET_GOAL = [100, 100,TARGET_INIT[2]]
 TARGET_VEL = TARGET_INIT[3] #(m/s)
@@ -35,34 +37,33 @@ MAX_TARGET_VEL = 3 #(m/s) (only if target no costant vels)
 MIN_TARGET_VEL = 3 #(m/s)
 
 # Communication Paramaters (to generalize) - for now based on v-sense data
-s = 0.5
-mean = [3.5/s, 2.0/s, 1.0/s, 0.0]  # medium latencies between each AUV and the 4th (in fact latencies 0.0 for the 4th).
-variance = [0.6, 0.4, 0.2, 0.0] # the same as before vor the variances.
-#mean = [1.0, 0.8, 0.6, 0.0 ]
-#variance = [0.2, 0.1, 0.1, 0.0]
+s = 1 #0.5
+mean = [3.5/s, 2.0/s, 1.0/s, 0.0]  #medium latencies between each AUV and the 4th (in fact latencies 0.0 for the 4th).
+variance = [0.6, 0.4, 0.2, 0.0] #the same as before vor the variances.
+
 # Optimization Parameters
 OPTIMIZATION_TIME_STEP = STATE_PROPAGATION*(TIME_SCALER*TIME_STEP) #VA INTESO COME delta_k (planning stage)in secondi
-k_max = 10*pi/180 
-delta_k = 0#0.8*pi/180 
+k_max = 15*pi/180 
+delta_k = 0#3*pi/180 
 U = 5 #number of control choices
-M = 4 # planning horizon
+M = 3 # planning horizon
 ctrl_cmd = [-k_max, -k_max*4/(U),0,k_max*4/(U),k_max] #set of control actions
 #ctrl_cmd = [-k_max, -k_max*4/(U),-k_max*2/(U),0,k_max*2/(U),k_max*4/(U),k_max] #set of control actions
 
 # Cooperative Path Following Params
 a, b = 1, -1
 K_att = 1.0# for in line -> 0.05 # Attractive gain
-K_rep = 0.0#1.0 #for in line -> 10.0 # Repulsive gain
+K_rep = 0.0 #1.0 #for in line -> 10.0 # Repulsive gain
 d_rep = 150 # Distance threshold for repulsion
 # CHOOSE THE GEOMETRY BETWEEN THE AGENTS
-geometry = 'column'
+geometry = 'column2'
 
 if geometry == 'line':
     formation =  np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],
+                            [0, 300],
                             [0,-100], 
                             [0, 100], 
-                            [0,-300],
-                            [0, 300]]) # IN LINEA 
+                            [0,-300]]) # IN LINEA 
     
 elif geometry == 'column':
     formation = np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],
@@ -73,10 +74,21 @@ elif geometry == 'column':
     
 elif geometry == 'polygon':
     formation =  np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],
+                            [170,-200],
                             [0, 100], 
                             [0,-100], 
-                            [170,200], 
-                            [170,-200]]) # TRAPEZOIDALE
+                            [170,200]]) # TRAPEZOIDALE
+    
+elif geometry == 'line2':
+    formation =  np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],
+                            [0, -25],
+                            [0, +25]]) # TRAPEZOIDALE
+    
+elif geometry == 'column2':
+    formation =  np.array([[PLATFORM_INIT_POSE[0], PLATFORM_INIT_POSE[1]],
+                            [-5, 0],
+                            [-55, 0]]) # TRAPEZOIDALE 
+
 
 'REMARK ABOUT SIMULATION TIME & COMMUNICATION PERFORMANCES'
 '''

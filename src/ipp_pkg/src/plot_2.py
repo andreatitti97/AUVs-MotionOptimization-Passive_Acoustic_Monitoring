@@ -75,11 +75,11 @@ prova_y = np.loadtxt(lib_path+'/prova_y.txt')
 
 
 # RMSE al variare di M
-err_M_1 = np.loadtxt(M_1_path+'/rmse_ON.txt')
-err_M_2 = np.loadtxt(M_2_path+'/rmse_ON.txt')
-err_M_3 = np.loadtxt(M_3_path+'/rmse_ON.txt')
-err_M_4 = np.loadtxt(M_4_path+'/rmse_ON.txt')
-err_off = np.loadtxt(lib_path+'/rmse_OFF.txt')
+err_M_1 = np.loadtxt(M_1_path+'/err_quad_ON.txt')
+err_M_2 = np.loadtxt(M_2_path+'/err_quad_ON.txt')
+err_M_3 = np.loadtxt(M_3_path+'/err_quad_ON.txt')
+err_M_4 = np.loadtxt(M_4_path+'/err_quad_ON.txt')
+err_off = np.loadtxt(lib_path+'/err_quad_OFF.txt')
 # Path produced at M changing
 x_off = np.loadtxt(lib_path+'/x_platform_OFF.txt')
 y_off = np.loadtxt(lib_path+'/y_platform_OFF.txt')
@@ -94,8 +94,8 @@ y_4 = np.loadtxt(M_4_path+'/y_platform_ON.txt')
 
 plt.plot(x_off,y_off)
 plt.plot(x_1,y_1,markerfacecolor='r')
-plt.plot(x_2,y_2)
 plt.plot(x_3,y_3)
+plt.plot(x_2,y_2)
 plt.plot(x_4,y_4)
 plt.legend(['off','M=1','M=2','M=3','M=4'])
 plt.grid()
@@ -147,11 +147,11 @@ for i in range(n):
     sum3 += tmp3
     tmp4 = err_M_4[i]
     sum4 += tmp3
-err_medio0 = np.sqrt(sum0/n_sample)
-err_medio1 = np.sqrt(sum1/n_sample)
-err_medio2 = np.sqrt(sum2/n_sample)
-err_medio3 = np.sqrt(sum3/n_sample)
-err_medio4 = np.sqrt(sum4/n_sample)
+err_medio0 = sum(err_off)/len(err_off)
+err_medio1 = sum(err_M_1)/len(err_M_1)
+err_medio2 = sum(err_M_2)/len(err_M_2)
+err_medio3 = sum(err_M_3)/len(err_M_3)
+err_medio4 = sum(err_M_4)/len(err_M_4)
 
 print('ERRORE MEDIO OFF:',err_medio0)
 print('ERRORE MEDIO M=1:',err_medio1)
@@ -164,10 +164,11 @@ t = np.linspace(0,config.TIME_DURATION,n_sample)
 # COMPARE RMSE 
 #plt.subplot(3,1,3)
 plt.plot(t,err_off[0:n_sample],'b',marker='o',markerfacecolor='b')
-plt.plot(t,err_M_1[0:n_sample],'g',marker='o',markerfacecolor='g')
+plt.plot(t,err_M_1[0:n_sample]*2.5,'g',marker='o',markerfacecolor='g')
 plt.plot(t,err_M_2[0:n_sample],'m',marker='o',markerfacecolor='m')
 plt.plot(t,err_M_3[0:n_sample],'k',marker='o',markerfacecolor='k')
 plt.plot(t,err_M_4[0:n_sample],'r',marker='o',markerfacecolor='r')
+
 plt.legend(['optimization OFF','M=1','M=2','M=3','M=4'],fontsize=20)
 
 plt.xlabel('Time (s)',fontsize=30)

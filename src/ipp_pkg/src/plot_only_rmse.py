@@ -111,14 +111,14 @@ else:
     n = len(err_on)
 t = np.linspace(0,config.TIME_DURATION,n)
 plt.plot(t,(err_off[0:n]),'b',marker='o',markerfacecolor='b') #err_off contiene e(t) = ex + ey, dove ex = (x - x_hat)**2
-plt.plot(t,(err_on[0:n]),'g',marker='o',markerfacecolor='g')
+plt.plot(t,((err_on[0:n])),'g',marker='o',markerfacecolor='g')
 y_on = []
 y_off = []
 for i in range(len(t)):
     y_off.append(errore_medio_off)
     y_on.append(errore_medio_on)
-plt.plot(t,(y_off),'b--')
-plt.plot(t,(y_on),'g--')
+#plt.plot(t,(y_off),'b--')
+#plt.plot(t,(y_on),'g--')
 plt.legend(['optimization OFF','optimization ON'],fontsize=20)
 
 plt.xlabel('Time (s)',fontsize=30)
@@ -126,4 +126,4 @@ plt.ylabel('Residual Error (m)',fontsize=30)
 plt.yticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
 plt.xticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
 plt.grid()
-#plt.show()
+plt.show()

@@ -35,6 +35,8 @@ cpf = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(cpf)
 # PATH DEFINITON
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
+#plot_path = os.path.abspath('/home/andrea/Scrivania/TEST_PAPER/preliminary/test_al_variare_M/M4')
+#plot_path = os.path.abspath('/home/PLOT_TARGET_DYNAMICS_EXP2')
 # Time counter
 t = 0
 # INIT lists for plot
@@ -46,6 +48,19 @@ err_quad, err, bearing1, bearing2 = [], [], [],[]
 cov1, cov2, cov3, cov4 = [],[],[],[]
 prova_x,prova_y = [], []
 des1_x, des1_y, des2_x, des2_y, des3_x, des3_y, des4_x, des4_y = [], [], [], [], [], [], [], []
+
+cond_phi = []
+
+def compute_cost(phi,length_y):
+
+    tmp_phi = np.zeros((length_y,4))
+    for i in range(length_y):
+        a = phi[i]
+        tmp_phi[i,:] = [a[0],a[1],a[2],a[3]]
+
+    A = np.dot(np.transpose(tmp_phi),tmp_phi)
+    cost = np.linalg.norm(np.linalg.inv(A))*np.linalg.norm(A)
+    return cost
 
 def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientation):
     """Simulate the sensor platform and the moving target"""
@@ -83,16 +98,9 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
     while t <= config.TIME_DURATION:
         rospy.loginfo('SIMULATION TIME(s)')
         rospy.loginfo(t)
-
-        # Simulate the delays of the acoustic communication channel
-        #for i in range(config.N_AUV-1):
-        # Compute the delay of the msg of heach auvs
-            
-
+        
         # Simulate Sensor Measuraments
         if count1 % config.MEAS_UPDATE == 0 and count1 > 0:
-        # If time to transmit
-
             # Make measurements
             [measure_, rel_bearing_, meas_pos] = auv[k].measureBearing(target.pose.x,target.pose.y,positions[k], orientations[k])
             arr = [t,measure_,meas_pos[0],meas_pos[1]]
@@ -102,7 +110,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
             if k == 2:
                 k = 0
             
-        for i in range(3):
+        for i in range(config.N_AUV-1):
             if flags[i] == 0 and propagation == False:
                 delay[i] += config.TIME_STEP*config.TIME_SCALER
 
@@ -112,22 +120,23 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
             if  delay[j] >= config.mean[j] + sigma:
                 delay[j] = 0.0
                 flags[j] = 1
-                if np.sum(delay) == 0.0 and np.sum(flags)==3:
-                    [measure_, rel_bearing_, meas_pos] = auv[3].measureBearing(target.pose.x,target.pose.y,positions[3], orientations[3])
+                if np.sum(delay) == 0.0 and np.sum(flags)==(config.N_AUV-1):
+                    [measure_, rel_bearing_, meas_pos] = auv[config.N_AUV-1].measureBearing(target.pose.x,target.pose.y,positions[config.N_AUV-1], orientations[config.N_AUV-1])
                     arr = [t,measure_,meas_pos[0],meas_pos[1]]
                     meas_table.append(arr)
                     propagation = True
         
         # SIMULATE the ESTIMATIONS
         if propagation == True:
-            #time.sleep(50)
+
             obs[0].processMeasurement(meas_table)
             obs[0].propagate_estimation(t)
             meas_table = []
             flags = [0,0,0,0]
             # Retrieve Estimation
             curr_est, phi, y = obs[0].state
-
+            cost = compute_cost(phi,len(y))
+            cond_phi.append(cost)
             # Compute Covariance of the target state - USING FORGETTING FACTOR and RE-WEIGHTED estimation over the range-ratio
             R = np.zeros((len(y),len(y))) #matrice diagonale perchè errori sulle singole misure indipendenti tra loro            
             for i in range(len(y)): 
@@ -144,7 +153,6 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
                 x = np.dot(tmp_2,tmp_) # stima pesata su distanza + forgetting factor
             else: 
                 cov = np.zeros((4,4))
-            
             
 
             if count1 > 12: 
@@ -203,15 +211,6 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
                       
         ##################### SAVE THE POSITIONS OF TEAM REFERENCE/AGENTS/TARGET/ STATE FOR PLOT ########################
         
-        des1_x.append(desired_pos[0,0])
-        des1_y.append(desired_pos[0,1])
-        des2_x.append(desired_pos[1,0])
-        des2_y.append(desired_pos[1,1])
-        des3_x.append(desired_pos[2,0])
-        des3_y.append(desired_pos[2,1])
-        des4_x.append(desired_pos[3,0])
-        des4_y.append(desired_pos[3,1])
-
         platform_x.append(leader_pos[0])
         platform_y.append(leader_pos[1])
         auv1_x.append(positions[0,0])
@@ -219,11 +218,11 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
         auv2_x.append(positions[1,0])
         auv2_y.append(positions[1,1])
 
-        auv3_x.append(positions[2,0])
-        auv3_y.append(positions[2,1])
+        #auv3_x.append(positions[2,0])
+        #auv3_y.append(positions[2,1])
 
-        auv4_x.append(positions[3,0])
-        auv4_y.append(positions[3,1])
+        #auv4_x.append(positions[3,0])
+        #auv4_y.append(positions[3,1])
 
         target_x_traj.append(target.pose.x)
         target_y_traj.append(target.pose.y)
@@ -240,11 +239,13 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
             
             np.savetxt(plot_path+'/target_x_traj.txt',target_x_traj)
             np.savetxt(plot_path+'/target_y_traj.txt',target_y_traj)
-            np.savetxt('/home/andrea/target_dynamic5_x.txt',target_x_traj)
-            np.savetxt('/home/andrea/target_dynamic5_y.txt',target_y_traj)
+            #np.savetxt(plot_path+'/target_dynamic1_x.txt',target_x_traj)
+            #np.savetxt(plot_path+'/target_dynamic1_x.txt',target_y_traj)
+            np.savetxt('/home/andrea/PLOT_TARGET_DYNAMICS_EXP2/target_dynamic3_x.txt',target_x_traj)
+            np.savetxt('/home/andrea/PLOT_TARGET_DYNAMICS_EXP2/target_dynamic3_y.txt',target_y_traj)
 
             if config.OPTIMIZATION_ON == True:
-
+            #if config.TROIA == True:
                 np.savetxt(plot_path+'/est4_x_ON.txt',est4_x)
                 np.savetxt(plot_path+'/est4_y_ON.txt',est4_y)
                 np.savetxt(plot_path+'/err_quad_ON.txt',err_quad)
@@ -265,14 +266,8 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
                 np.savetxt(plot_path+'/cov4_ON.txt',cov4)
                 np.savetxt(plot_path+'/vx_ON.txt',est4_vx)
                 np.savetxt(plot_path+'/vy_ON.txt',est4_vy)
-                np.savetxt(plot_path+'/des1_x',des1_x)
-                np.savetxt(plot_path+'/des1_y',des1_y)
-                np.savetxt(plot_path+'/des2_x',des2_x)
-                np.savetxt(plot_path+'/des2_y',des2_y)
-                np.savetxt(plot_path+'/des3_x',des3_x)
-                np.savetxt(plot_path+'/des3_y',des3_y)
-                np.savetxt(plot_path+'/des4_x',des4_x)
-                np.savetxt(plot_path+'/des4_y',des4_y)
+                np.savetxt(plot_path+'/cond_ON',cond_phi)
+
             else:
 
 
@@ -298,6 +293,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
                 np.savetxt(plot_path+'/vy_OFF.txt',est4_vy)
                 np.savetxt(plot_path+'/prova_x.txt',prova_x)
                 np.savetxt(plot_path+'/prova_y.txt',prova_y)
+                np.savetxt(plot_path+'/cond_OFF',cond_phi)
                 
                 
         t += config.TIME_STEP*config.TIME_SCALER
