@@ -26,7 +26,6 @@ class Estimator:
         self.__id = id
         self.__phi = []
         self.__y = []
-        self.__w = []
         self.__C = matlib.zeros((1,4))
         self.__t = []
         self.t_prev = 0
@@ -39,17 +38,6 @@ class Estimator:
         return True
 
     def propagation(self, curr_time, prev_time):#compute old state in the regressor and propagation to the actual state
-
-        tmp_y = np.zeros((len(self.__y),1))
-        for i in range(len(self.__y)):
-            tmp_y[i] = self.__y[i]
-        tmp_phi = np.zeros((len(self.__y),4))
-        for i in range(len(self.__y)):
-            a = self.__phi[i]
-            tmp_phi[i,:] = [a[0],a[1],a[2],a[3]]    
-        # Compute Old State
-        self.__x =  np.dot(np.linalg.pinv(tmp_phi),tmp_y) #stato al tempo più vecchio nel regressore.
-
         # Propagate the estimation
         dt = curr_time - self.__t[0] #tempo attuale - tempo ultimo stato noto.
         self.__F = np.matrix([[1,0,dt,0],
@@ -70,20 +58,19 @@ class Estimator:
             self.__y.pop(0) #SHIFT
             self.__t.pop(0)
             self.__phi.pop(0)          
-            for i in range(len(self.__phi)): # UPDATE REGRESSOR COLUMN
-                if prev_t!=self.__t[i]:
-                    tmp = self.__phi[i]
+        for i in range(len(self.__phi)): # UPDATE REGRESSOR COLUMN
+            if prev_t!=self.__t[i]:
+                tmp = self.__phi[i]
+                tmp[2] = ((self.__t[i]-self.__t[0])/(self.__t[i]-prev_t))*tmp[2]
+                tmp[3] = ((self.__t[i]-self.__t[0])/(self.__t[i]-prev_t))*tmp[3]
+                self.__phi[i] = [tmp[0],tmp[1],tmp[2],tmp[3]]
+        # Invert the equations for computing the state at the oldest time in the regressor
+        tmp_y = np.zeros((len(self.__y),1))
+        for i in range(len(self.__y)):
+            tmp_y[i] = self.__y[i]
+        self.__x = np.dot(np.linalg.pinv(self.__phi),tmp_y)
 
-                    tmp[2] = ((self.__t[i]-self.__t[0])/(self.__t[i]-prev_t))*tmp[2]
-                    tmp[3] = ((self.__t[i]-self.__t[0])/(self.__t[i]-prev_t))*tmp[3]
-                    self.__phi[i] = [tmp[0],tmp[1],tmp[2],tmp[3]]
 
-        
-
-
-'''range_ratio= np.tan(measures)
-        w = np.e**(-range_ratio)
-        self.__w.append(w)'''
         
         
 

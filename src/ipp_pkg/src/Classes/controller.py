@@ -44,6 +44,5 @@ class Controller:
         w = self.Kp_alpha*(theta_goal - theta)
         if alpha > np.pi / 2 or alpha < -np.pi / 2:
             v = -v
-
         return v, w
 

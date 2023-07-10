@@ -1,9 +1,9 @@
 import os
 import importlib.util
 import time
-spec = importlib.util.spec_from_file_location("module.dekf", "/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes/estimation.py")
-dekf = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(dekf)
+spec = importlib.util.spec_from_file_location("module.est", "/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes/estimation.py")
+est = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(est)
 lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/scripts/logs')
 
 class Tracker:
@@ -13,7 +13,7 @@ class Tracker:
     '''
     def __init__(self, id, bool):
         self.bool = bool
-        self.__estimator = dekf.Estimator(bool,id)
+        self.__estimator = est.Estimator(bool,id)
         self.id  = id
         self.__curr_time = 0
         self.__prev_time = 0
@@ -32,15 +32,9 @@ class Tracker:
 
 
     def propagate_estimation(self, curr_time):
-
-        if self.bool == True:
-            self.__curr_time = curr_time
-            self.__estimator.propagation(self.__curr_time, self.__prev_time)
-            self.__prev_time = 0
-        else:
-            self.__curr_time = curr_time
-            self.__estimator.propagation(self.__curr_time, self.__prev_time)
-            self.__prev_time = self.__curr_time
+        self.__curr_time = curr_time
+        self.__estimator.propagation(self.__curr_time, self.__prev_time)
+        self.__prev_time = self.__curr_time
 
 
         

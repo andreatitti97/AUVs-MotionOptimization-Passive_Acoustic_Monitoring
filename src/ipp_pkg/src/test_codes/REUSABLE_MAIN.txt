@@ -1,0 +1,64 @@
+
+
+
+'''
+        R[i,j] = (config.SIGMA_MEAS)/(gamma[i]*beta[i]) #for adding re-weighted and forgetting_factor 
+            UNCOMMENT FOR FORGETTING FACTOR AND RE-WEIGHTED ESTIMATION
+            beta = np.zeros((len(y),1))
+            time_ = np.linspace(0,1,len(y)) #pesi tempo
+            beta = np.e**(time_)
+            w = np.zeros((len(range_ratio),1)) 
+            for i in range(len(range_ratio)):
+                w[i] = range_ratio[i]
+            gamma = np.e**(w) # pesi distanza    
+            '''
+            
+
+'''
+            # FILTER THE ESTIMATE
+            # alpha = 0.5
+            #curr_est = alpha*old_est+(1-alpha)*curr_est '''
+
+'''cov_ = np.linalg.inv(np.dot(np.dot(np.transpose(phi),np.linalg.inv(a*np.identity(len(y)))),phi))
+                cov2_ = np.linalg.inv(np.dot(np.dot(np.transpose(phi2),np.linalg.inv(a*np.identity(len(y2)))),phi2))
+                cov3_ = np.linalg.inv(np.dot(np.dot(np.transpose(phi3),np.linalg.inv(a*np.identity(len(y3)))),phi3))
+                cov4_ = np.linalg.inv(np.dot(np.dot(np.transpose(phi4),np.linalg.inv(a*np.identity(len(y4)))),phi4))
+                
+                omega1 = np.linalg.inv(cov_)
+                omega2 = np.linalg.inv(cov2_)
+                omega3 = np.linalg.inv(cov3_)
+                omega4 = np.linalg.inv(cov4_)
+
+                # TEST INFORMATION FUSION
+                q_1_t = np.dot(omega1,curr_est)
+                q_2_t = np.dot(omega2,curr_est2)
+                q_3_t = np.dot(omega3,curr_est3)
+                q_4_t = np.dot(omega4,curr_est4)
+                omega1_f = 1/4*omega1+1/4*omega2+1/4*omega3+1/4*omega4
+                q_1_f = (1/4*q_1_t+1/4*q_2_t+1/4*q_3_t+1/4*q_4_t)
+                    
+
+
+
+                tmp_ = np.dot(np.transpose(phi),np.dot(np.linalg.inv(R),y))
+                tmp_2 = np.linalg.inv(np.dot(np.dot(np.transpose(phi),np.linalg.inv(R)),phi))
+                x = np.dot(tmp_2,tmp_) # stima pesata su distanza + forgetting factor
+                                estf = np.dot(np.linalg.inv(omega1_f),q_1_f)'''
+
+'''
+TRIVIAL SIMULATION PACKET LOSS
+
+                if i == 0:
+                    idx1 = 0
+                    idx2 = 3
+                elif i == 1:
+                    idx1 = 1
+                    idx2 = 7
+                elif i == 2:
+                    idx1 = 2
+                    idx2 = 8
+                elif i == 3:
+                    idx1 = 4
+                    idx2 = -1
+                obs[i].processMeasurement(meas_table[idx1:idx2])
+'''

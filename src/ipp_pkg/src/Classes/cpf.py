@@ -31,7 +31,7 @@ class CooperativePathFollowing:
 
     def saturateVel(self,vel):
         if self.bool == False:
-            self.v_max = 3* self.v_max                
+            self.v_max = 20* self.v_max                
         if vel > self.v_max:
             print('SATURATED VELS +++++++++++++++++++++++++++++++++++++++++++++++++ ',vel)
             vel = self.v_max
@@ -112,8 +112,6 @@ class CooperativePathFollowing:
                 
                 angular_vel_leader = self.ko*(goal_theta - self.theta)
 
-                    
-
         # Update Leader Position
         self.theta = (self.theta + angular_vel_leader*dt)
         tmp1 = leader_pos[0] + self.desired_vel*np.cos(self.theta)*dt
@@ -127,14 +125,8 @@ class CooperativePathFollowing:
         for i in range(self.n_agents):
             orientations[i] = orientations[i] + self.ko/2*error_angular[i]*dt
             tmp1 = self.saturateVel((self.desired_vel*np.cos(orientations[i]) + F_total_follower[i,0]*dt)*dt)
-            tmp2 = self.saturateVel((self.desired_vel*np.sin(orientations[i]) + F_total_follower[i,1]*dt)*dt)
-            
-            #tmp1 = self.saturateVel(F_total_follower[i,0]*dt*dt)
-            #tmp2 = self.saturateVel(F_total_follower[i,1]*dt*dt)
-            
-            tmp1 = positions[i,0] + tmp1
-            tmp2 = positions[i,1] + tmp2
-            positions[i,0] = tmp1
-            positions[i,1] = tmp2
+            tmp2 = self.saturateVel((self.desired_vel*np.sin(orientations[i]) + F_total_follower[i,1]*dt)*dt)          
+            positions[i,0] = positions[i,0] + tmp1
+            positions[i,1] = positions[i,1] + tmp2
 
         return leader_pos, self.theta, positions, orientations, desired_position

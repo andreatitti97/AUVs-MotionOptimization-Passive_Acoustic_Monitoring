@@ -1,0 +1,46 @@
+'''
+UNCOMMENT FOR STATS ABOUT BRANCH AND BOUND
+avg_nodes = sum(nodes)/len(nodes)
+avg_wall_time = sum(wall_times)/len(wall_times)
+
+sum1 = 0
+sum2 = 0
+for i in range(len(nodes)):
+    sum1 += np.abs(nodes[i]-avg_nodes)
+    sum2 += wall_times[i]-avg_wall_time
+var_nodes = sum1/len(nodes)
+var_wall_time = sum2/len(wall_times) #varianza quadratica
+
+print('AVG NODES',avg_nodes)
+print('VAR NODES',np.sqrt(var_nodes))
+print('AVG TIME', avg_wall_time)
+print('VAR TIME',np.sqrt(avg_wall_time))
+'''
+'''plt.subplot(2,1,1)
+plt.plot(t[0:n],est4_x_OFF[0:n])
+plt.plot(t[0:n],est4_x_ON[0:n])
+plt.plot(t[0:n],real_x[0:n])
+plt.legend(['OFF','ON','REAL'])
+plt.grid()
+plt.subplot(2,1,2)
+plt.plot(t[0:n],est4_y_OFF[0:n])
+plt.plot(t[0:n],est4_y_ON[0:n])
+plt.plot(t[0:n],real_y[0:n])
+plt.legend(['OFF','ON','REAL'])
+plt.grid()
+plt.show()'''
+
+'''
+# CPF DEBUG 
+des1_x = np.loadtxt(lib_path+'/des1_x')
+des1_y = np.loadtxt(lib_path+'/des1_y')
+des2_x = np.loadtxt(lib_path+'/des2_x')
+des2_y = np.loadtxt(lib_path+'/des2_y')
+des3_x = np.loadtxt(lib_path+'/des3_x')
+des3_y = np.loadtxt(lib_path+'/des3_y')
+des4_x = np.loadtxt(lib_path+'/des4_x')
+des4_y = np.loadtxt(lib_path+'/des4_y')
+
+# BnB stats
+wall_times = np.loadtxt(lib_path+'/wall_times.txt')
+nodes = np.loadtxt(lib_path+'/nodes.txt')'''
