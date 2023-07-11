@@ -127,7 +127,7 @@ plt.xlabel('Time (s)',fontsize=30)
 plt.ylabel('Residual Error (m)',fontsize=30)
 plt.yticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
 plt.xticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
-plt.grid()
+plt.grid() 
 plt.show()
 
 

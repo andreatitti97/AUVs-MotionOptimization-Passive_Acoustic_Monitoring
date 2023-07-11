@@ -18,7 +18,7 @@ class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Cla
 spec = importlib.util.spec_from_file_location("module.config", class_path+"/config.py")
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
-spec = importlib.util.spec_from_file_location("module.tracker", class_path+"/tracker.py")
+spec = importlib.util.spec_from_file_location("module.tracker", class_path+"/tracker_ricorsive.py")
 tracker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tracker)
 spec = importlib.util.spec_from_file_location("module.controller", class_path+"/controller.py")
@@ -65,7 +65,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
     Hz = 1/(config.TIME_STEP) #NB: different from sampling rate for move things, this is ros rate
     rate = rospy.Rate(Hz)
     # Init Time Variables and counters
-    t, count1, j,k = 0, 0, 0, 0
+    t, count1, j,k, timeWindow = 0, 0, 0, 0, 0
     meas_table = []
     cmds = []
     for i in range(config.M):
@@ -102,8 +102,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
                 [measure_, rel_bearing_, meas_pos] = auv[k].measureBearing(target.pose.x,target.pose.y,positions[k], orientations[k])
                 arr = [t,measure_,meas_pos[0],meas_pos[1]]
                 meas_table.append(arr)
-                k = k+1
-                
+                k = k+1    
                 if k == config.N_AUV:
                     k = 0
             
@@ -115,31 +114,36 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
             # If the delay measured is equal to the expected one the msg is arrived to AUV4
             sigma = np.random.uniform(-config.variance[j], config.variance[j])
             if  delay[j] >= config.mean[j] + sigma:
+                
                 delay[j] = 0.0
                 flags[j] = 1
                 
                 if np.sum(delay) == 0.0 and np.sum(flags)==(config.N_AUV):
-                    if len(meas_table) >= 10:
-                        propagation = True    
-
+                    for h in range(len(meas_table)):
+                        obs[j].processMeasurement(meas_table[h])
+                        curr_est, phi, y = obs[0].state
+                        est_x.append(curr_est[0])
+                        est_y.append(curr_est[1])
+                    propagation = True
+                    meas_table = []
+                    flags = [0,0,0,0]
+                    
+                    #time.sleep(5)
         # SIMULATE the ESTIMATIONS
         if propagation == True: #and (count1 % config.OPTIMIZATION_TIME_STEP) == 0 :
-
-            for i in range(config.N_AUV):
-                obs[i].processMeasurement(meas_table)
-                obs[i].propagate_estimation(t)
-
-            meas_table = []
-            flags = [0,0,0,0]
+            for j in range(config.N_AUV):
+                obs[j].propagate_estimation(t)
+            
             # Retrieve Estimations (if packet loss the first to have regressor < threh speaks)
 
             curr_est, phi, y = obs[0].state
-      
+            #print('curr_est',curr_est[0])
+            
             curr_est2, phi2, y2 = obs[1].state
             curr_est3, phi3, y3 = obs[2].state
             curr_est4, phi4, y4 = obs[3].state
-            cost = compute_cost(phi,len(y))
-            cond_phi.append(cost)
+            #cost = compute_cost(phi,len(y))
+            #cond_phi.append(cost)
             
             # Compute Covariance of the target state
             R = np.zeros((len(y),len(y))) #matrice diagonale perchè errori sulle singole misure indipendenti tra loro            
@@ -151,14 +155,22 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
                         R[i,j] = 0 
             if count1 > 0 and len(phi)>=4:
                 a = config.SIGMA_MEAS
-                cov = np.linalg.inv(np.dot(np.dot(np.transpose(phi),np.linalg.inv(a*np.identity(len(y)))),phi))
+                #cov = np.linalg.inv(np.dot(np.dot(np.transpose(phi),np.linalg.inv(a*np.identity(len(y)))),phi))
+                cov = np.zeros((4,4))
             else: 
                 cov = np.zeros((4,4))
 
-            est_x.append(curr_est[0,0])
-            est_y.append(curr_est[1,0])
-            est_vx.append(curr_est[2,0])
-            est_vy.append(curr_est[3,0])
+            #if count1 > 12: 
+                # Save Estimations
+            print('CURR_EST',curr_est)
+            print('TRUE STATE',target.pose.x,target.pose.y,np.cos(config.TARGET_INIT[2])*config.TARGET_INIT[3],np.sin(config.TARGET_INIT[2])*config.TARGET_INIT[3])
+            
+            est_x.append(curr_est[0])
+            est_y.append(curr_est[1])
+            est_vx.append(curr_est[2])
+            est_vy.append(curr_est[3])
+
+            #time.sleep(5)
 
             # Save Covariance associated 
             cov1.append(cov[0,0])
@@ -166,8 +178,8 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
             cov3.append(cov[2,2])
             cov4.append(cov[3,3])
 
-            err_x = (target.pose.x - curr_est[0,0])
-            err_y = (target.pose.y - curr_est[1,0])
+            err_x = (target.pose.x - curr_est[0])
+            err_y = (target.pose.y - curr_est[1])
             e = np.sqrt(err_x**2+err_y**2)
 
             err_quad.append(e)
@@ -293,7 +305,8 @@ def main():
     # Set the AUV and the TARGET to the initial conditions
     target_ = target.Target()
     target_.set_start_target_poses(pose)      
-
+    initial_guess = np.array([pose.x+np.random.normal(0,0),pose.y+np.random.normal(0,0),config.TARGET_INIT[3]*np.cos(config.TARGET_INIT[2]),config.TARGET_INIT[3]*np.sin(config.TARGET_INIT[2])])
+    initial_guess = np.array([pose.x+np.random.normal(0,5),pose.y+np.random.normal(0,5),0,0])
     # Sensor and AUVs Initialization
     auv = []
     for i in range(config.N_AUV): #TODO: AUV up to 6 consider
@@ -301,10 +314,10 @@ def main():
 
     # Init trackers 
     trackers = []
-    tracker1 = tracker.Tracker('first_observer', False)
-    tracker2 = tracker.Tracker('second_observer', False)
-    tracker3 = tracker.Tracker('third_observer', False)
-    tracker4 = tracker.Tracker('fourth_observer', False)
+    tracker1 = tracker.Tracker('first_observer', False,initial_guess)
+    tracker2 = tracker.Tracker('second_observer', False,initial_guess)
+    tracker3 = tracker.Tracker('third_observer', False,initial_guess)
+    tracker4 = tracker.Tracker('fourth_observer', False,initial_guess)
 
     trackers.append(tracker1)
     trackers.append(tracker2)
@@ -317,10 +330,11 @@ def main():
     # Run The Simulation
     if config.OPTIMIZATION_ON == True:
         rospy.loginfo('LAUNCH THE OPTIMIZATION')
-        time.sleep(3)# wait for optimization to launch
-        rospy.loginfo('STARTED SIMULATION - OPTIMIZATION ON')
+        
+        rospy.loginfo('STARTED SIMULATION RECURSIVE- OPTIMIZATION ON')
     else:
-        rospy.loginfo('STARTED SIMULATION - OPTIMIZATION OFF')
+        rospy.loginfo('STARTED SIMULATION RECURSIVE- OPTIMIZATION OFF')
+        time.sleep(3)# wait for optimization to launch
     
     run_simulation(target_, trackers, auv, pub, cpf_control, config.formation, config.PLATFORM_INIT_POSE[2])
 

@@ -5,18 +5,18 @@ TIME_DURATION = 600 # (s)
 TIME_STEP = 0.01
 TIME_SCALER = 80 # TIME SCALER OF THE SIMULATION 
 OPTIMIZATION_ON = True
-time_scaler = 5 # TIME SCALER OF THE SIMULATION INSIDE OPTIMIZATION
+
 
 # Estimation Parameters
-TP = 50 # regressor MAX length
-STATE_PROPAGATION = 100 #time between each propagation of the estimation (in real case a consensus (?))
-SIGMA_MEAS = 0.005 # uncertainty = 5° --> sigma^2 = (uncertainty*pi/180)^2
-MEAS_UPDATE = 3# 3 for 4 auv
+TP = 40 # regressor MAX length
+
+SIGMA_MEAS = 0.05# # uncertainty = 5° --> sigma^2 = (uncertainty*pi/180)^2
+
 
 # Team parameter: number of agents, baselines_XY, inital position, type of formation
 PLATFORM_INIT_POSE = [0, 0, 0] #[x,y,theta]
-AUV_VEL = 1.0 #(m/s)#2
-AUV_MAX_VEL = 2.0 #(m/s)#4
+AUV_VEL = 1.0 #(m/s)#2 # nominal vel
+AUV_MAX_VEL = 2.0 #(m/s)#4 # max vel considering v_coop
 GAIN_YAW_RATE = 0.1 
 
 # Target parameter: start, goal, min max vels
@@ -25,29 +25,34 @@ GAIN_YAW_RATE = 0.1
 #TARGET_INIT = [+2000,-2500, pi, 2.5] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 1
 #TARGET_INIT = [3000,-1500,pi/2,9.0]#[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 2
 TARGET_INIT = [4000, 200, 140*pi/180, 8.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 3
-#TARGET_INIT = [-3000, -2000, pi/2, 7.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 4
+TARGET_INIT = [-3000, -2000, pi/2, 7.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 4
 #TARGET_INIT = [-1500, 2000, pi/8, 5.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 5
 
 #TARGET_INIT = [1300,0,140*pi/180,3.0] - SIMPLE CASE (lower distances)
 #TARGET_INIT = [400,-200, pi/2, 3.0]
 #TARGET_INIT = [20,0, pi/2, 1.0]
-
-TARGET_GOAL = [100, 100,TARGET_INIT[2]]
+TARGET_INIT = [-1000, -500, pi/2, 8.0] #[x(m),y(m),theta(rad),linear vel(m/s)]
 TARGET_VEL = TARGET_INIT[3] #(m/s)
 MAX_TARGET_VEL = 3 #(m/s) (only if target no costant vels)
 MIN_TARGET_VEL = 3 #(m/s)
 
 # Communication Paramaters (to generalize) - for now based on v-sense data
-s = 1.0#0.5 for 4 auv 0.5 while for 2 AUV 1
-mean = [3.5/s, 2.0/s, 1.0/s, 0.0]#2  #medium latencies between each AUV and the 4th (in fact latencies 0.0 for the 4th).
-variance = [0.6, 0.4, 0.2, 0.0]*2 #the same as before vor the variances.
+s = 1#0.5#5#10#0.5 for 4 auv 0.5 while for 2 AUV 1
+mean = [s*5.0, s*2.5, s*1.5, 0.0]  #medium latencies between each AUV and the 4th (in fact latencies 0.0 for the 4th).
+variance = [s*1.0, s*0.8, s*0.3, 0.0] #the same as before vor the variances.
 
+
+MEAS_UPDATE = mean[0]/s# 3 for 4 auv
+time_scaler = 5 # TIME SCALER OF THE SIMULATION INSIDE OPTIMIZATION
 # Optimization Parameters
-OPTIMIZATION_TIME_STEP = STATE_PROPAGATION*(TIME_SCALER*TIME_STEP) #VA INTESO COME delta_k (planning stage)in secondi
-k_max = 15*pi/180 
-delta_k = 3*pi/180 
+STATE_PROPAGATION = mean[0] #time between each propagation of the estimation (in real case a consensus (?))
+
+k_max = 35*pi/180 #20
+delta_k = 5*pi/180 #3
 U = 7 #number of control choices
-M = 3 # planning horizon
+M = 4 # planning horizon
+OPTIMIZATION_TIME_STEP = STATE_PROPAGATION*(TIME_SCALER*TIME_STEP) #VA INTESO COME delta_k (planning stage)in secondi
+
 
 #ctrl_cmd = [-k_max, -k_max*4/(U),0,k_max*4/(U),k_max] # simplified set of control actions for fast debugging
 ctrl_cmd = [-k_max, -k_max*4/(U),-k_max*2/(U),0,k_max*2/(U),k_max*4/(U),k_max] #set of control actions

@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<launch>
+
+<node pkg="ipp_pkg" type="main_recursive.py" name="main_recursive" output="screen"/>
+
+<node pkg="ipp_pkg" type="optimization.py" name="optimization" output="screen"/>
+
+</launch>

@@ -41,6 +41,10 @@ class CooperativePathFollowing:
             vel = -self.v_max         
         return vel
         
+    #def computePath():
+
+    #def interpolatePath():
+
     def potential_field(self,leader_pos, pos):
         # Calculate the desired positions of the followers in the formation
         formation = config.formation
