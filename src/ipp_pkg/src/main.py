@@ -35,9 +35,7 @@ cpf = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(cpf)
 # PATH DEFINITON
 plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
-### GLOBAL VARIABLESS
-# Time counter
-t = 0
+
 # Init lists for plot
 # Target and AUVs
 target_x_traj, target_y_traj, platform_x, platform_y = [], [], [], []
@@ -58,14 +56,16 @@ def compute_cost(phi,length_y):
 
     return cost2
 
-def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientation):
+
+def run_simulation(target, obs, auv, pub, cpf_control, formation, s_pose):
     """Simulate the sensor platform and the moving target"""
     global count1
     propagation = False
     Hz = 1/(config.TIME_STEP) #NB: different from sampling rate for move things, this is ros rate
     rate = rospy.Rate(Hz)
     # Init Time Variables and counters
-    t, count1, j,k = 0, 0, 0, 0
+    t, count1, j, k, last_cmd = 0, 0, 0, 0, 0
+    dt = config.TIME_STEP*config.TIME_SCALER
     meas_table = []
     cmds = []
     for i in range(config.M):
@@ -75,20 +75,27 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
     for i in range(config.N_AUV):
         delay.append(0.0)
         flags.append(0) 
-
+    # INITIALIZE PATH
+    sp, delta_index, distance = cpf_control.initialize_path(formation)
+    [rx, ry, ryaw, rk, s] = config.calc_spline_course(sp,dt)
     # Init AUVs position and orientation according to given formation
     positions = np.zeros((len(auv),2))
-    leader_pos = np.array([formation[0,0],formation[0,1]])
-    
-    for i in range(0, len(auv)):
-
-        positions[i,0] = leader_pos[0] + config.a*(formation[i+1,0]*np.cos(config.PLATFORM_INIT_POSE[2])+formation[i+1,1]*np.sin(config.PLATFORM_INIT_POSE[2]))
-        positions[i,1] = leader_pos[1] + config.b*(-formation[i+1,0]*np.sin(config.PLATFORM_INIT_POSE[2])+formation[i+1,1]*np.cos(config.PLATFORM_INIT_POSE[2]))
-
     orientations = np.zeros(len(auv))   
-    leader_ori =init_orientation
+
     for i in range(len(auv)):
-        orientations[i] = init_orientation
+        orientations[i] = s_pose[2]
+    
+    if config.geometry == 'line' or config.geometry == 'line2':
+        
+        leader_pos = [s_pose[0],s_pose[1],s_pose[1]]
+        for i in range(0, len(auv)):
+            positions[i,0] = leader_pos[0] + config.a*(formation[i,0]*np.cos(s_pose[2])+formation[i,1]*np.sin(s_pose[2]))
+            positions[i,1] = leader_pos[1] + config.b*(-formation[i,0]*np.sin(s_pose[2])+formation[i,1]*np.cos(s_pose[2]))      
+    elif config.geometry == 'column' or config.geometry == 'column2':     
+        leader_pos = [distance,s_pose[1],s_pose[2]]
+        for i in range(len(auv)):
+            positions[i,0] = leader_pos[0]-formation[i]
+            positions[i,1] = 0
 
     ## SIMULATION LOOP ############################################################################################################
     while t <= config.TIME_DURATION:
@@ -109,7 +116,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
             
         for i in range(config.N_AUV-1):
             if flags[i] == 0 and propagation == False:
-                delay[i] += config.TIME_STEP*config.TIME_SCALER
+                delay[i] += dt
 
         for j in range(config.N_AUV):
             # If the delay measured is equal to the expected one the msg is arrived to AUV4
@@ -119,12 +126,12 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
                 flags[j] = 1
                 
                 if np.sum(delay) == 0.0 and np.sum(flags)==(config.N_AUV):
-                    if len(meas_table) >= 10:
+                    
+                    if len(meas_table) >= 10:#TODO così passano sempre 40 secondi 
                         propagation = True    
 
         # SIMULATE the ESTIMATIONS
         if propagation == True: #and (count1 % config.OPTIMIZATION_TIME_STEP) == 0 :
-
             for i in range(config.N_AUV):
                 obs[i].processMeasurement(meas_table)
                 obs[i].propagate_estimation(t)
@@ -175,30 +182,63 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
             propagation = False
         ############################################# TRIGGER OPTIMIZATION ##############################################
             if config.OPTIMIZATION_ON == True:
-
+                print('LEADER REAL POSE',leader_pos)
                 rospy.loginfo('SENDING DATA')
                 pub[0].publish(np.array(curr_est,dtype=np.float32))
                 rospy.sleep(config.TIME_STEP*10)
-                tmp = [leader_pos[0],leader_pos[1],leader_ori]
+                tmp = [leader_pos[0],leader_pos[1],leader_pos[2]]
                 pub[1].publish(np.array(tmp,dtype=np.float32))
                 rospy.sleep(config.TIME_STEP*10)
-
+                ax = cpf_control.ax
+                ay = cpf_control.ay
+                #ax.append(cpf_control.distance)# ADD THE DISTANCE OF THE TARGET AS LAST ELEMENTN, THEN REMOVE
+                pub[2].publish(np.array(ax,dtype=np.float32))
+                rospy.sleep(config.TIME_STEP*10)
+                #ax.pop(-1)
+                pub[3].publish(np.array(ay,dtype=np.float32))
+                rospy.sleep(config.TIME_STEP*10)
+                tmp = []
+                for i in range(4):
+                    for j in range(4):
+                        tmp.append(cov[i,j])
+                pub[4].publish(np.array(tmp,dtype=np.float32))
+                rospy.sleep(config.TIME_STEP*10)
                 tmp = []
                 for i in range(4):
                     for j in range(4):
                         tmp.append(cov[i,j])
                 pub[2].publish(np.array(tmp,dtype=np.float32))
                 rospy.sleep(config.TIME_STEP*10)
+                print('WAITING FOR CTRL CMD')
                 cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))
                 cmds = cmds.data
 
                 print('RECEIVED CMDS (deg) -------------------------------------------------',cmds*180/pi)
-        
+                cmds = [-5*pi/180]
+                sp, ax, ay, last_cmd = cpf_control.update_path([cmds[0]],last_cmd)
+            [rx, ry, ryaw, rk, s] = config.calc_spline_course(sp,dt)
+
+        #print('lunghezza array POST',len(rx))
+        #print('counter',count1)
         ##################################################################################################################
-             
+        if t > 200:
+            plt.subplots(1)
+            plt.plot(cpf_control.ax, cpf_control.ay, "xb", label="Data points")
+            plt.plot(leader_pos[0],leader_pos[1],'og',label='leader position')
+            for i in range(config.N_AUV):
+                plt.plot(positions[i,0],positions[i,1],'ok',label="AUV"+str(i))
+            plt.plot(rx, ry, "-r", label="Cubic spline path")
+            plt.legend()
+            plt.axis('equal')
+            #plt.show() # uncomment for debugging
+
         ######################################### MOVE THE ROBOTS #######################################################
-        [leader_pos,leader_ori, positions, orientations, desired_pos] = cpf_control.move_agents(leader_pos, cmds[0],config.TIME_STEP*config.TIME_SCALER, positions, orientations, count1, False)
-        target.move_target(config.TIME_STEP*config.TIME_SCALER)
+        #print(ryaw[])
+        distance += config.AUV_VEL*dt
+
+        [leader_pos, positions, orientations] = cpf_control.move_agents(sp, distance,leader_pos,dt, positions, orientations, ryaw[delta_index+count1], False)
+        
+        target.move_target(dt)
         
         #################################################################################################################
                       
@@ -274,7 +314,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, init_orientati
                 np.savetxt(plot_path+'/vy_OFF.txt',est_vy)
                 np.savetxt(plot_path+'/cond_OFF',cond_phi)
                 
-        t += config.TIME_STEP*config.TIME_SCALER
+        t += dt
         count1 += 1
         rate.sleep()
 
@@ -284,12 +324,17 @@ def main():
     pub = []
     pub_estimation = rospy.Publisher('estimation', numpy_msg(Floats), queue_size=10)
     pub_platform_state = rospy.Publisher('platform_state', numpy_msg(Floats), queue_size=100)
-    pub_covariance = rospy.Publisher('covariance', numpy_msg(Floats), queue_size=100)
+    pub_waypoints_x = rospy.Publisher('ax', numpy_msg(Floats), queue_size=100)
+    pub_waypoints_y = rospy.Publisher('ay', numpy_msg(Floats), queue_size=100)
+    pub_cov = rospy.Publisher('cov', numpy_msg(Floats), queue_size=100)
     pub.append(pub_estimation)
     pub.append(pub_platform_state)
-    pub.append(pub_covariance)
+    pub.append(pub_waypoints_x)
+    pub.append(pub_waypoints_y)
+    pub.append(pub_cov)
     # Initial Conditions
     pose = config.Pose(config.TARGET_INIT[0], config.TARGET_INIT[1],  config.TARGET_INIT[2])
+    s_pose = [config.PLATFORM_INIT_POSE[0],config.PLATFORM_INIT_POSE[1],config.PLATFORM_INIT_POSE[2]]
     # Set the AUV and the TARGET to the initial conditions
     target_ = target.Target()
     target_.set_start_target_poses(pose)      
@@ -312,7 +357,7 @@ def main():
     trackers.append(tracker4)
         
     # Cooperative Path Following initialization
-    cpf_control = cpf.CooperativePathFollowing(config.formation, config.N_AUV, config.PLATFORM_INIT_POSE[2], config.K_att, config.K_rep, config.d_rep, config.AUV_VEL, True)
+    cpf_control = cpf.CooperativePathFollowing(config.formation, config.N_AUV, s_pose[2], config.K_att, config.K_rep, config.d_rep, config.AUV_VEL, False)
     
     # Run The Simulation
     if config.OPTIMIZATION_ON == True:
@@ -322,7 +367,7 @@ def main():
     else:
         rospy.loginfo('STARTED SIMULATION - OPTIMIZATION OFF')
     
-    run_simulation(target_, trackers, auv, pub, cpf_control, config.formation, config.PLATFORM_INIT_POSE[2])
+    run_simulation(target_, trackers, auv, pub, cpf_control, config.formation, s_pose)
 
 if __name__ == '__main__':
     main()

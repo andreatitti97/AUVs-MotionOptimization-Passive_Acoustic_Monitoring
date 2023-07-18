@@ -75,3 +75,32 @@ def compute_cost2(phi,len_y):
         predicted = self.F*tmp
 
         return [predicted[0], predicted[1], predicted[2], predicted[3]]'''
+
+
+'''def generatePolynomialTrajectory(ts, y_from, yd_from, ydd_from, y_to, yd_to, ydd_to):
+        
+        a0 = y_from
+        a1 = yd_from
+        a2 = ydd_from / 2
+
+        a3 = -10 * y_from - 6 * yd_from - 2.5 * ydd_from + 10 * y_to - 4 * yd_to + 0.5 * ydd_to
+        a4 = 15 * y_from + 8 * yd_from + 2 * ydd_from - 15  * y_to  + 7 * yd_to - ydd_to
+        a5 = -6 * y_from - 3 * yd_from - 0.5 * ydd_from  + 6 * y_to  - 3 * yd_to + 0.5 * ydd_to
+
+        n_time_steps = ts.size
+        n_dims = y_from.size
+  
+        ys = np.zeros([n_time_steps,n_dims])
+        yds = np.zeros([n_time_steps,n_dims])
+        ydds = np.zeros([n_time_steps,n_dims])
+
+        for i in range(n_time_steps):
+            t = (ts[i] - ts[0]) / (ts[n_time_steps - 1] - ts[0])
+            ys[i,:] = a0 + a1 * t + a2 * pow(t, 2) + a3 * pow(t, 3) + a4 * pow(t, 4) + a5 * pow(t, 5)
+            yds[i,:] = a1 + 2 * a2 * t + 3 * a3 * pow(t, 2) + 4 * a4 * pow(t, 3) + 5 * a5 * pow(t, 4)
+            ydds[i,:] = 2 * a2 + 6 * a3 * t + 12 * a4 * pow(t, 2) + 20 * a5 * pow(t, 3)
+
+        yds /= (ts[n_time_steps - 1] - ts[0])
+        ydds /= pow(ts[n_time_steps - 1] - ts[0], 2)
+        #path = [(path_x[i], path_y[i]) for i in range(len(ts))] # SUGGESTED syntax for eventually polynomial path 
+        return ts, ys, yds, ydds'''
