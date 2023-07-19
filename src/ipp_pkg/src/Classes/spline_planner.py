@@ -7,10 +7,6 @@ Author: Andrea Tiranti
 import math
 import numpy as np
 import bisect
-import os
-import importlib.util
-import time
-from scipy import interpolate
 
 class CubicSpline1D:
     """

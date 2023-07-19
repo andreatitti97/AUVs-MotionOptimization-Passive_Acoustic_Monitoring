@@ -9,23 +9,44 @@ OPTIMIZATION_ON = True
 
 # Estimation Parameters
 TP = 40 # regressor MAX length
-
-SIGMA_MEAS = 0.002# # uncertainty = 5° --> sigma^2 = (uncertainty*pi/180)^2
-
+SIGMA_MEAS = 0.01# # uncertainty = 5° --> sigma^2 = (uncertainty*pi/180)^2
 
 # Team parameter: number of agents, baselines_XY, inital position, type of formation
 PLATFORM_INIT_POSE = [0, 0, 0] #[x,y,theta]
-AUV_VEL = 1.0 #(m/s)#2 # nominal vel
+AUV_VEL = 1.0 #(m/s)#2 # nominal vel 
 AUV_MAX_VEL = 2.0 #(m/s)#4 # max vel considering v_coop
-GAIN_YAW_RATE = 1.0#TODO: check the final tuning 
+GAIN_YAW_RATE = 0.8 
+# Communication Paramaters (to generalize) - for now based on v-sense data
+'''
+BIG LATENCIES
+s = 5
+OPTIMIZATION_TIME_STEP = 40 s
+MEAS_UPDATE = 5
+'''
+MEAS_UPDATE = 3 
+mean = [MEAS_UPDATE*5.0, MEAS_UPDATE*2.5, MEAS_UPDATE*1.5, 0.0]  #medium latencies between each AUV and the 4th (in fact latencies 0.0 for the 4th).
+variance = [MEAS_UPDATE*1.0, MEAS_UPDATE*0.8, MEAS_UPDATE*0.3, 0.0] #the same as before vor the variances.
+OPTIMIZATION_TIME_STEP = np.sum(mean)
 
-# Target parameter: start, goal, min max vels
+# Optimization Parameters
+time_scaler = 5 # TIME SCALER OF THE SIMULATION INSIDE OPTIMIZATION
+u_max = 15*pi/180
+delta_u = 5*pi/180
+MAX = 40*pi/180
+MIN = 5*pi/180
+U = 7 #number of control choices
+M = 3 # planning horizon
+#ctrl_cmd = [-u_max,0,+u_max]
+#ctrl_cmd = [-u_max, -u_max*4/(U),0,u_max*4/(U),u_max] # simplified set of control actions for fast debugging
+ctrl_cmd = [-u_max, -u_max*4/(U),-u_max*2/(U),0,u_max*2/(U),u_max*4/(U),u_max] #set of control actions
+
+# CHOSE Target parameter: start, goal, min max vels
 # PARTE SEMPRE DA UNA DISTANZA COMPRESA TRA I 3.5 E 5 KM con velocità da 4 a 8 m/s
 
 #TARGET_INIT = [+2000,-2500, pi, 2.5] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 1
 #TARGET_INIT = [3000,-1500,pi/2,9.0]#[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 2
-TARGET_INIT = [4000, 200, 140*pi/180, 8.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 3
-#TARGET_INIT = [-3000, -2000, pi/2, 7.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 4
+#TARGET_INIT = [4000, 200, 140*pi/180, 8.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 3
+TARGET_INIT = [-3000, -2000, pi/2, 7.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 4
 #TARGET_INIT = [-1500, 2000, pi/8, 5.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 5
 
 #TARGET_INIT = [1300,0,140*pi/180,3.0] - SIMPLE CASE (lower distances)
@@ -35,34 +56,12 @@ TARGET_INIT = [4000, 200, 140*pi/180, 8.0] #[x(m),y(m),theta(rad),linear vel(m/s
 TARGET_VEL = TARGET_INIT[3] #(m/s)
 MAX_TARGET_VEL = 3 #(m/s) (only if target no costant vels)
 MIN_TARGET_VEL = 3 #(m/s)
-
-# Communication Paramaters (to generalize) - for now based on v-sense data
-s = 1
-mean = [s*5.0, s*2.5, s*1.5, 0.0]  #medium latencies between each AUV and the 4th (in fact latencies 0.0 for the 4th).
-variance = [s*1.0, s*0.8, s*0.3, 0.0] #the same as before vor the variances.
-MEAS_UPDATE = mean[0]/s# TODO# tune right this value
-time_scaler = 5 # TIME SCALER OF THE SIMULATION INSIDE OPTIMIZATION
-
-# Optimization Parameters
-STATE_PROPAGATION = mean[0] #time between each propagation of the estimation (in real case a consensus (?))
-
-k_max = 15*pi/180
-delta_k = 5*pi/180
-U = 3 #number of control choices
-M = 3 # planning horizon
-OPTIMIZATION_TIME_STEP = 40 #STATE_PROPAGATION*(TIME_SCALER*TIME_STEP) #VA INTESO COME delta_k (planning stage)in secondi
-
-ctrl_cmd = [-k_max,0,+k_max]
-#ctrl_cmd = [-k_max, -k_max*4/(U),0,k_max*4/(U),k_max] # simplified set of control actions for fast debugging
-#ctrl_cmd = [-k_max, -k_max*4/(U),-k_max*2/(U),0,k_max*2/(U),k_max*4/(U),k_max] #set of control actions
-
 # Cooperative Path Following Params
-a, b = 1, -1
-K_att = 1.0#0.0005# for in line -> 0.05 # Attractive gain #TODO da tunare per main e per opt diversamente
-K_rep = 00.0 #1.0 #for in line -> 10.0 # Repulsive gain
-d_rep = 150 # Distance threshold for repulsion
+K_att = 0.5 # Attractive Gain
+K_rep = 0.3 # Repulsive gain
+d_rep = 300 # Distance threshold for repulsion
 # CHOOSE THE GEOMETRY BETWEEN THE AGENTS
-geometry = 'line'
+geometry = 'column'
 
 if geometry == 'line':
     formation =  np.array([[0, 450],
@@ -103,7 +102,7 @@ def calc_spline_course(sp,ds):
         rx.append(ix)
         ry.append(iy)
         ryaw.append(sp.calc_yaw(i_s))
-        rk.append(sp.calc_curvature(i_s))
+        #rk.append(sp.calc_curvature(i_s))
     return rx, ry, ryaw, rk, s
 
 'REMARK ABOUT SIMULATION TIME & COMMUNICATION PERFORMANCES'

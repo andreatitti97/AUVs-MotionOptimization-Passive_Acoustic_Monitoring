@@ -369,7 +369,7 @@ plt.legend(['ADAPTATION ON'],fontsize=20)
 plt.grid()
 
 # PLOT ctrl cmds from optimization
-plt.subplot(2,1,2)
+'''plt.subplot(2,1,2)
 n_sample1 = np.size(ctrl_cmds_off)
 t1 = np.linspace(640,config.TIME_DURATION,n_sample1)
 plt.plot(t1,ctrl_cmds_off*180/pi,'-ok',markerfacecolor='blue')
@@ -379,13 +379,13 @@ plt.legend(['ADAPTATION OFF'],fontsize=20)
 plt.grid()
 plt.yticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
 plt.xticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
-plt.show()
+plt.show()'''
 
-# Output of the prediction phase during optimization:
+'''# Output of the prediction phase during optimization:
 
 plt.plot(s_opt_x,s_opt_y)
 plt.plot(opt_x,opt_y)
 plt.plot(real_x,real_y)
 plt.grid()
 plt.axis('equal')
-plt.show()
+plt.show()'''

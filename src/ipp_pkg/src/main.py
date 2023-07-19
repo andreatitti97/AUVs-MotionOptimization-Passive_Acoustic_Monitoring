@@ -21,9 +21,7 @@ spec.loader.exec_module(config)
 spec = importlib.util.spec_from_file_location("module.tracker", class_path+"/tracker.py")
 tracker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tracker)
-spec = importlib.util.spec_from_file_location("module.controller", class_path+"/controller.py")
-controller = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(controller)
+
 spec = importlib.util.spec_from_file_location("module.sensor", class_path+"/sensor.py")
 sensor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sensor)
@@ -44,110 +42,105 @@ auv1_x, auv1_y, auv2_x, auv2_y,auv3_x,auv3_y,auv4_x,auv4_y  = [], [], [], [], []
 est1_x, est1_y, est2_x, est2_y,est3_x, est3_y,est_x, est_y, est_vx, est_vy = [],[], [], [], [], [], [], [], [], []
 cov1, cov2, cov3, cov4, err_quad, cond_phi = [],[],[],[],[],[]
 
-def compute_cost(phi,length_y):
+def compute_cost(phi,len_y):
+    tmp_phi = np.zeros((len_y,4))
+    for i in range(len_y):
+        row = phi[i]
+        tmp_phi[i,:] = [row[0],row[1],row[2],row[3]]
+    PHI = np.dot(np.transpose(tmp_phi[:,0:2]),tmp_phi[:,0:2])
+    cost = np.linalg.norm(np.linalg.inv(PHI),ord=2)*np.linalg.norm(PHI,ord=2)
+    return cost
 
-    tmp_phi = np.zeros((length_y,4))
-    for i in range(length_y):
-        a = phi[i]
-        tmp_phi[i,:] = [a[0],a[1],a[2],a[3]]
+def initialize_auvs(geometry,s_pose,f,N_AUV,d=0):
+    auvs_xy = np.zeros((N_AUV,2))
+    auvs_theta = np.zeros(N_AUV)   
+    for i in range(N_AUV):
+        auvs_theta[i] = s_pose[2]
+    if geometry == 'line' or geometry == 'line2':
+        s_pose = [s_pose[0],s_pose[1],s_pose[2]]
+        for i in range(0, N_AUV):
+            auvs_xy[i,0] = s_pose[0] + (f[i,0]*np.cos(s_pose[2])+f[i,1]*np.sin(s_pose[2]))
+            auvs_xy[i,1] = s_pose[1] - (-f[i,0]*np.sin(s_pose[2])+f[i,1]*np.cos(s_pose[2]))      
+    elif geometry == 'column' or geometry == 'column2':     
+        s_pose = [d,s_pose[1],s_pose[2]]
+        for i in range(N_AUV):
+            auvs_xy[i,0] = s_pose[0]-f[i]
+            auvs_xy[i,1] = 0
+    return auvs_xy, auvs_theta
 
-    A2 = np.dot(np.transpose(tmp_phi[:,0:2]),tmp_phi[:,0:2])
-    cost2 = np.linalg.norm(np.linalg.inv(A2),2)*np.linalg.norm(A2,ord=2)
-
-    return cost2
-
-
-def run_simulation(target, obs, auv, pub, cpf_control, formation, s_pose):
-    """Simulate the sensor platform and the moving target"""
+def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
+    """Simulate the sensor platform and the moving target
+    Input:  target : target initial state
+            obs : list containing already initialized classes Tracker() (reproduce the local estimations)
+            auv : list containing sensors state and methods for measurements
+            pub : list containing the publishers
+            cpf_control : already initialized class for CPF
+            f : choosen geometry
+            s_pose : initial s state
+    """
     global count1
     propagation = False
     Hz = 1/(config.TIME_STEP) #NB: different from sampling rate for move things, this is ros rate
     rate = rospy.Rate(Hz)
-    # Init Time Variables and counters
+    # Init time variables and counters and lists
     t, count1, j, k, last_cmd = 0, 0, 0, 0, 0
+    meas_table, cmds, delay, flags = [], [], [], []
     dt = config.TIME_STEP*config.TIME_SCALER
-    meas_table = []
-    cmds = []
+    N = len(auv)
+    geometry = config.geometry
     for i in range(config.M):
         cmds.append(0)
-    delay = []
-    flags = []
-    for i in range(config.N_AUV):
+    # Initialize communication parameters
+    mean_c = config.mean
+    sigma_c = config.variance
+    for i in range(N):
         delay.append(0.0)
         flags.append(0) 
-    # INITIALIZE PATH
-    sp, delta_index, distance = cpf_control.initialize_path(formation)
-    [rx, ry, ryaw, rk, s] = config.calc_spline_course(sp,dt)
+    # Initialize Path
+    path, path_idx, d = cpf_control.initialize_path(f)
+    [rx, ry, ryaw, rk, s] = config.calc_spline_course(path,dt)
     # Init AUVs position and orientation according to given formation
-    positions = np.zeros((len(auv),2))
-    orientations = np.zeros(len(auv))   
-
-    for i in range(len(auv)):
-        orientations[i] = s_pose[2]
-    
-    if config.geometry == 'line' or config.geometry == 'line2':
-        
-        leader_pos = [s_pose[0],s_pose[1],s_pose[1]]
-        for i in range(0, len(auv)):
-            positions[i,0] = leader_pos[0] + config.a*(formation[i,0]*np.cos(s_pose[2])+formation[i,1]*np.sin(s_pose[2]))
-            positions[i,1] = leader_pos[1] + config.b*(-formation[i,0]*np.sin(s_pose[2])+formation[i,1]*np.cos(s_pose[2]))      
-    elif config.geometry == 'column' or config.geometry == 'column2':     
-        leader_pos = [distance,s_pose[1],s_pose[2]]
-        for i in range(len(auv)):
-            positions[i,0] = leader_pos[0]-formation[i]
-            positions[i,1] = 0
-
+    auvs_xy, auvs_theta = initialize_auvs(geometry,s_pose,f,N,d)
     ## SIMULATION LOOP ############################################################################################################
     while t <= config.TIME_DURATION:
         rospy.loginfo('SIMULATION TIME(s)')
         rospy.loginfo(t)
-        
         # Simulate Sensor Measuraments
-        if config.N_AUV > 1:
+        if N > 1:
             if count1 % config.MEAS_UPDATE == 0 and count1 > 0:
                 # Make measurements
-                [measure_, rel_bearing_, meas_pos] = auv[k].measureBearing(target.pose.x,target.pose.y,positions[k], orientations[k])
+                [measure_, rel_bearing_, meas_pos] = auv[k].measureBearing(target.pose.x,target.pose.y,auvs_xy[k], auvs_theta[k])
                 arr = [t,measure_,meas_pos[0],meas_pos[1]]
                 meas_table.append(arr)
                 k = k+1
-                
-                if k == config.N_AUV:
+                if k == N:
                     k = 0
-            
-        for i in range(config.N_AUV-1):
+        for i in range(N-1):
             if flags[i] == 0 and propagation == False:
                 delay[i] += dt
-
-        for j in range(config.N_AUV):
+        for j in range(N):
             # If the delay measured is equal to the expected one the msg is arrived to AUV4
-            sigma = np.random.uniform(-config.variance[j], config.variance[j])
-            if  delay[j] >= config.mean[j] + sigma:
+            sigma = np.random.uniform(-sigma_c[j], sigma_c[j])
+            if  delay[j] >= mean_c[j] + sigma:
                 delay[j] = 0.0
                 flags[j] = 1
-                
-                if np.sum(delay) == 0.0 and np.sum(flags)==(config.N_AUV):
-                    
-                    if len(meas_table) >= 10:#TODO così passano sempre 40 secondi 
+                if np.sum(delay) == 0.0 and np.sum(flags)==(N):
+                    if len(meas_table) >= 10:#TODO: IMPOSTARE LA CONDIZIONE SOLO SUL COND REGRESSORE
                         propagation = True    
-
-        # SIMULATE the ESTIMATIONS
-        if propagation == True: #and (count1 % config.OPTIMIZATION_TIME_STEP) == 0 :
-            for i in range(config.N_AUV):
+        # Process all the measurements and propagate the estimation
+        if propagation == True:
+            for i in range(N):
                 obs[i].processMeasurement(meas_table)
                 obs[i].propagate_estimation(t)
-
             meas_table = []
             flags = [0,0,0,0]
             # Retrieve Estimations (if packet loss the first to have regressor < threh speaks)
-
             curr_est, phi, y = obs[0].state
-      
             curr_est2, phi2, y2 = obs[1].state
             curr_est3, phi3, y3 = obs[2].state
             curr_est4, phi4, y4 = obs[3].state
             cost = compute_cost(phi,len(y))
             cond_phi.append(cost)
-            
             # Compute Covariance of the target state
             R = np.zeros((len(y),len(y))) #matrice diagonale perchè errori sulle singole misure indipendenti tra loro            
             for i in range(len(y)): 
@@ -161,115 +154,99 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, s_pose):
                 cov = np.linalg.inv(np.dot(np.dot(np.transpose(phi),np.linalg.inv(a*np.identity(len(y)))),phi))
             else: 
                 cov = np.zeros((4,4))
-
             est_x.append(curr_est[0,0])
             est_y.append(curr_est[1,0])
             est_vx.append(curr_est[2,0])
             est_vy.append(curr_est[3,0])
-
             # Save Covariance associated 
             cov1.append(cov[0,0])
             cov2.append(cov[1,1])
             cov3.append(cov[2,2])
             cov4.append(cov[3,3])
-
+            # Computte the tracking error
             err_x = (target.pose.x - curr_est[0,0])
             err_y = (target.pose.y - curr_est[1,0])
             e = np.sqrt(err_x**2+err_y**2)
-
             err_quad.append(e)
-
+            # Reset the flag for propagation
             propagation = False
         ############################################# TRIGGER OPTIMIZATION ##############################################
             if config.OPTIMIZATION_ON == True:
-                print('LEADER REAL POSE',leader_pos)
+                print('LEADER REAL POSE',s_pose)
                 rospy.loginfo('SENDING DATA')
                 pub[0].publish(np.array(curr_est,dtype=np.float32))
-                rospy.sleep(config.TIME_STEP*10)
-                tmp = [leader_pos[0],leader_pos[1],leader_pos[2]]
+                rospy.sleep(10/Hz)
+                tmp = [s_pose[0],s_pose[1],s_pose[2]]
                 pub[1].publish(np.array(tmp,dtype=np.float32))
-                rospy.sleep(config.TIME_STEP*10)
+                rospy.sleep(10/Hz)
                 ax = cpf_control.ax
                 ay = cpf_control.ay
-                #ax.append(cpf_control.distance)# ADD THE DISTANCE OF THE TARGET AS LAST ELEMENTN, THEN REMOVE
                 pub[2].publish(np.array(ax,dtype=np.float32))
-                rospy.sleep(config.TIME_STEP*10)
-                #ax.pop(-1)
+                rospy.sleep(10/Hz)
                 pub[3].publish(np.array(ay,dtype=np.float32))
-                rospy.sleep(config.TIME_STEP*10)
+                rospy.sleep(10/Hz)
                 tmp = []
                 for i in range(4):
                     for j in range(4):
                         tmp.append(cov[i,j])
                 pub[4].publish(np.array(tmp,dtype=np.float32))
-                rospy.sleep(config.TIME_STEP*10)
+                rospy.sleep(10/Hz)
                 tmp = []
                 for i in range(4):
                     for j in range(4):
                         tmp.append(cov[i,j])
                 pub[2].publish(np.array(tmp,dtype=np.float32))
-                rospy.sleep(config.TIME_STEP*10)
-                print('WAITING FOR CTRL CMD')
+                rospy.sleep(10/Hz)
+                
                 cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))
                 cmds = cmds.data
-
                 print('RECEIVED CMDS (deg) -------------------------------------------------',cmds*180/pi)
-                cmds = [-5*pi/180]
-                sp, ax, ay, last_cmd = cpf_control.update_path([cmds[0]],last_cmd)
-            [rx, ry, ryaw, rk, s] = config.calc_spline_course(sp,dt)
-
-        #print('lunghezza array POST',len(rx))
-        #print('counter',count1)
-        ##################################################################################################################
-        if t > 200:
-            plt.subplots(1)
-            plt.plot(cpf_control.ax, cpf_control.ay, "xb", label="Data points")
-            plt.plot(leader_pos[0],leader_pos[1],'og',label='leader position')
-            for i in range(config.N_AUV):
-                plt.plot(positions[i,0],positions[i,1],'ok',label="AUV"+str(i))
-            plt.plot(rx, ry, "-r", label="Cubic spline path")
-            plt.legend()
-            plt.axis('equal')
-            #plt.show() # uncomment for debugging
-
-        ######################################### MOVE THE ROBOTS #######################################################
-        #print(ryaw[])
-        distance += config.AUV_VEL*dt
-
-        [leader_pos, positions, orientations] = cpf_control.move_agents(sp, distance,leader_pos,dt, positions, orientations, ryaw[delta_index+count1], False)
-        
-        target.move_target(dt)
-        
+                # Update the path and the reference
+                path, ax, ay, last_cmd = cpf_control.update_path([cmds[0]],last_cmd) #update path
+            else:
+                path, ax, ay, last_cmd = cpf_control.update_path([0],last_cmd) #update path
+            
+            if t > 200:
+                plt.subplots(1)
+                plt.plot(ax, ay, "xb", label="Data points")
+                plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
+                for i in range(config.N_AUV):
+                    plt.plot(auvs_xy[i,0],auvs_xy[i,1],'ok',label="AUV"+str(i))
+                plt.plot(rx, ry, "-r", label="Cubic spline path")
+                plt.legend()
+                plt.axis('equal')
+                #plt.show() # uncomment for debugging
         #################################################################################################################
-                      
+        ######################################### MOVE THE ROBOTS #######################################################
+        [rx, ry, ryaw, rk, s] = config.calc_spline_course(path,dt) # compute reference to follow
+        d += config.AUV_VEL*dt
+        print('path index',path_idx)
+        print('count1',count1)
+        print('len rx',len(ryaw))
+        [s_pose, auvs_xy, auvs_theta] = cpf_control.move_agents(path, d,s_pose,dt, auvs_xy, auvs_theta, ryaw[path_idx+count1],rx[path_idx+count1],ry[path_idx+count1],False)
+        target.move_target(dt)
+        #################################################################################################################
         ##################### SAVE THE POSITIONS OF TEAM REFERENCE/AGENTS/TARGET/ STATE FOR PLOT ########################
-        platform_x.append(leader_pos[0])
-        platform_y.append(leader_pos[1])
-        auv1_x.append(positions[0,0])
-        auv1_y.append(positions[0,1])
+        platform_x.append(s_pose[0])
+        platform_y.append(s_pose[1])
+        auv1_x.append(auvs_xy[0,0])
+        auv1_y.append(auvs_xy[0,1])
         if len(auv)>1:
-            auv2_x.append(positions[1,0])
-            auv2_y.append(positions[1,1])
-
+            auv2_x.append(auvs_xy[1,0])
+            auv2_y.append(auvs_xy[1,1])
         if len(auv)>2:
-            auv3_x.append(positions[2,0])
-            auv3_y.append(positions[2,1])
-
-            auv4_x.append(positions[3,0])
-            auv4_y.append(positions[3,1])
-
+            auv3_x.append(auvs_xy[2,0])
+            auv3_y.append(auvs_xy[2,1])
+            auv4_x.append(auvs_xy[3,0])
+            auv4_y.append(auvs_xy[3,1])
         target_x_traj.append(target.pose.x)
         target_y_traj.append(target.pose.y)         
         ##################################################################################################################
-        
-
         #  Stop simulation and save data to .txt files ###################################################################
         if int(t) == (config.TIME_DURATION-1):
             rospy.loginfo('saving data for plot')
-            
             np.savetxt(plot_path+'/target_x_traj.txt',target_x_traj)
             np.savetxt(plot_path+'/target_y_traj.txt',target_y_traj)
-
             if config.OPTIMIZATION_ON == True:
                 np.savetxt(plot_path+'/est4_x_ON.txt',est_x)
                 np.savetxt(plot_path+'/est4_y_ON.txt',est_y)
@@ -313,7 +290,6 @@ def run_simulation(target, obs, auv, pub, cpf_control, formation, s_pose):
                 np.savetxt(plot_path+'/vx_OFF.txt',est_vx)
                 np.savetxt(plot_path+'/vy_OFF.txt',est_vy)
                 np.savetxt(plot_path+'/cond_OFF',cond_phi)
-                
         t += dt
         count1 += 1
         rate.sleep()
@@ -341,15 +317,16 @@ def main():
 
     # Sensor and AUVs Initialization
     auv = []
-    for i in range(config.N_AUV): #TODO: AUV up to 6 consider
+    N = config.N_AUV
+    for i in range(N):
         auv.append(sensor.Sensor(str(i),1,0,config.SIGMA_MEAS))
 
     # Init trackers 
     trackers = []
-    tracker1 = tracker.Tracker('first_observer', False)
-    tracker2 = tracker.Tracker('second_observer', False)
-    tracker3 = tracker.Tracker('third_observer', False)
-    tracker4 = tracker.Tracker('fourth_observer', False)
+    tracker1 = tracker.Tracker()
+    tracker2 = tracker.Tracker()
+    tracker3 = tracker.Tracker()
+    tracker4 = tracker.Tracker()
 
     trackers.append(tracker1)
     trackers.append(tracker2)
@@ -357,7 +334,7 @@ def main():
     trackers.append(tracker4)
         
     # Cooperative Path Following initialization
-    cpf_control = cpf.CooperativePathFollowing(config.formation, config.N_AUV, s_pose[2], config.K_att, config.K_rep, config.d_rep, config.AUV_VEL, False)
+    cpf_control = cpf.CooperativePathFollowing(N, config.K_att, config.K_rep, config.d_rep, False)
     
     # Run The Simulation
     if config.OPTIMIZATION_ON == True:

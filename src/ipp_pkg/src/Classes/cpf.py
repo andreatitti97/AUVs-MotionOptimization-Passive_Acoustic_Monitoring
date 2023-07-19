@@ -15,139 +15,129 @@ cubicSpline = planner
 
 class CooperativePathFollowing:
 
-    def __init__(self, formation, n_agents, init_orientation, k_att, k_rep, d_rep,lin_vel,bool):
-
+    def __init__(self, n_agents, k_att, k_rep, d_rep, bool):
+        # Input attribute loading
         self.n_agents = n_agents
         self.k_att = k_att
         self.k_rep = k_rep
         self.d_rep = d_rep
+        # Loading attributes from config file
+        self.geometry = config.geometry
         self.ko = config.GAIN_YAW_RATE
         self.v_max = config.AUV_MAX_VEL
-        self.desired_vel = lin_vel
+        self.v_n = config.AUV_VEL
         self.ds = config.TIME_STEP*config.TIME_SCALER #curve sampling, if higher path less smooth (i think)
-        self.DT = config.MEAS_UPDATE*config.N_AUV*2 # TODO
+        self.DT = config.OPTIMIZATION_TIME_STEP 
+        self.spline_course = config.calc_spline_course
+        # Initialize waypoints and boolean
         self.ax = []
         self.ay = []
         self.bool = bool
 
 
-    def initialize_path(self, formation):
-        if config.geometry == 'column' or config.geometry == 'column2':
-            initial_path = [0, formation[2], formation[1], formation[0], formation[0]+self.DT+2]
-            leader_path = cubicSpline.CubicSpline2D([0, formation[2], formation[1], formation[0]], [0,0,0,0])
-            [rx, ry, ryaw, rk, s]=config.calc_spline_course(leader_path,self.ds)
-            path_index = len(ryaw)
-
-            distance = leader_path.s[-1] # initialize distance of the reference frame
-
-        elif config.geometry == 'line' or config.geometry == 'line2':
-            initial_path = [0, self.DT+2]
-            distance = 0# initialize distance of the reference frame
-            path_index = 0
-        for i in range(len(initial_path)):
-            self.ax.append(initial_path[i])
+    def initialize_path(self, f):#f=formation
+        if self.geometry == 'column' or self.geometry == 'column2':
+            ax_0 = [0, f[2], f[1], f[0], f[0]+self.DT+2]
+            leader_path = cubicSpline.CubicSpline2D([0, f[2], f[1], f[0]], [0,0,0,0])
+            [rx, ry, ryaw, rk, s]= self.spline_course(leader_path,self.ds)
+            path_idx = len(ryaw)
+            d = leader_path.s[-1]
+        elif self.geometry == 'line' or self.geometry == 'line2':
+            ax_0 = [0, self.DT+2]
+            d = 0 
+            path_idx = 0
+        for i in range(len(ax_0)):
+            self.ax.append(ax_0[i])
             self.ay.append(0)
         path = cubicSpline.CubicSpline2D(self.ax, self.ay)
-
-        return path, path_index, distance
+        return path, path_idx, d
 
     def saturateVel(self,vel,bool=False):
         if bool == False:
             if vel > self.v_max:
                 print('SATURATED VELS +++++++++++++++++++++++++++++++++++++++++++++++++ ',vel)
                 vel = self.v_max
-
             if vel < -self.v_max:
                 print('SATURATED VELS ------------------------------------------------- ',vel)
                 vel = -self.v_max         
         return vel
 
-    def potential_field(self, path, leader_pos,pos, leader_distance):
-        # Calculate the desired positions of the followers in the formation
-        formation = config.formation
-        desired_positions = np.zeros_like(pos)
-        # Compute the desired absolute pos of the agents according to leader pos and given formation
-        if config.geometry == 'line' or config.geometry == 'line2':
+    def potential_field(self, path, s_pose, auvs_xy, d):
+        # Calculate the desired auvs_xy of the followers in the f
+        f = config.formation #THIS IS MANDATORY - DO NOT EDIT
+        des_xy = np.zeros_like(auvs_xy)
+        # Compute the desired absolute auvs_xy of the agents according to leader auvs_xy and given f
+        if self.geometry == 'line' or self.geometry == 'line2':
             for i in range(0, self.n_agents):
-                desired_positions[i,0] = leader_pos[0] + config.a*(formation[i,0]*np.cos(leader_pos[2])+formation[i,1]*np.sin(leader_pos[2]))
-                desired_positions[i,1] = leader_pos[1] + config.b*(-formation[i,0]*np.sin(leader_pos[2])+formation[i,1]*np.cos(leader_pos[2]))
-        elif config.geometry == 'column' or config.geometry == 'column2':
-            for i in range(len(formation)):
-                x,y = path.calc_position(-formation[i]+leader_distance)
-
-                desired_positions[i,0] = x
-                desired_positions[i,1] = y
+                des_xy[i,0] = s_pose[0] + (f[i,0]*np.cos(s_pose[2])+f[i,1]*np.sin(s_pose[2]))
+                des_xy[i,1] = s_pose[1] - (-f[i,0]*np.sin(s_pose[2])+f[i,1]*np.cos(s_pose[2]))
+        elif self.geometry == 'column' or self.geometry == 'column2':
+            for i in range(len(f)):
+                x,y = path.calc_position(-f[i]+d)
+                des_xy[i,0] = x
+                des_xy[i,1] = y
 
         # Calculate the attractive potential for each robot
-        F_att = -self.k_att * (pos - desired_positions)
+        F_att = -self.k_att * (auvs_xy - des_xy)
 
         # Calculate the repulsive potential for each robot
         F_rep = np.zeros_like(F_att)
         for i in range(self.n_agents):
             for j in range(i+1, self.n_agents):
-                d = np.linalg.norm(pos[i] - pos[j])
+                d = np.linalg.norm(auvs_xy[i] - auvs_xy[j])
                 if d < self.d_rep:
-                    F_rep[i] += self.k_rep * (1/(d+1e8) - 1/self.d_rep) * (pos[i] - pos[j]) / (d+1e8)
-                    F_rep[j] += self.k_rep * (1/(d+1e8) - 1/self.d_rep) * (pos[j] - pos[i]) / (d+1e8)
+                    F_rep[i] += self.k_rep * (1/(d+1e8) - 1/self.d_rep) * (auvs_xy[i] - auvs_xy[j]) / (d+1e8)
+                    F_rep[j] += self.k_rep * (1/(d+1e8) - 1/self.d_rep) * (auvs_xy[j] - auvs_xy[i]) / (d+1e8)
         
         # Calculate the total force for each robot
         F_total = F_att + F_rep
            
-        return F_total, desired_positions
+        return F_total, des_xy
 
-    def compute_orientations(self, desired_pos, pos, num_robots, orientations):
+    def compute_orientations(self, desired_pos, auvs_xy, num_robots, auvs_theta):
         orientations_goal = np.zeros((self.n_agents))
         error_ang = np.zeros((self.n_agents))
         for i in range(self.n_agents):
             # Compute the direction vector from the follower's current position to its desired position
-            orientations_goal[i] = atan2(pos[i,1]-desired_pos[i,1],pos[i,0]-desired_pos[i,0])
-            error_ang[i] = (orientations_goal[i] - orientations[i])
+            orientations_goal[i] = atan2(auvs_xy[i,1]-desired_pos[i,1],auvs_xy[i,0]-desired_pos[i,0])
+            error_ang[i] = (orientations_goal[i] - auvs_theta[i])
 
         return error_ang
 
-    def update_path(self, waypoints, init_theta):
-        init_pose = [self.ax[-1],self.ay[-1]]
-
+    def update_path(self, waypoints, t_i):
+        a_i = [self.ax[-1],self.ay[-1]]
         for i in range(len(waypoints)):
-
-            theta_goal = init_theta+waypoints[i]
-
-            tmp_x = np.cos(theta_goal)*self.desired_vel*self.DT+init_pose[0]
-            tmp_y = np.sin(theta_goal)*self.desired_vel*self.DT+init_pose[1]
+            t_f = t_i+waypoints[i]
+            tmp_x = np.cos(t_f)*self.v_n*self.DT+a_i[0]
+            tmp_y = np.sin(t_f)*self.v_n*self.DT+a_i[1]
             self.ax.append(tmp_x)
             self.ay.append(tmp_y)
-            init_theta = theta_goal
-            init_pose = [tmp_x, tmp_y]
-            
+            t_i = t_f
+            a_i = [tmp_x, tmp_y]
         path = cubicSpline.CubicSpline2D(self.ax, self.ay)
-        return path, self.ax, self. ay, init_theta
+        return path, self.ax, self. ay, t_i
 
-    def move_agents(self, path, distance, leader_pos, dt, positions, orientations, r_yaw, bool=False):
+    def move_agents(self, path, d, s_pose, dt, auvs_xy, auvs_theta, r_yaw, r_x=0,r_y=0,bool=False):
         
-
-        #TODO: move agents inside optimization
-
-
-        angular_vel_leader = (r_yaw-leader_pos[2])
         # Update Leader Position
-
-        leader_pos[2] = (leader_pos[2] + self.ko*angular_vel_leader*dt)
-        leader_pos[2] = r_yaw
-        leader_pos[0] = leader_pos[0] + self.desired_vel*np.cos(leader_pos[2])*dt
-        leader_pos[1] = leader_pos[1] + self.desired_vel*np.sin(leader_pos[2])*dt
-
-
+        angular_vel_leader = (r_yaw-s_pose[2])
+        s_pose[2] = (s_pose[2] + self.ko*angular_vel_leader*dt)
+        s_pose[2] = r_yaw
+        s_pose[0] = s_pose[0] + self.v_n*np.cos(s_pose[2])*dt
+        s_pose[1] = s_pose[1] + self.v_n*np.sin(s_pose[2])*dt
+        if r_x != 0:
+            s_pose[0] = r_x
+            s_pose[1] = r_y
         
         # Update the position and orientation of the follower robots
-        F_total_follower, desired_position = self.potential_field(path, leader_pos, positions, distance)
+        F_coop, desired_position = self.potential_field(path, s_pose, auvs_xy, d)
         # Compute the heading according to the desired position
-        error_angular = self.compute_orientations(desired_position,positions, self.n_agents, orientations)
-        #print('F_TOTAL',F_total_follower)
+        e_theta = self.compute_orientations(desired_position,auvs_xy, self.n_agents, auvs_theta)
         for i in range(self.n_agents):
-            orientations[i] = orientations[i] + self.ko/2*error_angular[i]*dt
-            tmp1 = self.saturateVel((self.desired_vel*np.cos(orientations[i]) + F_total_follower[i,0]*dt)*dt,bool)
-            tmp2 = self.saturateVel((self.desired_vel*np.sin(orientations[i]) + F_total_follower[i,1]*dt)*dt,bool)          
-            positions[i,0] = positions[i,0] + tmp1
-            positions[i,1] = positions[i,1] + tmp2
-#        print('AUVs POSITION',positions)
-        return leader_pos, positions, orientations
+            auvs_theta[i] = auvs_theta[i] + self.ko*e_theta[i]*dt
+            tmp1 = self.saturateVel((self.v_n*np.cos(auvs_theta[i]) + F_coop[i,0]*dt)*dt,bool)
+            tmp2 = self.saturateVel((self.v_n*np.sin(auvs_theta[i]) + F_coop[i,1]*dt)*dt,bool)          
+            auvs_xy[i,0] = auvs_xy[i,0] + tmp1
+            auvs_xy[i,1] = auvs_xy[i,1] + tmp2
+
+        return s_pose, auvs_xy, auvs_theta

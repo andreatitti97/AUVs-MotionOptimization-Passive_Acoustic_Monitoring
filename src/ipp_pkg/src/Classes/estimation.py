@@ -17,13 +17,11 @@ def state_vector_to_scalars(state_vector):
     return (state_vector[0][0,0],state_vector[1][0,0],state_vector[2][0,0],state_vector[3][0,0])    
     
 class Estimator:
-    def __init__(self, bool, id):
+    def __init__(self):
         '''
         Each object being tracked will result in the creation of a new ExtendedKalmanFilter instance.
         '''
         self.__x = []
-        self.__bool = bool
-        self.__id = id
         self.__phi = []
         self.__y = []
         self.__C = matlib.zeros((1,4))
@@ -46,12 +44,12 @@ class Estimator:
                               [0,0,0,1]])
         self.__x = self.__F*self.__x
 
-    def iteration(self, t_meas, measures, auv_position_x, auv_position_y, prev_t):
+    def iteration(self, t_meas, y_i, si_x, si_y, prev_t):
         
-        self.__y.append(auv_position_x*np.sin(measures) - auv_position_y*np.cos(measures))
+        self.__y.append(si_x*np.sin(y_i) - si_y*np.cos(y_i))
         self.__t.append(t_meas)
         prev_t = self.__t[0]
-        self.__C = [np.sin(measures), -np.cos(measures), (t_meas - self.__t[0])*np.sin(measures), -(t_meas - self.__t[0])*np.cos(measures)]
+        self.__C = [np.sin(y_i), -np.cos(y_i), (t_meas - self.__t[0])*np.sin(y_i), -(t_meas - self.__t[0])*np.cos(y_i)]
         self.__phi.append(self.__C)
 
         if len(self.__y) == config.TP:
