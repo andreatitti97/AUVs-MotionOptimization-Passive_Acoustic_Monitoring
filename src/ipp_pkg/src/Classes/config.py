@@ -4,37 +4,33 @@ import numpy as np
 TIME_DURATION = 600 # (s)
 TIME_STEP = 0.01
 TIME_SCALER = 80 # TIME SCALER OF THE SIMULATION 
+
 OPTIMIZATION_ON = True
 
 
 # Estimation Parameters
-TP = 40 # regressor MAX length
-SIGMA_MEAS = 0.01# # uncertainty = 5° --> sigma^2 = (uncertainty*pi/180)^2
+TP = 30 # regressor MAX length 40
+SIGMA_MEAS = 0.005#0.02# # uncertainty = 5° --> sigma^2 = (uncertainty*pi/180)^2,  0.05
 
 # Team parameter: number of agents, baselines_XY, inital position, type of formation
 PLATFORM_INIT_POSE = [0, 0, 0] #[x,y,theta]
 AUV_VEL = 1.0 #(m/s)#2 # nominal vel 
-AUV_MAX_VEL = 2.0 #(m/s)#4 # max vel considering v_coop
+AUV_MAX_VEL = 3.0 #(m/s)#4 # max vel considering v_coop
 GAIN_YAW_RATE = 0.8 
-# Communication Paramaters (to generalize) - for now based on v-sense data
-'''
-BIG LATENCIES
-s = 5
-OPTIMIZATION_TIME_STEP = 40 s
-MEAS_UPDATE = 5
-'''
-MEAS_UPDATE = 3 
-mean = [MEAS_UPDATE*5.0, MEAS_UPDATE*2.5, MEAS_UPDATE*1.5, 0.0]  #medium latencies between each AUV and the 4th (in fact latencies 0.0 for the 4th).
-variance = [MEAS_UPDATE*1.0, MEAS_UPDATE*0.8, MEAS_UPDATE*0.3, 0.0] #the same as before vor the variances.
-OPTIMIZATION_TIME_STEP = np.sum(mean)
+c = 1500 #sound wave speed
+# Communication Paramaters
+
+d = 300 #vehicle distance
+Tm = 5 # measurements time sampling
+Tg = 3 # time slot for each vehicle
 
 # Optimization Parameters
 time_scaler = 5 # TIME SCALER OF THE SIMULATION INSIDE OPTIMIZATION
 u_max = 15*pi/180
-delta_u = 5*pi/180
+delta_u = 3*pi/180
 MAX = 40*pi/180
 MIN = 5*pi/180
-U = 7 #number of control choices
+U = 5 #number of control choices
 M = 3 # planning horizon
 #ctrl_cmd = [-u_max,0,+u_max]
 #ctrl_cmd = [-u_max, -u_max*4/(U),0,u_max*4/(U),u_max] # simplified set of control actions for fast debugging
@@ -45,45 +41,57 @@ ctrl_cmd = [-u_max, -u_max*4/(U),-u_max*2/(U),0,u_max*2/(U),u_max*4/(U),u_max] #
 
 #TARGET_INIT = [+2000,-2500, pi, 2.5] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 1
 #TARGET_INIT = [3000,-1500,pi/2,9.0]#[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 2
-#TARGET_INIT = [4000, 200, 140*pi/180, 8.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 3
-TARGET_INIT = [-3000, -2000, pi/2, 7.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 4
+TARGET_INIT = [4000, 200, 140*pi/180, 8.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 3
+#TARGET_INIT = [-3000, -2000, pi/2, 7.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 4
 #TARGET_INIT = [-1500, 2000, pi/8, 5.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 5
 
-#TARGET_INIT = [1300,0,140*pi/180,3.0] - SIMPLE CASE (lower distances)
-#TARGET_INIT = [400,-200, pi/2, 3.0]
-#TARGET_INIT = [20,0, pi/2, 1.0]
-#TARGET_INIT = [-1000, -500, pi/2, 8.0] #[x(m),y(m),theta(rad),linear vel(m/s)]
+
+#TARGET_INIT = [400,-200, pi/2, 1.5] --- SIMPLE CASE LOWE DISTANCE!!!!!
+
 TARGET_VEL = TARGET_INIT[3] #(m/s)
 MAX_TARGET_VEL = 3 #(m/s) (only if target no costant vels)
 MIN_TARGET_VEL = 3 #(m/s)
 # Cooperative Path Following Params
 K_att = 0.5 # Attractive Gain
 K_rep = 0.3 # Repulsive gain
-d_rep = 300 # Distance threshold for repulsion
+d_rep = d # Distance threshold for repulsion
 # CHOOSE THE GEOMETRY BETWEEN THE AGENTS
-geometry = 'column'
+geometry = 'line'
+
 
 if geometry == 'line':
-    formation =  np.array([[0, 450],
-                            [0,-150], 
-                            [0, 150], 
-                            [0,-450]]) # IN LINEA    
-elif geometry == 'column':
-    formation = [900,600,300,0] # IN COLONNA
-
-elif geometry == 'polygon':
-    formation =  np.array([ [170,-200],
-                            [0, 100], 
-                            [0,-100], 
-                            [170,200]]) # TRAPEZOIDALE
+    formation =  np.array([[0, d+(d/2)],
+                            [0, +d/2], 
+                            [0, -d/2], 
+                            [0,-d-(d/2)]]) # IN LINEA  
+    mean = [Tg+6*d/c,Tg+4*d/c,Tg+2*d/c,0]  #medium latencies between each AUV and the 4th (in fact latencies 0.0 for the 4th).
+    variance = [Tm*1.0, Tm*0.8, Tm*0.3, 0.0] #the same as before vor the variances.
 elif geometry == 'line2':
-    formation =  np.array([ [0, -25],
-                            [0, +25]]) # TRAPEZOIDALE
+    formation =  np.array([ [0, +d],
+                            [0, -d],
+                            [0, +d],
+                            [0, -d]]) # TRAPEZOIDALE
+    mean = [d/c,d/c,0,0]  
+    variance = [Tm*1.0, Tm*0.8, Tm*0.3, 0.0]
+elif geometry == 'column':
+    formation = [d*3,d*2,d*1,0] # IN COLONNA
+    mean = [3*d/c,2*d/c,d/c,0]  
+    variance = [Tm*1.0, Tm*0.8, Tm*0.3, 0.0]
+elif geometry == 'polygon':
+    formation =  np.array([ [0, +d/2],
+                            [-d/2, 0],
+                            [+d/2,0],
+                            [0, -d/2]]) # TRAPEZOIDALE
+    mean = [2*d/c,2*d/c,2*d/c,0] 
+    variance = [Tm*1.0, Tm*0.8, Tm*0.3, 0.0]
 elif geometry == 'column2':
-    formation =  [50]
+    formation =  [d,d/2,d,d/2]
 elif geometry == 'one_auv':
     formation =  np.array([[0, 0]]) # TRAPEZOIDALE 
 N_AUV = len(formation)
+Tf = N_AUV*Tg #time frame TDMA
+
+OPTIMIZATION_TIME_STEP = np.sum(mean)
 
 class Pose:
     """2D pose"""

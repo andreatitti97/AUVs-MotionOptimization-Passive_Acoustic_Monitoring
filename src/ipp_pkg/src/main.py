@@ -68,6 +68,11 @@ def initialize_auvs(geometry,s_pose,f,N_AUV,d=0):
             auvs_xy[i,1] = 0
     return auvs_xy, auvs_theta
 
+def sig(x):
+    alpha = -0.003
+    gamma = config.d
+    return 1/(1+np.e**(alpha*(gamma-x)))
+
 def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
     """Simulate the sensor platform and the moving target
     Input:  target : target initial state
@@ -80,13 +85,15 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
     """
     global count1
     propagation = False
+
     Hz = 1/(config.TIME_STEP) #NB: different from sampling rate for move things, this is ros rate
     rate = rospy.Rate(Hz)
     # Init time variables and counters and lists
-    t, count1, j, k, last_cmd = 0, 0, 0, 0, 0
-    meas_table, cmds, delay, flags = [], [], [], []
+    t, count1, j, k, last_cmd, idx_motion = 0, 0, 0, 0, 0, 0
+    meas_table, measurements, cmds, delay, flags = [], [], [], [], []
     dt = config.TIME_STEP*config.TIME_SCALER
     N = len(auv)
+
     geometry = config.geometry
     for i in range(config.M):
         cmds.append(0)
@@ -107,28 +114,44 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
         rospy.loginfo(t)
         # Simulate Sensor Measuraments
         if N > 1:
-            if count1 % config.MEAS_UPDATE == 0 and count1 > 0:
+            if count1 % config.Tm == 0 and count1 > 0:#periodic measurements update
+                for i in range(N):
                 # Make measurements
-                [measure_, rel_bearing_, meas_pos] = auv[k].measureBearing(target.pose.x,target.pose.y,auvs_xy[k], auvs_theta[k])
-                arr = [t,measure_,meas_pos[0],meas_pos[1]]
-                meas_table.append(arr)
-                k = k+1
-                if k == N:
-                    k = 0
+                    [measure_, rel_bearing_, meas_pos] = auv[i].measureBearing(target.pose.x,target.pose.y,auvs_xy[i], auvs_theta[i])
+                    arr = [t,measure_,meas_pos[0],meas_pos[1]]
+                    # Compute probability of loosing a packet
+                    if i == 0:
+                        meas_table.append(arr)
+                    else:
+                        ps_1 = auvs_xy[0]
+                        d = np.sqrt((meas_pos[0]-ps_1[0])**2+(meas_pos[1]-ps_1[1])**2)
+                        
+                        
+                        prob = sig(d)
+
+                        if (np.random.random() <= prob):
+                            #msg received
+                            print('random',np.random.random()/100)
+                            print('sigmoid',prob)
+                            meas_table.append(arr)
+                        else:
+                            print('LOST PACKETT')
         for i in range(N-1):
             if flags[i] == 0 and propagation == False:
                 delay[i] += dt
+
         for j in range(N):
             # If the delay measured is equal to the expected one the msg is arrived to AUV4
             sigma = np.random.uniform(-sigma_c[j], sigma_c[j])
             if  delay[j] >= mean_c[j] + sigma:
                 delay[j] = 0.0
                 flags[j] = 1
-                if np.sum(delay) == 0.0 and np.sum(flags)==(N):
-                    if len(meas_table) >= 10:#TODO: IMPOSTARE LA CONDIZIONE SOLO SUL COND REGRESSORE
-                        propagation = True    
+                if np.sum(delay) == 0.0 and np.sum(flags)==(N) and len(meas_table)>=config.Tf:
+                    propagation = True    
+
         # Process all the measurements and propagate the estimation
         if propagation == True:
+            print('PROPGATION TRUE ---------------------------------------------')
             for i in range(N):
                 obs[i].processMeasurement(meas_table)
                 obs[i].propagate_estimation(t)
@@ -203,9 +226,8 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 print('RECEIVED CMDS (deg) -------------------------------------------------',cmds*180/pi)
                 # Update the path and the reference
                 path, ax, ay, last_cmd = cpf_control.update_path([cmds[0]],last_cmd) #update path
-            else:
-                path, ax, ay, last_cmd = cpf_control.update_path([0],last_cmd) #update path
-            
+                idx_motion = idx_motion-N #(you delete from the idx the initial path portion deleted)
+           
             if t > 200:
                 plt.subplots(1)
                 plt.plot(ax, ay, "xb", label="Data points")
@@ -218,12 +240,25 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 #plt.show() # uncomment for debugging
         #################################################################################################################
         ######################################### MOVE THE ROBOTS #######################################################
+        print('LEN RX',len(rx))
+
+        if idx_motion == len(rx)-1:
+            print('++++++++++UPDATING PATH')
+            path, ax, ay, last_cmd = cpf_control.update_path([0],last_cmd) #go straight
+            idx_motion = idx_motion-N #(you delete from the idx the initial path portion deleted)
+
+            
+        start = time.time()
         [rx, ry, ryaw, rk, s] = config.calc_spline_course(path,dt) # compute reference to follow
+        stop = time.time()
+        print('ELAPSED',stop-start)
         d += config.AUV_VEL*dt
         print('path index',path_idx)
-        print('count1',count1)
+        print('idx_motion',idx_motion)
         print('len rx',len(ryaw))
-        [s_pose, auvs_xy, auvs_theta] = cpf_control.move_agents(path, d,s_pose,dt, auvs_xy, auvs_theta, ryaw[path_idx+count1],rx[path_idx+count1],ry[path_idx+count1],False)
+        #if len(ryaw) == 14:
+            #time.sleep(1)
+        [s_pose, auvs_xy, auvs_theta] = cpf_control.move_agents(path, d,s_pose,dt, auvs_xy, auvs_theta, ryaw[path_idx+idx_motion],rx[path_idx+idx_motion],ry[path_idx+idx_motion],False)
         target.move_target(dt)
         #################################################################################################################
         ##################### SAVE THE POSITIONS OF TEAM REFERENCE/AGENTS/TARGET/ STATE FOR PLOT ########################
@@ -292,6 +327,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 np.savetxt(plot_path+'/cond_OFF',cond_phi)
         t += dt
         count1 += 1
+        idx_motion += 1
         rate.sleep()
 
 def main():

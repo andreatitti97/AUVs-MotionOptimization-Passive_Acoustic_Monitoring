@@ -296,17 +296,18 @@ def main():
                 if n >= np.ceil(config.formation[0]/DT):
                     n = np.ceil(config.formation[0]/DT)
             for i in range(n):
-                lenght = len(ay_array)-n
-                ax.append(ax_array[lenght+i])
-                ay.append(ay_array[lenght+i])
+                length = len(ay_array)-n
+                ax.append(ax_array[length+i])
+                ay.append(ay_array[length+i])
             path = cubicSpline.CubicSpline2D(ax, ay)
         elif geometry == 'line' or geometry == 'line2':
             for i in range(2):
-                lenght = len(ay_array)-2
-                ax.append(ax_array[lenght+i])
-                ay.append(ay_array[lenght+i])
+                length = len(ay_array)-2
+                ax.append(ax_array[length+i])
+                ay.append(ay_array[length+i])
             path = cubicSpline.CubicSpline2D(ax, ay)
         d = path.s[-1]-1  
+
         # Initialize Cooperative Path Following Class 
         cpf_control = cpf.CooperativePathFollowing(config.N_AUV, k_att, k_rep, d_rep, True)
         n = len(t_est)

@@ -37,8 +37,12 @@ class CooperativePathFollowing:
 
     def initialize_path(self, f):#f=formation
         if self.geometry == 'column' or self.geometry == 'column2':
-            ax_0 = [0, f[2], f[1], f[0], f[0]+self.DT+2]
-            leader_path = cubicSpline.CubicSpline2D([0, f[2], f[1], f[0]], [0,0,0,0])
+            if self.geometry == 'column2':
+                ax_0 = [0, f[0], f[0]+self.DT+2]
+                leader_path = cubicSpline.CubicSpline2D([0, f[0]], [0,0])
+            else:
+                ax_0 = [0, f[2], f[1], f[0], f[0]+self.DT+2]
+                leader_path = cubicSpline.CubicSpline2D([0, f[2], f[1], f[0]], [0,0,0,0])
             [rx, ry, ryaw, rk, s]= self.spline_course(leader_path,self.ds)
             path_idx = len(ryaw)
             d = leader_path.s[-1]
@@ -46,10 +50,12 @@ class CooperativePathFollowing:
             ax_0 = [0, self.DT+2]
             d = 0 
             path_idx = 0
+
         for i in range(len(ax_0)):
             self.ax.append(ax_0[i])
             self.ay.append(0)
         path = cubicSpline.CubicSpline2D(self.ax, self.ay)
+  
         return path, path_idx, d
 
     def saturateVel(self,vel,bool=False):
@@ -105,6 +111,7 @@ class CooperativePathFollowing:
         return error_ang
 
     def update_path(self, waypoints, t_i):
+        
         a_i = [self.ax[-1],self.ay[-1]]
         for i in range(len(waypoints)):
             t_f = t_i+waypoints[i]
@@ -115,7 +122,14 @@ class CooperativePathFollowing:
             t_i = t_f
             a_i = [tmp_x, tmp_y]
         path = cubicSpline.CubicSpline2D(self.ax, self.ay)
-        return path, self.ax, self. ay, t_i
+        
+        if len(self.ax) > 5:
+            self.ax.pop(0)
+            self.ay.pop(0)
+        
+        
+        #time.sleep(2)
+        return path, self.ax, self.ay, t_i
 
     def move_agents(self, path, d, s_pose, dt, auvs_xy, auvs_theta, r_yaw, r_x=0,r_y=0,bool=False):
         
