@@ -34,12 +34,12 @@ t_est_x, t_est_y, s_state_x, s_state_y = [], [], [], []
 # Global Variables
 DELTA = 10**15
 cubicSpline = planner
-DT = config.OPTIMIZATION_TIME_STEP
+DT = config.OPTIMIZATION_TIME_STEP #should be equal more or less to the expected time to perform an estimation
 desired_vel = config.AUV_VEL
 
 def update_path(ax, ay, waypoint, t_i):
         init_pose = [ax[-1],ay[-1]]
-        t_f = t_i+waypoint
+        t_f = t_i+waypoint 
         tmp_x = np.cos(t_f)*desired_vel*DT+init_pose[0]
         tmp_y = np.sin(t_f)*desired_vel*DT+init_pose[1]
         ax.append(tmp_x)
@@ -172,17 +172,16 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
     start = time.time()
     path = cubicSpline.CubicSpline2D(ax, ay)#re-generate the path followed up to now
     [rx, ry, ryaw, rk, s]=config.calc_spline_course(path,dt)
-
     p_idx = len(ryaw)-1
     # Compute leader pose
-    x,y = path.calc_position(d)
     yaw = path.calc_yaw(d)
-    s_pose =[x,y,yaw]
+    s_pose = [s_pose[0],s_pose[1],yaw]
     # Compute agents pose
     geometry = config.geometry
     f = config.formation
     auvs_xy = np.zeros((config.N_AUV,2))
     auvs_theta = np.zeros(config.N_AUV)
+
     for i in range(config.N_AUV):
 
         if geometry == 'line' or geometry == 'line2':
@@ -196,7 +195,7 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
             auvs_xy[i,0] = x
             auvs_xy[i,1] = y
             auvs_theta[i] = path.calc_yaw(d_auv)
-    path, ax, ay, current_theta = update_path(ax,ay,control_input,s_pose[2])
+    path, ax, ay, current_theta = update_path(ax,ay,control_input,yaw)
     for i in range(0,scaler):
 
         [rx, ry, ryaw, rk, s] = config.calc_spline_course(path,dt)
@@ -218,8 +217,8 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
         elif i == (scaler-1):     
             estimator.computeState(meas_table)
         t += dt
-    '''
-    [rx, ry, ryaw, rk, s] = config.calc_spline_course(path,dt)
+
+    '''[rx, ry, ryaw, rk, s] = config.calc_spline_course(path,dt)
     plt.subplots(1)
     plt.plot(ax, ay, "xb", label="Data points")
     plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
@@ -301,12 +300,12 @@ def main():
                 ay.append(ay_array[length+i])
             path = cubicSpline.CubicSpline2D(ax, ay)
         elif geometry == 'line' or geometry == 'line2':
-            for i in range(2):
+            for i in range(len(ay_array)):
                 length = len(ay_array)-2
-                ax.append(ax_array[length+i])
-                ay.append(ay_array[length+i])
+                ax.append(ax_array[i])
+                ay.append(ay_array[i])
             path = cubicSpline.CubicSpline2D(ax, ay)
-        d = path.s[-1]-1  
+        d = path.s[-1]-1
 
         # Initialize Cooperative Path Following Class 
         cpf_control = cpf.CooperativePathFollowing(config.N_AUV, k_att, k_rep, d_rep, True)
@@ -316,6 +315,7 @@ def main():
             P[i,:] = cov[(i*n):(i*n)+n]
 
         ######## Compute the best solution solving the optimization with BnB or Greedy search #####
+  
         problem = Simple(t_est, s_state, sensors, cpf_control, ctrl_cmd, ax, ay, d, P)
         solver = pybnb.Solver()
         ''' TEST ON BnB problem_simplified = Simple(t_est, s_state, DELTA, sensors, cpf_control, ctrl_cmd, P)

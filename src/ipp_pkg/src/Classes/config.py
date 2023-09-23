@@ -30,7 +30,7 @@ u_max = 15*pi/180
 delta_u = 3*pi/180
 MAX = 40*pi/180
 MIN = 5*pi/180
-U = 5 #number of control choices
+U = 7 #number of control choices
 M = 3 # planning horizon
 #ctrl_cmd = [-u_max,0,+u_max]
 #ctrl_cmd = [-u_max, -u_max*4/(U),0,u_max*4/(U),u_max] # simplified set of control actions for fast debugging
@@ -53,7 +53,7 @@ MAX_TARGET_VEL = 3 #(m/s) (only if target no costant vels)
 MIN_TARGET_VEL = 3 #(m/s)
 # Cooperative Path Following Params
 K_att = 0.5 # Attractive Gain
-K_rep = 0.3 # Repulsive gain
+K_rep = 0.0 # Repulsive gain
 d_rep = d # Distance threshold for repulsion
 # CHOOSE THE GEOMETRY BETWEEN THE AGENTS
 geometry = 'line'
@@ -71,8 +71,8 @@ elif geometry == 'line2':
                             [0, -d],
                             [0, +d],
                             [0, -d]]) # TRAPEZOIDALE
-    mean = [d/c,d/c,0,0]  
-    variance = [Tm*1.0, Tm*0.8, Tm*0.3, 0.0]
+    mean = [Tg+6*d/c,Tg+4*d/c,0,0]  #medium latencies between each AUV and the 4th (in fact latencies 0.0 for the 4th).
+    variance = [Tm*1.0, Tm*0.8, Tm*0.3, 0.0] #the same as before vor the variances.
 elif geometry == 'column':
     formation = [d*3,d*2,d*1,0] # IN COLONNA
     mean = [3*d/c,2*d/c,d/c,0]  
@@ -89,9 +89,9 @@ elif geometry == 'column2':
 elif geometry == 'one_auv':
     formation =  np.array([[0, 0]]) # TRAPEZOIDALE 
 N_AUV = len(formation)
-Tf = N_AUV*Tg #time frame TDMA
 
-OPTIMIZATION_TIME_STEP = np.sum(mean)
+Tf = 2*N_AUV*Tg #time frame TDMA
+OPTIMIZATION_TIME_STEP = 2*(Tm*N_AUV+np.sum(mean))#TODO
 
 class Pose:
     """2D pose"""

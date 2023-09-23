@@ -124,15 +124,11 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                         meas_table.append(arr)
                     else:
                         ps_1 = auvs_xy[0]
-                        d = np.sqrt((meas_pos[0]-ps_1[0])**2+(meas_pos[1]-ps_1[1])**2)
-                        
-                        
-                        prob = sig(d)
-
+                        dist = np.sqrt((meas_pos[0]-ps_1[0])**2+(meas_pos[1]-ps_1[1])**2)
+                        prob = sig(dist)
                         if (np.random.random() <= prob):
                             #msg received
-                            print('random',np.random.random()/100)
-                            print('sigmoid',prob)
+
                             meas_table.append(arr)
                         else:
                             print('LOST PACKETT')
@@ -151,7 +147,6 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
 
         # Process all the measurements and propagate the estimation
         if propagation == True:
-            print('PROPGATION TRUE ---------------------------------------------')
             for i in range(N):
                 obs[i].processMeasurement(meas_table)
                 obs[i].propagate_estimation(t)
@@ -195,10 +190,10 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
             propagation = False
         ############################################# TRIGGER OPTIMIZATION ##############################################
             if config.OPTIMIZATION_ON == True:
-                print('LEADER REAL POSE',s_pose)
                 rospy.loginfo('SENDING DATA')
                 pub[0].publish(np.array(curr_est,dtype=np.float32))
                 rospy.sleep(10/Hz)
+
                 tmp = [s_pose[0],s_pose[1],s_pose[2]]
                 pub[1].publish(np.array(tmp,dtype=np.float32))
                 rospy.sleep(10/Hz)
@@ -225,11 +220,13 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 cmds = cmds.data
                 print('RECEIVED CMDS (deg) -------------------------------------------------',cmds*180/pi)
                 # Update the path and the reference
-                path, ax, ay, last_cmd = cpf_control.update_path([cmds[0]],last_cmd) #update path
-                idx_motion = idx_motion-N #(you delete from the idx the initial path portion deleted)
+                path, ax, ay, last_cmd = cpf_control.update_path([cmds[0]],last_cmd,20) #update path
+                [rx, ry, ryaw, rk, s] = config.calc_spline_course(path,dt)
+                idx_motion = len(ryaw)-1 #(you delete from the idx the initial path portion deleted)
+                d = path.s[-1]-1
            
-            if t > 200:
-                plt.subplots(1)
+            
+                '''plt.subplots(1)
                 plt.plot(ax, ay, "xb", label="Data points")
                 plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
                 for i in range(config.N_AUV):
@@ -237,27 +234,18 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 plt.plot(rx, ry, "-r", label="Cubic spline path")
                 plt.legend()
                 plt.axis('equal')
-                #plt.show() # uncomment for debugging
+                #plt.show() # uncomment for debugging'''
         #################################################################################################################
         ######################################### MOVE THE ROBOTS #######################################################
-        print('LEN RX',len(rx))
-
-        if idx_motion == len(rx)-1:
+        if idx_motion >= len(rx)-1:#check if the path is finishe, in case update with a stright line
             print('++++++++++UPDATING PATH')
-            path, ax, ay, last_cmd = cpf_control.update_path([0],last_cmd) #go straight
-            idx_motion = idx_motion-N #(you delete from the idx the initial path portion deleted)
-
-            
-        start = time.time()
+            path, ax, ay, last_cmd = cpf_control.update_path([0],last_cmd,1) #go straight
+            [rx, ry, ryaw, rk, s] = config.calc_spline_course(path,dt)
+            idx_motion = len(ryaw)-1 #(you delete from the idx the initial path portion deleted)
+            d = path.s[-1]-1
+        else:
+            d += config.AUV_VEL*dt
         [rx, ry, ryaw, rk, s] = config.calc_spline_course(path,dt) # compute reference to follow
-        stop = time.time()
-        print('ELAPSED',stop-start)
-        d += config.AUV_VEL*dt
-        print('path index',path_idx)
-        print('idx_motion',idx_motion)
-        print('len rx',len(ryaw))
-        #if len(ryaw) == 14:
-            #time.sleep(1)
         [s_pose, auvs_xy, auvs_theta] = cpf_control.move_agents(path, d,s_pose,dt, auvs_xy, auvs_theta, ryaw[path_idx+idx_motion],rx[path_idx+idx_motion],ry[path_idx+idx_motion],False)
         target.move_target(dt)
         #################################################################################################################
@@ -328,6 +316,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
         t += dt
         count1 += 1
         idx_motion += 1
+        
         rate.sleep()
 
 def main():

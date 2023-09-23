@@ -90,10 +90,10 @@ class CooperativePathFollowing:
         F_rep = np.zeros_like(F_att)
         for i in range(self.n_agents):
             for j in range(i+1, self.n_agents):
-                d = np.linalg.norm(auvs_xy[i] - auvs_xy[j])
-                if d < self.d_rep:
-                    F_rep[i] += self.k_rep * (1/(d+1e8) - 1/self.d_rep) * (auvs_xy[i] - auvs_xy[j]) / (d+1e8)
-                    F_rep[j] += self.k_rep * (1/(d+1e8) - 1/self.d_rep) * (auvs_xy[j] - auvs_xy[i]) / (d+1e8)
+                dist = np.linalg.norm(auvs_xy[i] - auvs_xy[j])
+                if dist < self.d_rep:
+                    F_rep[i] += self.k_rep * (1/(dist+1e8) - 1/self.d_rep) * (auvs_xy[i] - auvs_xy[j]) / (dist+1e8)
+                    F_rep[j] += self.k_rep * (1/(dist+1e8) - 1/self.d_rep) * (auvs_xy[j] - auvs_xy[i]) / (dist+1e8)
         
         # Calculate the total force for each robot
         F_total = F_att + F_rep
@@ -110,20 +110,20 @@ class CooperativePathFollowing:
 
         return error_ang
 
-    def update_path(self, waypoints, t_i):
+    def update_path(self, waypoints, t_i, DT):
         
         a_i = [self.ax[-1],self.ay[-1]]
         for i in range(len(waypoints)):
             t_f = t_i+waypoints[i]
-            tmp_x = np.cos(t_f)*self.v_n*self.DT+a_i[0]
-            tmp_y = np.sin(t_f)*self.v_n*self.DT+a_i[1]
+            tmp_x = np.cos(t_f)*self.v_n*DT+a_i[0]
+            tmp_y = np.sin(t_f)*self.v_n*DT+a_i[1]
             self.ax.append(tmp_x)
             self.ay.append(tmp_y)
             t_i = t_f
             a_i = [tmp_x, tmp_y]
         path = cubicSpline.CubicSpline2D(self.ax, self.ay)
         
-        if len(self.ax) > 5:
+        if len(self.ax) > 10:
             self.ax.pop(0)
             self.ay.pop(0)
         
@@ -139,9 +139,9 @@ class CooperativePathFollowing:
         s_pose[2] = r_yaw
         s_pose[0] = s_pose[0] + self.v_n*np.cos(s_pose[2])*dt
         s_pose[1] = s_pose[1] + self.v_n*np.sin(s_pose[2])*dt
-        if r_x != 0:
-            s_pose[0] = r_x
-            s_pose[1] = r_y
+        #if r_x != 0:
+        #    s_pose[0] = r_x
+        #    s_pose[1] = r_y
         
         # Update the position and orientation of the follower robots
         F_coop, desired_position = self.potential_field(path, s_pose, auvs_xy, d)
