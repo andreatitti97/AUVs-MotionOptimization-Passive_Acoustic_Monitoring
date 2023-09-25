@@ -152,7 +152,7 @@ plt.yticks(fontsize=25, rotation=0)#to set dimension and orientation of tick lab
 plt.xticks(fontsize=25, rotation=0)#to set dimension and orientation of tick labels
 plt.grid()
 plt.axis('equal')
-#plt.show()
+plt.show()
 
 
 # PLOT THE OUTPUT OF THE SIMULATOR without OPTIMIZATION

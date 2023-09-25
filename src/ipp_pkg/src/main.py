@@ -63,11 +63,11 @@ def initialize_auvs(geometry,s_pose,f,N_AUV,d=0):
         for i in range(0, N_AUV):
             auvs_xy[i,0] = s_pose[0] + (f[i,0]*np.cos(s_pose[2])+f[i,1]*np.sin(s_pose[2]))
             auvs_xy[i,1] = s_pose[1] - (-f[i,0]*np.sin(s_pose[2])+f[i,1]*np.cos(s_pose[2]))      
-    elif geometry == 'column' or geometry == 'column2':     
+    elif geometry == 'column' or geometry == 'column2' or geometry=='polygon':     
         s_pose = [d,s_pose[1],s_pose[2]]
         for i in range(N_AUV):
-            auvs_xy[i,0] = s_pose[0]-f[i]
-            auvs_xy[i,1] = 0
+            auvs_xy[i,0] = s_pose[0]-f[i,0]
+            auvs_xy[i,1] = s_pose[0]-f[i,1]
     return auvs_xy, auvs_theta
 
 def sig(x):

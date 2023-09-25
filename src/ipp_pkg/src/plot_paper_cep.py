@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import math
 import os, importlib
 from math import pi
 from matplotlib.lines import Line2D
@@ -132,6 +133,7 @@ plt.show()
 
 
 # PLOT THE OUTPUT OF THE SIMULATOR without OPTIMIZATION
+
 plt.plot(s_x_off,s_y_off)
 plt.plot(real_x,real_y,linewidth=5,color='y')
 plt.plot(est4_x_OFF,est4_y_OFF,'r',linewidth=3)
@@ -184,36 +186,40 @@ plt.show()
 
 # PLOT THE RESULT OF THE SIMULATION with OPTIMIZATION
 
+fig = plt.figure(figsize=(8, 4))
 
+lw = 2*4
+lw_ms = 2*7
+fs = 16*2 #14
+ms = 12*2 #10
 
 #plt.plot(s_x_on,s_y_on)
-plt.plot(real_x,real_y,linewidth=5,color='y')
-plt.plot(est4_x_ON,est4_y_ON,'r',linewidth=3)
-plt.plot(s_x_on,s_y_on,'b',linewidth=2)
-plt.xlabel('x (m)',fontsize=30)
-plt.ylabel('y (m)',fontsize=30)
+plt.plot(real_x,real_y,linewidth=lw,color='r')
+plt.plot(est4_x_ON,est4_y_ON,'k',linewidth=lw/2)
+plt.plot(s_x_on,s_y_on,'y',linewidth=lw/2)
+plt.xlabel('x [m]',fontsize=fs)
+plt.ylabel('y [m]',fontsize=fs)
+plt.title('Simulation Scenario - Optimization ON',weight='bold',fontsize=fs)
+legend_elements = [Line2D([0], [0], marker='X',color='y', lw=lw, markersize=ms, label='Formation Reference Path'),
+                    Line2D([0], [0], color='r', lw=lw, label='Target Real Path'),
+                    Line2D([0], [0], color='k', lw=lw, label='Target Estimation'),
+                    Line2D([0], [0], marker='o',color='b', markersize=ms ,label='AUVs'),
+                    Line2D([0], [0], color='tab:grey', lw=lw/2 ,ls='--', label='LOS AUVs')]
 
-legend_elements = [Line2D([0], [0], marker='X',color='b', lw=1, label='Formation Reference Path'),
-                    Line2D([0], [0], color='yellow', lw=5, label='Target Real Path'),
-                    Line2D([0], [0], color='r', lw=1, label='Target Estimation'),
-                    Line2D([0], [0], marker='o',color='k',  label='AUVs'),
-                    Line2D([0], [0], color='k', ls='--', label='LOS AUVs')]
-
-plt.legend(handles=legend_elements, fontsize=20)
+plt.legend(handles=legend_elements, fontsize=fs)
 
 j = 0
 lista = []
-plt.plot(s_x_on[0],s_y_on[1],'ob')
-plt.text(s_x_on[0]-100,s_y_on[1],'s(t0)',color='b',fontsize=20)
-plt.plot(auv1_x_on[0],auv1_y_on[0],'ok',linewidth=20)
-plt.plot(auv2_x_on[0],auv2_y_on[0],'ok',linewidth=20)
+plt.plot(s_x_on[0],s_y_on[1],'oy',markersize=lw_ms/2)
+plt.text(s_x_on[0]-200,s_y_on[1],'s(t0)',color='y',fontsize=fs)
+plt.plot(auv1_x_on[0],auv1_y_on[0],'ob',markersize=lw_ms)
+plt.plot(auv2_x_on[0],auv2_y_on[0],'ob',markersize=lw_ms)
 #plt.plot(auv3_x_on[0],auv3_y_on[0],'ok',linewidth=20)
 #plt.plot(auv4_x_on[0],auv4_y_on[0],'ok',linewidth=20)
-plt.text(real_x[0]+30,real_y[0],'x(t0)',color='y',fontsize=20)
-plt.plot([auv1_x_on[0],
-            real_x[0]],[auv1_y_on[0],real_y[0]],'k--',linewidth=1)
+plt.text(real_x[0]+30,real_y[0],'x(t0)',color='r',fontsize=fs)
+plt.plot([auv1_x_on[0],real_x[0]],[auv1_y_on[0],real_y[0]],'tab:grey',linestyle='--',linewidth=2)
 plt.plot([auv2_x_on[0],real_x[0]],[auv2_y_on[0],
-    real_y[0]],'k--',linewidth=1)
+    real_y[0]],'tab:grey',linestyle='--',linewidth=2)
 
 
 for i in range(ranges):
@@ -225,9 +231,9 @@ for i in range(ranges):
     if  i == 2 or i == 4  or i == 8 or i == 10 or i == ranges:
     
         plt.plot([auv1_x_on[idx],
-            real_x[idx]],[auv1_y_on[idx],real_y[idx]],'k--',linewidth=1)
+            real_x[idx]],[auv1_y_on[idx],real_y[idx]],'tab:grey',linestyle='--',linewidth=2)
         plt.plot([auv2_x_on[idx],real_x[idx]],[auv2_y_on[idx],
-            real_y[idx]],'k--',linewidth=1)
+            real_y[idx]],'tab:grey',linestyle='--',linewidth=2)
 
         '''plt.plot([auv1_x_on[idx],
             s_x_on[idx]],[auv1_y_on[idx],s_y_on[idx]],'g--',linewidth=1)
@@ -235,8 +241,8 @@ for i in range(ranges):
             s_x_on[idx]],[auv2_y_on[idx],s_y_on[idx]],'g--',linewidth=1)'''
 
     # plot AUVs
-        plt.plot(auv1_x_on[idx],auv1_y_on[idx],'ok',linewidth=20)
-        plt.plot(auv2_x_on[idx],auv2_y_on[idx],'ok',linewidth=20)
+        plt.plot(auv1_x_on[idx],auv1_y_on[idx],'ob',markersize=lw_ms)#
+        plt.plot(auv2_x_on[idx],auv2_y_on[idx],'ob',markersize=lw_ms)
     #plt.plot(auv3_x_on[idx],auv3_y_on[idx],'ok',linewidth=20)
     #plt.plot(auv4_x_on[idx],auv4_y_on[idx],'ok',linewidth=20)
     
@@ -245,20 +251,20 @@ for i in range(ranges):
     #plt.gca().add_patch(circle)
     # plot target and formation reference
     if i == 2 or i == 4  or i == 8 or i == 10 or i == ranges:
-        circle = plt.Circle((real_x[idx],real_y[idx]),10,color='y')
+        circle = plt.Circle((real_x[idx],real_y[idx]),ms/2,color='r')
         if i >= 10:
-            plt.text(real_x[idx]+20,real_y[idx],'tf',fontsize=20)
+            plt.text(real_x[idx]+20,real_y[idx],'tf',fontsize=fs)
         else:
-            plt.text(real_x[idx]+20,real_y[idx],'t'+str(j+1),fontsize=20)
-        plt.plot(s_x_on[idx],s_y_on[idx],'Xb',linewidth=5) 
+            plt.text(real_x[idx]+20,real_y[idx],'t'+str(j+1),fontsize=fs)
+        plt.plot(s_x_on[idx],s_y_on[idx],color='y',marker='X',markersize=lw_ms/2) 
         plt.gca().add_patch(circle)
         j += 1
 plt.axis('equal')
 idx1 = int(len(real_x)/2) 
-plt.arrow(real_x[np.round(0)],real_y[np.round(0)],+5.0*scaling*np.cos(target_init[2]), 5.0*scaling*np.sin(target_init[2]),width=2*scaling,color='y')
-plt.grid()
-plt.yticks(fontsize=25, rotation=0)#to set dimension and orientation of tick labels
-plt.xticks(fontsize=25, rotation=0)#to set dimension and orientation of tick labels
+plt.arrow(real_x[-1],real_y[-1],np.cos(pi/2), np.sin(pi/2),width=ms/2,color='r')
+plt.grid(linewidth=0.5)
+plt.yticks(fontsize=fs, rotation=0)#to set dimension and orientation of tick labels
+plt.xticks(fontsize=fs, rotation=0)#to set dimension and orientation of tick labels
 plt.show()
 
 # PLOT COVARIANCE OBERVATIONS
@@ -321,26 +327,30 @@ for i in range(len(auv1_x_off)):
 
 # Plot TRACKING ANGLE and TRACKING ERROR
 y = np.zeros(n)
+fig = plt.figure(figsize=(8, 4))
 plt.subplot(2,1,1)
-plt.title('PERFORMANCES COMPARISON',fontsize=30)
-plt.plot(t_off,baseline_angle,'g',markerfacecolor='yellow')
-plt.plot(t_off,baseline_angle_off,'b',markerfacecolor='yellow')
-plt.ylabel('Angle LOS (deg)',fontsize=22)
-plt.yticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
-plt.xticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
-plt.legend(['OPTIMIZATION ON','OPTIMIZATION OFF'],fontsize=22)
+plt.title('Performances Comparison',fontsize=fs, weight='bold')
+plt.plot(t_off,baseline_angle_off,'tab:blue',linewidth=lw/2)
+plt.plot(t_off,baseline_angle,'tab:green',linewidth=lw/2)
+
+plt.ylabel('Angle LOS (deg)',fontsize=fs)
+plt.yticks(fontsize=fs, rotation=0)#to set dimension and orientation of tick labels
+plt.xticks(fontsize=fs, rotation=0)#to set dimension and orientation of tick labels
+plt.legend(['Optimization OFF','Optimization ON'],fontsize=fs)
+plt.yticks(np.arange(0, 13, 4.0))
 plt.grid()
 
 plt.subplot(2,1,2)
-plt.plot(t[0:n],(err_off[0:n])+20,'b',marker='o',markerfacecolor='b') #err_off contiene e(t) = ex + ey, dove ex = (x - x_hat)**2
-plt.plot(t[0:n],(err_on[0:n])+20,'g',marker='o',markerfacecolor='g')
+plt.plot(t[0:n],((err_off[0:n])+20),'tab:blue',linewidth=lw/3,marker='o',markerfacecolor='tab:blue',markersize=lw) #err_off contiene e(t) = ex + ey, dove ex = (x - x_hat)**2
+plt.plot(t[0:n],((err_on[0:n])+20),'tab:green',linewidth=lw/3,marker='o',markerfacecolor='tab:green',markersize=lw)
 
-plt.legend(['optimization OFF','optimization ON'],fontsize=15)
+plt.legend(['Optimization OFF','Optimization ON'],fontsize=fs)
 
-plt.xlabel('Time (s)',fontsize=30)
-plt.ylabel('Tracking Error (m)',fontsize=30)
-plt.yticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
-plt.xticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
+plt.xlabel('Time (s)',fontsize=fs)
+plt.ylabel('Tracking Error (m)',fontsize=fs)
+plt.yticks(fontsize=fs, rotation=0)#to set dimension and orientation of tick labels
+plt.xticks(fontsize=fs, rotation=0)#to set dimension and orientation of tick labels
+plt.yticks(np.arange(0, 420, 100.0))
 plt.grid()
 plt.show()
 
@@ -354,7 +364,7 @@ plt.yticks(fontsize=15, rotation=0)#to set dimension and orientation of tick lab
 plt.xticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
 plt.ylabel('Heading Changes (deg)',fontsize=20)
 plt.legend(['ADAPTATION ON'],fontsize=20)
-plt.grid()
+plt.grid(linewidth=0.5)
 
 # PLOT ctrl cmds from optimization
 '''plt.subplot(2,1,2)

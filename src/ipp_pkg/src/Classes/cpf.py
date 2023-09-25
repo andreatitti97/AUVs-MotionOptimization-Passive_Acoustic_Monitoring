@@ -51,7 +51,7 @@ class CooperativePathFollowing:
             [rx, ry, ryaw, rk, s]= self.spline_course(leader_path,self.ds)
             path_idx = len(ryaw)
             d = leader_path.s[-1]
-        elif self.geometry == 'line' or self.geometry == 'line2':
+        elif self.geometry == 'line' or self.geometry == 'line2' or self.geometry == 'polygon':
             ax_0 = [0, self.DT+2]
             d = 0 
             path_idx = 0
@@ -78,7 +78,7 @@ class CooperativePathFollowing:
         f = config.formation #THIS IS MANDATORY - DO NOT EDIT
         des_xy = np.zeros_like(auvs_xy)
         # Compute the desired absolute auvs_xy of the agents according to leader auvs_xy and given f
-        if self.geometry == 'line' or self.geometry == 'line2':
+        if self.geometry == 'line' or self.geometry == 'line2' or self.geometry == 'polygon':
             for i in range(0, self.n_agents):
                 des_xy[i,0] = s_pose[0] + (f[i,0]*np.cos(s_pose[2])+f[i,1]*np.sin(s_pose[2]))
                 des_xy[i,1] = s_pose[1] - (-f[i,0]*np.sin(s_pose[2])+f[i,1]*np.cos(s_pose[2]))

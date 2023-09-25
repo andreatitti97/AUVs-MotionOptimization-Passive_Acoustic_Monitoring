@@ -187,7 +187,7 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
 
     for i in range(config.N_AUV):
 
-        if geometry == 'line' or geometry == 'line2':
+        if geometry == 'line' or geometry == 'line2' or geometry == 'polygon':
             auvs_theta[i] = s_pose[2]
             auvs_xy[i,0] = s_pose[0] + (f[i,0]*np.cos(s_pose[2])+f[i,1]*np.sin(s_pose[2]))
             auvs_xy[i,1] = s_pose[1] - (-f[i,0]*np.sin(s_pose[2])+f[i,1]*np.cos(s_pose[2]))      
@@ -302,7 +302,7 @@ def main():
                 ax.append(ax_array[length+i])
                 ay.append(ay_array[length+i])
             path = cubicSpline.CubicSpline2D(ax, ay)
-        elif geometry == 'line' or geometry == 'line2':
+        elif geometry == 'line' or geometry == 'line2' or geometry=='polygon':
             for i in range(len(ay_array)):
                 length = len(ay_array)-2
                 ax.append(ax_array[i])

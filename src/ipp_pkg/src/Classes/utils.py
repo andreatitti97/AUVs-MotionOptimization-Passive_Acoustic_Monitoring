@@ -42,9 +42,9 @@ def generate_formation(geometry,d,Tg,Tm,c):
         mean = [Tg+6*d/c,Tg+4*d/c,Tg+2*d/c,0]  
         variance = [Tm*3.0, Tm*1.8, Tm*0.8, 0.0]
     elif geometry == 'polygon':
-        formation =  np.array([ [0, +d/2],
-                                [0,0],
-                                [0,0],
+        formation =  np.array([[0, +d/2],
+                                [d,0],
+                                [d,0],
                                 [0, -d/2]]) 
         mean = [Tg+6*d/c,Tg+4*d/c,Tg+2*d/c,0]  
         variance = [Tm*3.0, Tm*1.8, Tm*0.8, 0.0]

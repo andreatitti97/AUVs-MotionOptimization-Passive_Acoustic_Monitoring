@@ -12,7 +12,7 @@ TIME_DURATION = 1200 # (s)
 TIME_STEP = 0.01
 TIME_SCALER = 80 # TIME SCALER OF THE SIMULATION 
 c = 1500 #sound wave speed
-OPTIMIZATION_ON = False
+OPTIMIZATION_ON = True
 # Estimation Parameters
 TP = 30 # regressor MAX length 40
 SIGMA_MEAS = 0.08 #(rad^2) --> 4.5° (as assumed in DAMPS and by cassino)
@@ -22,7 +22,7 @@ AUV_VEL = 1.0 #(m/s)#2 # nominal vel
 AUV_MAX_VEL = 3.0 #(m/s)#4 # max vel considering v_coop
 GAIN_YAW_RATE = 0.8 
 # CHOOSE THE GEOMETRY BETWEEN THE AGENTS
-geometry = 'line'
+geometry = 'polygon'
 # Communication Paramaters
 d = 300 #vehicle distance
 Tm = 5 # measurements time sampling
@@ -46,14 +46,14 @@ ctrl_cmd = [-u_max, -u_max*4/(U),-u_max*2/(U),0,u_max*2/(U),u_max*4/(U),u_max] #
 # PARTE SEMPRE DA UNA DISTANZA COMPRESA TRA I 3.5 E 5 KM con velocità da 4 a 8 m/s
 # TARGET_INIT = [400,-200, pi/2, 1.5] --- SIMPLE CASE LOWE DISTANCE!!!!!
 
-#TARGET_INIT = [+2000,-2500, pi, 2.5, 0.0, 0.0, 0.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 1
+TARGET_INIT = [+2000,-2500, pi, 2.5, 0.0, 0.0, 0.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 1
 #TARGET_INIT = [4000, 200, 140*pi/180, 8.0, 0.0, 0.0, 0.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 2
-#TARGET_INIT = [-5000,-5000, pi/4, 2.5, 0.0, 0.0, 0.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 3
+#TARGET_INIT = [-5000,-5000, pi/4, 3.0, 0.0, 0.0, 0.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 3
 #TARGET_INIT = [-500,+3500, -pi/10, 2.5, 0.0, 0.0, 0.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 4
 #TARGET_INIT = [3000,-1500, pi/2, 9.0, 0.0, 0.5, 0.0]#[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 5
-#TARGET_INIT = [3500, 0, 140*pi/180, 8.0, 0.02, 0.0, 0.0] #[x(m),y(m),theta(rad),v0(m/s),omega0,v_dot0,omega_dot0] - DINAMICA 6
-#TARGET_INIT = [-2800, -1800, pi/2, 4.0, 0.01, 0.0, 0.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 7
-TARGET_INIT = [-1500, 2000, pi/8, 5.0, 0.0, 0.8, 0.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 8
+#TARGET_INIT = [-2000, +2000, 140*pi/180, 8.0, 0.002, 0.0, 0.0] #[x(m),y(m),theta(rad),v0(m/s),omega0,v_dot0,omega_dot0] - DINAMICA 6
+#TARGET_INIT = [-2000, -1800, pi/2, 6.0, -0.001, 0.0, 0.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 7
+#TARGET_INIT = [-1500, 2000, pi/8, 5.0, 0.0, 0.8, 0.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 8
 
 alpha_0, omega_0,alpha_dot_0,omega_dot_0 = TARGET_INIT[3],TARGET_INIT[4],TARGET_INIT[5],TARGET_INIT[6]
 MAX_TARGET_VEL = 3 #(m/s) (only if target no costant vels)
