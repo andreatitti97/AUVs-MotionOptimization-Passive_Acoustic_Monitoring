@@ -75,7 +75,7 @@ vy_OFF = np.loadtxt(lib_path+'/vy_OFF.txt')
 
 # Plot Parameters
 scaling = 10 #scale the width of the drawn lines (i.e. 3 suitable for 10km X 10km area)
-ranges = 12 #scale the number of printed AUVs (ie.e 12 suitable for 600 s of simulation)
+ranges = 16 #scale the number of printed AUVs (ie.e 12 suitable for 600 s of simulation)
 
 # Plot Tracking Error and compute RMSE
 sum1, sum2, sum3 = 0,0,0
@@ -152,7 +152,7 @@ plt.yticks(fontsize=25, rotation=0)#to set dimension and orientation of tick lab
 plt.xticks(fontsize=25, rotation=0)#to set dimension and orientation of tick labels
 plt.grid()
 plt.axis('equal')
-plt.show()
+#plt.show()
 
 
 # PLOT THE OUTPUT OF THE SIMULATOR without OPTIMIZATION

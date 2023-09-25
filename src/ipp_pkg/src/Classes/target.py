@@ -1,15 +1,14 @@
 import os 
 import importlib
 import numpy as np
-
+# Import costum modules
 class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
 spec = importlib.util.spec_from_file_location("module.config", class_path+"/config.py")
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
-
-count2, prev_count = 0, 0
-goal_theta, old_pose = 0, 0
-angular_velocity = 0
+spec = importlib.util.spec_from_file_location("module.utils", class_path+"/utils.py")
+utils = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(utils)
 
 def saturateVel(linear_velocity):
     if config.MIN_TARGET_VEL < linear_velocity < config.MIN_TARGET_VEL:
@@ -37,11 +36,11 @@ class Target:
     def __init__(self): #path_finder_controller_target
 
         #self.target_controller = path_finder_controller_target # FOR FOLLOWING A POLYNOMIAL TRAJECTORY
-        self.pose = config.Pose(0,0,0)
-        self.lin_vel = config.TARGET_VEL
-        self.ang_vel = 0# (rad/sec)
-        self.lin_acc = 0#0.5 #(m/sec^2)
-        self.ang_acc = 0#0.001 # (rad/sec^2)
+        self.pose = utils.Pose(0,0,0)
+        self.lin_vel = config.alpha_0 #(m/s)
+        self.ang_vel = config.omega_0 #(rad/sec)
+        self.lin_acc = config.alpha_dot_0 #(m/sec^2)
+        self.ang_acc = config.omega_dot_0 #(rad/sec^2)
 
     def set_start_target_poses(self, pose):
         """

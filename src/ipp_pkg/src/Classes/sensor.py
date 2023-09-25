@@ -8,7 +8,7 @@ class Sensor:
         self.name = name
         self.f = f
         self.mean = mean
-        self.variance = variance
+        self.variance = variance*0.02
         self.abs_bearing = 0
 
     def measureBearing(self,xt,yt,obs_pos, orientation):
@@ -33,7 +33,6 @@ class Sensor:
 
         # Create the noise and add the noise to the measurament
         self.noise = np.random.uniform(-self.variance, self.variance)
-        #self.noise = np.random.normal(0,self.variance) 
         self.abs_bearing = self.abs_bearing + self.noise #overwrite absolute bearing with the corrupted quantities
         return self.abs_bearing, rel_bearing, obs_pos
 

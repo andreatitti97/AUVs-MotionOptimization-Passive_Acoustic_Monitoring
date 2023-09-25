@@ -17,6 +17,9 @@ class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Cla
 spec = importlib.util.spec_from_file_location("module.config", class_path+"/config.py")
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
+spec = importlib.util.spec_from_file_location("module.utils", class_path+"/utils.py")
+utils = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(utils)
 spec = importlib.util.spec_from_file_location("module.sensor_cpf", class_path+"/sensor.py")
 sensor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sensor)
@@ -171,7 +174,7 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
     # Load Path
     start = time.time()
     path = cubicSpline.CubicSpline2D(ax, ay)#re-generate the path followed up to now
-    [rx, ry, ryaw, rk, s]=config.calc_spline_course(path,dt)
+    [rx, ry, ryaw, rk, s]=utils.calc_spline_course(path,dt)
     p_idx = len(ryaw)-1
     # Compute leader pose
     yaw = path.calc_yaw(d)
@@ -198,7 +201,7 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
     path, ax, ay, current_theta = update_path(ax,ay,control_input,yaw)
     for i in range(0,scaler):
 
-        [rx, ry, ryaw, rk, s] = config.calc_spline_course(path,dt)
+        [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
         # Update  AUVs and target state
         d += desired_vel*dt
         [s_pose, auvs_xy, auvs_theta] = controller.move_agents(path, d, s_pose, dt, auvs_xy, auvs_theta, ryaw[p_idx+i],rx[p_idx+i],ry[p_idx+i], True)
@@ -218,7 +221,7 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
             estimator.computeState(meas_table)
         t += dt
 
-    '''[rx, ry, ryaw, rk, s] = config.calc_spline_course(path,dt)
+    '''[rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
     plt.subplots(1)
     plt.plot(ax, ay, "xb", label="Data points")
     plt.plot(s_pose[0],s_pose[1],'og',label='leader position')

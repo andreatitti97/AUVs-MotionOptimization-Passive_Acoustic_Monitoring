@@ -8,6 +8,11 @@ class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Cla
 spec = importlib.util.spec_from_file_location("module.config", class_path+"/config.py")
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
+
+spec = importlib.util.spec_from_file_location("module.utils", class_path+"/utils.py")
+utils = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(utils)
+
 spec = importlib.util.spec_from_file_location("module.planner", class_path+"/spline_planner.py")
 planner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(planner)
@@ -28,7 +33,7 @@ class CooperativePathFollowing:
         self.v_n = config.AUV_VEL
         self.ds = config.TIME_STEP*config.TIME_SCALER #curve sampling, if higher path less smooth (i think)
         self.DT = config.OPTIMIZATION_TIME_STEP 
-        self.spline_course = config.calc_spline_course
+        self.spline_course = utils.calc_spline_course
         # Initialize waypoints and boolean
         self.ax = []
         self.ay = []

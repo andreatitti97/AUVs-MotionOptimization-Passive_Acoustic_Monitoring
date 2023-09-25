@@ -18,10 +18,12 @@ class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Cla
 spec = importlib.util.spec_from_file_location("module.config", class_path+"/config.py")
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
+spec = importlib.util.spec_from_file_location("module.utils", class_path+"/utils.py")
+utils = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(utils)
 spec = importlib.util.spec_from_file_location("module.tracker", class_path+"/tracker.py")
 tracker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(tracker)
-
 spec = importlib.util.spec_from_file_location("module.sensor", class_path+"/sensor.py")
 sensor = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sensor)
@@ -105,7 +107,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
         flags.append(0) 
     # Initialize Path
     path, path_idx, d = cpf_control.initialize_path(f)
-    [rx, ry, ryaw, rk, s] = config.calc_spline_course(path,dt)
+    [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
     # Init AUVs position and orientation according to given formation
     auvs_xy, auvs_theta = initialize_auvs(geometry,s_pose,f,N,d)
     ## SIMULATION LOOP ############################################################################################################
@@ -221,7 +223,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 print('RECEIVED CMDS (deg) -------------------------------------------------',cmds*180/pi)
                 # Update the path and the reference
                 path, ax, ay, last_cmd = cpf_control.update_path([cmds[0]],last_cmd,20) #update path
-                [rx, ry, ryaw, rk, s] = config.calc_spline_course(path,dt)
+                [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
                 idx_motion = len(ryaw)-1 #(you delete from the idx the initial path portion deleted)
                 d = path.s[-1]-1
            
@@ -238,14 +240,13 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
         #################################################################################################################
         ######################################### MOVE THE ROBOTS #######################################################
         if idx_motion >= len(rx)-1:#check if the path is finishe, in case update with a stright line
-            print('++++++++++UPDATING PATH')
             path, ax, ay, last_cmd = cpf_control.update_path([0],last_cmd,1) #go straight
-            [rx, ry, ryaw, rk, s] = config.calc_spline_course(path,dt)
+            [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
             idx_motion = len(ryaw)-1 #(you delete from the idx the initial path portion deleted)
             d = path.s[-1]-1
         else:
             d += config.AUV_VEL*dt
-        [rx, ry, ryaw, rk, s] = config.calc_spline_course(path,dt) # compute reference to follow
+        [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt) # compute reference to follow
         [s_pose, auvs_xy, auvs_theta] = cpf_control.move_agents(path, d,s_pose,dt, auvs_xy, auvs_theta, ryaw[path_idx+idx_motion],rx[path_idx+idx_motion],ry[path_idx+idx_motion],False)
         target.move_target(dt)
         #################################################################################################################
@@ -334,7 +335,7 @@ def main():
     pub.append(pub_waypoints_y)
     pub.append(pub_cov)
     # Initial Conditions
-    pose = config.Pose(config.TARGET_INIT[0], config.TARGET_INIT[1],  config.TARGET_INIT[2])
+    pose = utils.Pose(config.TARGET_INIT[0], config.TARGET_INIT[1],  config.TARGET_INIT[2])
     s_pose = [config.PLATFORM_INIT_POSE[0],config.PLATFORM_INIT_POSE[1],config.PLATFORM_INIT_POSE[2]]
     # Set the AUV and the TARGET to the initial conditions
     target_ = target.Target()
