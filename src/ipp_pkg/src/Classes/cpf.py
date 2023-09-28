@@ -42,17 +42,20 @@ class CooperativePathFollowing:
 
     def initialize_path(self, f):#f=formation
         if self.geometry == 'column' or self.geometry == 'column2':
-            if self.geometry == 'column2':
-                ax_0 = [0, f[0], f[0]+self.DT+2]
-                leader_path = cubicSpline.CubicSpline2D([0, f[0]], [0,0])
-            else:
-                ax_0 = [0, f[2], f[1], f[0], f[0]+self.DT+2]
-                leader_path = cubicSpline.CubicSpline2D([0, f[2], f[1], f[0]], [0,0,0,0])
+            d = f[0]-f[1]
+            ax_0 =[*range(0,  f[0]+2*self.DT, self.DT)]
+            tmp = [*range(0, f[0]+self.DT,  self.DT)]
+
+            ay_0 = []
+            for i in range(len(tmp)):
+                ay_0.append(0)
+            leader_path = cubicSpline.CubicSpline2D(tmp, ay_0)            
             [rx, ry, ryaw, rk, s]= self.spline_course(leader_path,self.ds)
             path_idx = len(ryaw)
             d = leader_path.s[-1]
         elif self.geometry == 'line' or self.geometry == 'line2' or self.geometry == 'polygon':
-            ax_0 = [0, self.DT+2]
+            
+            ax_0 =[*range(0,  self.DT*2, self.DT)]
             d = 0 
             path_idx = 0
 
@@ -60,7 +63,7 @@ class CooperativePathFollowing:
             self.ax.append(ax_0[i])
             self.ay.append(0)
         path = cubicSpline.CubicSpline2D(self.ax, self.ay)
-  
+
         return path, path_idx, d
 
     def saturateVel(self,vel,bool=False):
@@ -102,10 +105,10 @@ class CooperativePathFollowing:
         
         # Calculate the total force for each robot
         F_total = F_att + F_rep
-           
+
         return F_total, des_xy
 
-    def compute_orientations(self, desired_pos, auvs_xy, num_robots, auvs_theta):
+    def compute_orientations(self, desired_pos, auvs_xy, auvs_theta):
         orientations_goal = np.zeros((self.n_agents))
         error_ang = np.zeros((self.n_agents))
         for i in range(self.n_agents):
@@ -128,35 +131,36 @@ class CooperativePathFollowing:
             a_i = [tmp_x, tmp_y]
         path = cubicSpline.CubicSpline2D(self.ax, self.ay)
         
-        if len(self.ax) > 10:
-            self.ax.pop(0)
-            self.ay.pop(0)
-        
-        
-        #time.sleep(2)
+        self.ax.pop(0)
+        self.ay.pop(0)
+
         return path, self.ax, self.ay, t_i
 
     def move_agents(self, path, d, s_pose, dt, auvs_xy, auvs_theta, r_yaw, r_x=0,r_y=0,bool=False):
         
         # Update Leader Position
-        angular_vel_leader = (r_yaw-s_pose[2])
-        s_pose[2] = (s_pose[2] + self.ko*angular_vel_leader*dt)
-        s_pose[2] = r_yaw
-        s_pose[0] = s_pose[0] + self.v_n*np.cos(s_pose[2])*dt
-        s_pose[1] = s_pose[1] + self.v_n*np.sin(s_pose[2])*dt
-        #if r_x != 0:
-        #    s_pose[0] = r_x
-        #    s_pose[1] = r_y
-        
+        if config.geometry == 'column2' or config.geometry == 'column':
+            s_pose[2] = r_yaw
+            s_pose[0] = r_x
+            s_pose[1] = r_y 
+        elif config.geometry == 'line2' or config.geometry == 'line':
+            #angular_vel_leader = (r_yaw-s_pose[2])
+            #s_pose[2] = (s_pose[2] + self.ko*angular_vel_leader*dt)
+            s_pose[2] = r_yaw
+            s_pose[0] = s_pose[0] + self.v_n*np.cos(s_pose[2])*dt
+            s_pose[1] = s_pose[1] + self.v_n*np.sin(s_pose[2])*dt
         # Update the position and orientation of the follower robots
         F_coop, desired_position = self.potential_field(path, s_pose, auvs_xy, d)
         # Compute the heading according to the desired position
-        e_theta = self.compute_orientations(desired_position,auvs_xy, self.n_agents, auvs_theta)
+        e_theta = self.compute_orientations(desired_position,auvs_xy, auvs_theta)
         for i in range(self.n_agents):
             auvs_theta[i] = auvs_theta[i] + self.ko*e_theta[i]*dt
             tmp1 = self.saturateVel((self.v_n*np.cos(auvs_theta[i]) + F_coop[i,0]*dt)*dt,bool)
             tmp2 = self.saturateVel((self.v_n*np.sin(auvs_theta[i]) + F_coop[i,1]*dt)*dt,bool)          
             auvs_xy[i,0] = auvs_xy[i,0] + tmp1
             auvs_xy[i,1] = auvs_xy[i,1] + tmp2
-
+        if bool == True:
+            auvs_xy = desired_position
+            for i in range(self.n_agents):
+                auvs_theta[i] = atan2(auvs_xy[i,1],auvs_xy[i,0])
         return s_pose, auvs_xy, auvs_theta

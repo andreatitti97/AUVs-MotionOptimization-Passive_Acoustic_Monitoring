@@ -41,6 +41,12 @@ def generate_formation(geometry,d,Tg,Tm,c):
         formation = [d*3,d*2,d*1,0] # IN COLONNA
         mean = [Tg+6*d/c,Tg+4*d/c,Tg+2*d/c,0]  
         variance = [Tm*3.0, Tm*1.8, Tm*0.8, 0.0]
+        '''formation =  np.array([[0,0],
+                                [d,0], 
+                                [2*d,0], 
+                                [3*d,0]]) # IN LINEA  
+        mean = [Tg+6*d/c,Tg+4*d/c,Tg+2*d/c,0]  #medium latencies between each AUV and the 4th (in fact latencies 0.0 for the 4th).
+        variance = [Tm*3.0, Tm*1.8, Tm*0.8, 0.0] #the same as before vor the variances.'''
     elif geometry == 'polygon':
         formation =  np.array([[0, +d/2],
                                 [d,0],
@@ -50,6 +56,8 @@ def generate_formation(geometry,d,Tg,Tm,c):
         variance = [Tm*3.0, Tm*1.8, Tm*0.8, 0.0]
     elif geometry == 'column2':
         formation =  [d,d/2,d,d/2]
+        mean = [Tg*d/c,Tg*d/c,Tg*d/c,0]  
+        variance = [Tm*1.5, Tm*0.8, Tm*0.3, 0.0]
     elif geometry == 'one_auv':
         formation =  np.array([[0, 0]]) # TRAPEZOIDALE 
 

@@ -238,7 +238,7 @@ for i in range(ranges):
         idx = -1
     plt.plot([auv1_x_on[idx],
         real_x[idx]],[auv1_y_on[idx],real_y[idx]],'k--',linewidth=1)
-    plt.plot([auv4_x_on[idx],real_x[idx]],[auv4_y_on[idx],
+    plt.plot([auv2_x_on[idx],real_x[idx]],[auv2_y_on[idx],
         real_y[idx]],'k--',linewidth=1)
 
     plt.plot([auv1_x_on[idx],
@@ -305,9 +305,9 @@ t_on = np.linspace(0,config.TIME_DURATION,len(auv4_x_on))
 baseline_angle = []
 
 for i in range(len(auv4_x_on)):
-    tmp = (((real_x[i]-auv1_x_on[i])*(real_x[i]-auv4_x_on[i]))+((real_y[i]-auv1_y_on[i])*(real_y[i]-auv4_y_on[i]))
-    )/(np.sqrt((real_x[i]-auv1_x_on[i])**2+(real_y[i]-auv1_y_on[i])**2)*np.sqrt((real_x[i]-auv4_x_on[i])**2+(
-        real_y[i]-auv4_y_on[i])**2))
+    tmp = (((real_x[i]-auv1_x_on[i])*(real_x[i]-auv2_x_on[i]))+((real_y[i]-auv1_y_on[i])*(real_y[i]-auv2_y_on[i]))
+    )/(np.sqrt((real_x[i]-auv1_x_on[i])**2+(real_y[i]-auv1_y_on[i])**2)*np.sqrt((real_x[i]-auv2_x_on[i])**2+(
+        real_y[i]-auv2_y_on[i])**2))
 
     angle = np.arccos(tmp)
     angle = angle*180/pi
@@ -315,9 +315,9 @@ for i in range(len(auv4_x_on)):
 
 baseline_angle_off = []
 for i in range(len(auv4_x_off)):
-    tmp = (((real_x[i]-auv1_x_off[i])*(real_x[i]-auv4_x_off[i]))+((real_y[i]-auv1_y_off[i])*(real_y[i]-auv4_y_off[i]))
-    )/(np.sqrt((real_x[i]-auv1_x_off[i])**2+(real_y[i]-auv1_y_off[i])**2)*np.sqrt((real_x[i]-auv4_x_off[i])**2+(
-        real_y[i]-auv4_y_off[i])**2))
+    tmp = (((real_x[i]-auv1_x_off[i])*(real_x[i]-auv2_x_off[i]))+((real_y[i]-auv1_y_off[i])*(real_y[i]-auv2_y_off[i]))
+    )/(np.sqrt((real_x[i]-auv1_x_off[i])**2+(real_y[i]-auv1_y_off[i])**2)*np.sqrt((real_x[i]-auv2_x_off[i])**2+(
+        real_y[i]-auv2_y_off[i])**2))
 
     angle = np.arccos(tmp)
     angle = angle*180/pi

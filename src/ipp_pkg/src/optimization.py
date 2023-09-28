@@ -172,7 +172,6 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
     target = Target(target_est, dt, P)
     estimator = Estimation()
     # Load Path
-    start = time.time()
     path = cubicSpline.CubicSpline2D(ax, ay)#re-generate the path followed up to now
     [rx, ry, ryaw, rk, s]=utils.calc_spline_course(path,dt)
     p_idx = len(ryaw)-1
@@ -193,7 +192,6 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
             auvs_xy[i,1] = s_pose[1] - (-f[i,0]*np.sin(s_pose[2])+f[i,1]*np.cos(s_pose[2]))      
         if geometry == 'column' or geometry == 'column2':      
             d_auv = -f[i]+d
-
             x,y = path.calc_position(d_auv)
             auvs_xy[i,0] = x
             auvs_xy[i,1] = y
@@ -231,7 +229,7 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
     plt.legend()
     plt.axis('equal')
     plt.show() # uncomment for debugging'''
-
+    #print(len(ax))
     return target.x, estimator.phi, estimator.y, s_pose, ax[-1], ay[-1], d
 
 def compute_cost(phi,length_y):
@@ -291,25 +289,26 @@ def main():
         # Load the last section of followed path
         ax, ay = [], []
         if geometry == 'column' or geometry == 'column2': # THIS CAN BECAME A FUNCTION
-            if len(ay_array) <= 5:
+            '''if len(ay_array) <= 5:
                 n = 5
             else:   
                 n = len(ay_array)
                 if n >= np.ceil(config.formation[0]/DT):
                     n = np.ceil(config.formation[0]/DT)
-            for i in range(n):
-                length = len(ay_array)-n
-                ax.append(ax_array[length+i])
-                ay.append(ay_array[length+i])
+                n = int(n)'''
+            for i in range(len(ay_array)):
+                #length = len(ay_array)-n
+                ax.append(ax_array[i])#ax.append(ax_array[length+])
+                ay.append(ay_array[i])
             path = cubicSpline.CubicSpline2D(ax, ay)
+            d = path.s[-1]-1
         elif geometry == 'line' or geometry == 'line2' or geometry=='polygon':
             for i in range(len(ay_array)):
                 length = len(ay_array)-2
                 ax.append(ax_array[i])
                 ay.append(ay_array[i])
             path = cubicSpline.CubicSpline2D(ax, ay)
-        d = path.s[-1]-1
-
+            d = path.s[-1]-1
         # Initialize Cooperative Path Following Class 
         cpf_control = cpf.CooperativePathFollowing(config.N_AUV, k_att, k_rep, d_rep, True)
         n = len(t_est)

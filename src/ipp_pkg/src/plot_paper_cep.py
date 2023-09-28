@@ -76,7 +76,7 @@ vy_OFF = np.loadtxt(lib_path+'/vy_OFF.txt')
 
 # Plot Parameters
 scaling = 10 #scale the width of the drawn lines (i.e. 3 suitable for 10km X 10km area)
-ranges = 12 #scale the number of printed AUVs (ie.e 12 suitable for 600 s of simulation)
+ranges = 16# #scale the number of printed AUVs (ie.e 12 suitable for 600 s of simulation)
 
 # Plot Tracking Error and compute RMSE
 sum1, sum2, sum3 = 0,0,0
@@ -200,7 +200,7 @@ plt.plot(s_x_on,s_y_on,'y',linewidth=lw/2)
 plt.xlabel('x [m]',fontsize=fs)
 plt.ylabel('y [m]',fontsize=fs)
 plt.title('Simulation Scenario - Optimization ON',weight='bold',fontsize=fs)
-legend_elements = [Line2D([0], [0], marker='X',color='y', lw=lw, markersize=ms, label='Formation Reference Path'),
+legend_elements = [Line2D([0], [0], marker='X',color='y', markerfacecolor='k', lw=lw, markersize=ms, label='Formation Reference Path'),
                     Line2D([0], [0], color='r', lw=lw, label='Target Real Path'),
                     Line2D([0], [0], color='k', lw=lw, label='Target Estimation'),
                     Line2D([0], [0], marker='o',color='b', markersize=ms ,label='AUVs'),
@@ -210,17 +210,16 @@ plt.legend(handles=legend_elements, fontsize=fs)
 
 j = 0
 lista = []
-plt.plot(s_x_on[0],s_y_on[1],'oy',markersize=lw_ms/2)
-plt.text(s_x_on[0]-200,s_y_on[1],'s(t0)',color='y',fontsize=fs)
+plt.plot(s_x_on[0],s_y_on[1],'Xy', markerfacecolor='k',markersize=lw_ms/2)
+plt.text(s_x_on[0]-100,s_y_on[1]+100,'s(t0)',color='y',fontsize=fs)
 plt.plot(auv1_x_on[0],auv1_y_on[0],'ob',markersize=lw_ms)
 plt.plot(auv2_x_on[0],auv2_y_on[0],'ob',markersize=lw_ms)
 #plt.plot(auv3_x_on[0],auv3_y_on[0],'ok',linewidth=20)
 #plt.plot(auv4_x_on[0],auv4_y_on[0],'ok',linewidth=20)
-plt.text(real_x[0]+30,real_y[0],'x(t0)',color='r',fontsize=fs)
+plt.text(real_x[0]-200,real_y[0],'x(t0)',color='r',fontsize=fs)
 plt.plot([auv1_x_on[0],real_x[0]],[auv1_y_on[0],real_y[0]],'tab:grey',linestyle='--',linewidth=2)
 plt.plot([auv2_x_on[0],real_x[0]],[auv2_y_on[0],
     real_y[0]],'tab:grey',linestyle='--',linewidth=2)
-
 
 for i in range(ranges):
 
@@ -228,37 +227,47 @@ for i in range(ranges):
     idx = (i+1)*5*ranges
     if i == ranges:
         idx = -1
-    if  i == 2 or i == 4  or i == 8 or i == 10 or i == ranges:
+    if  i % 2 == 0 or i >= ranges-1:
     
         plt.plot([auv1_x_on[idx],
             real_x[idx]],[auv1_y_on[idx],real_y[idx]],'tab:grey',linestyle='--',linewidth=2)
         plt.plot([auv2_x_on[idx],real_x[idx]],[auv2_y_on[idx],
             real_y[idx]],'tab:grey',linestyle='--',linewidth=2)
+        plt.plot(auv1_x_on[idx],auv1_y_on[idx],'ob',markersize=lw_ms)#
+        plt.plot(auv2_x_on[idx],auv2_y_on[idx],'ob',markersize=lw_ms)
+        circle = plt.Circle((real_x[idx],real_y[idx]),ms/2,color='r')
+        if i >= ranges-1:
+            plt.text(real_x[idx]+20,real_y[idx],'tf',fontsize=fs)
+        else:
+            plt.text(real_x[idx]+20,real_y[idx],'t'+str(j+1),fontsize=fs)
+        plt.plot(s_x_on[idx],s_y_on[idx],color='y',marker='X',markerfacecolor='k',markersize=lw_ms/1.5) 
+        plt.gca().add_patch(circle)  
+    j += 1
 
-        '''plt.plot([auv1_x_on[idx],
-            s_x_on[idx]],[auv1_y_on[idx],s_y_on[idx]],'g--',linewidth=1)
-        plt.plot([auv2_x_on[idx],
-            s_x_on[idx]],[auv2_y_on[idx],s_y_on[idx]],'g--',linewidth=1)'''
+'''for i in range(ranges):
 
+    # plot LOS
+    idx = (i+1)*5*ranges
+    if i == ranges:
+        idx = -1
+    if  i == 2 or i == 4  or i == 8 or i == 10 or i == ranges:
+        plt.plot([auv1_x_on[idx],
+            real_x[idx]],[auv1_y_on[idx],real_y[idx]],'tab:grey',linestyle='--',linewidth=2)
+        plt.plot([auv2_x_on[idx],real_x[idx]],[auv2_y_on[idx],
+            real_y[idx]],'tab:grey',linestyle='--',linewidth=2)
     # plot AUVs
         plt.plot(auv1_x_on[idx],auv1_y_on[idx],'ob',markersize=lw_ms)#
         plt.plot(auv2_x_on[idx],auv2_y_on[idx],'ob',markersize=lw_ms)
-    #plt.plot(auv3_x_on[idx],auv3_y_on[idx],'ok',linewidth=20)
-    #plt.plot(auv4_x_on[idx],auv4_y_on[idx],'ok',linewidth=20)
-    
-    #plt.plot(real_x[idx],real_y[idx],'oy',linewidth=5)#500
-    #circle = plt.Circle((real_x[idx],real_y[idx]),10,color='y')
-    #plt.gca().add_patch(circle)
     # plot target and formation reference
-    if i == 2 or i == 4  or i == 8 or i == 10 or i == ranges:
         circle = plt.Circle((real_x[idx],real_y[idx]),ms/2,color='r')
         if i >= 10:
             plt.text(real_x[idx]+20,real_y[idx],'tf',fontsize=fs)
         else:
             plt.text(real_x[idx]+20,real_y[idx],'t'+str(j+1),fontsize=fs)
-        plt.plot(s_x_on[idx],s_y_on[idx],color='y',marker='X',markersize=lw_ms/2) 
+        plt.plot(s_x_on[idx],s_y_on[idx],color='y',marker='X',markerfacecolor='k',markersize=lw_ms/2) 
         plt.gca().add_patch(circle)
-        j += 1
+        j += 1'''
+
 plt.axis('equal')
 idx1 = int(len(real_x)/2) 
 plt.arrow(real_x[-1],real_y[-1],np.cos(pi/2), np.sin(pi/2),width=ms/2,color='r')
@@ -267,34 +276,6 @@ plt.yticks(fontsize=fs, rotation=0)#to set dimension and orientation of tick lab
 plt.xticks(fontsize=fs, rotation=0)#to set dimension and orientation of tick labels
 plt.show()
 
-# PLOT COVARIANCE OBERVATIONS
-
-if len(t) >= len(cov1_OFF):
-    n = len(cov1_OFF)
-elif len(t) < len(cov1_OFF):
-    n = len(t)
-
-plt.subplot(4,1,1)
-plt.plot(t[0:n],cov1_ON[0:n])
-plt.plot(t[0:n],cov1_OFF[0:n])
-plt.legend(['x_ON','x_OFF'])
-plt.grid()
-plt.subplot(4,1,2)
-plt.plot(t[0:n],cov2_ON[0:n])
-plt.plot(t[0:n],cov2_OFF[0:n])
-plt.legend(['y_ON','y_OFF'])
-plt.grid()
-plt.subplot(4,1,3)
-plt.plot(t[0:n],cov3_ON[0:n])
-plt.plot(t[0:n],cov3_OFF[0:n])
-plt.grid()
-plt.legend(['vx_ON','vx_OFF'])
-plt.subplot(4,1,4)
-plt.plot(t[0:n],cov4_ON[0:n])
-plt.plot(t[0:n],cov4_OFF[0:n])
-plt.legend(['vy_ON','vy_ON'])
-plt.grid()
-plt.show()
 
 # Compute TRACKING ANGLE
 if len(t) >= len(auv2_x_on):
@@ -337,12 +318,13 @@ plt.ylabel('Angle LOS (deg)',fontsize=fs)
 plt.yticks(fontsize=fs, rotation=0)#to set dimension and orientation of tick labels
 plt.xticks(fontsize=fs, rotation=0)#to set dimension and orientation of tick labels
 plt.legend(['Optimization OFF','Optimization ON'],fontsize=fs)
-plt.yticks(np.arange(0, 13, 4.0))
+#plt.yticks(np.arange(0, 49, 12))
+#plt.yticks(np.arange(0, 13, 4.0))
 plt.grid()
 
 plt.subplot(2,1,2)
-plt.plot(t[0:n],((err_off[0:n])+20),'tab:blue',linewidth=lw/3,marker='o',markerfacecolor='tab:blue',markersize=lw) #err_off contiene e(t) = ex + ey, dove ex = (x - x_hat)**2
-plt.plot(t[0:n],((err_on[0:n])+20),'tab:green',linewidth=lw/3,marker='o',markerfacecolor='tab:green',markersize=lw)
+plt.plot(t[0:n],((err_off[0:n])),'tab:blue',linewidth=lw/3,marker='o',markerfacecolor='tab:blue',markersize=lw) #err_off contiene e(t) = ex + ey, dove ex = (x - x_hat)**2
+plt.plot(t[0:n],((err_on[0:n])),'tab:green',linewidth=lw/3,marker='o',markerfacecolor='tab:green',markersize=lw)
 
 plt.legend(['Optimization OFF','Optimization ON'],fontsize=fs)
 
@@ -350,40 +332,31 @@ plt.xlabel('Time (s)',fontsize=fs)
 plt.ylabel('Tracking Error (m)',fontsize=fs)
 plt.yticks(fontsize=fs, rotation=0)#to set dimension and orientation of tick labels
 plt.xticks(fontsize=fs, rotation=0)#to set dimension and orientation of tick labels
-plt.yticks(np.arange(0, 420, 100.0))
+#plt.yticks(np.arange(0, 2.0, 0.4))
+#plt.yticks(np.arange(0, 420, 100.0))
 plt.grid()
 plt.show()
 
-# PLOT ctrl cmds from optimization
-n_sample1 = np.size(ctrl_cmds)
-t1 = np.linspace(640,config.TIME_DURATION,n_sample1)
-plt.subplot(2,1,1)
-plt.title('HEADING CHANGE COMMANDED',fontsize=20)
-plt.plot(t1,ctrl_cmds*180/pi,'-ok',markerfacecolor='blue')
-plt.yticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
-plt.xticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
-plt.ylabel('Heading Changes (deg)',fontsize=20)
-plt.legend(['ADAPTATION ON'],fontsize=20)
-plt.grid(linewidth=0.5)
+'''for i in range(ranges):
 
-# PLOT ctrl cmds from optimization
-'''plt.subplot(2,1,2)
-n_sample1 = np.size(ctrl_cmds_off)
-t1 = np.linspace(640,config.TIME_DURATION,n_sample1)
-plt.plot(t1,ctrl_cmds_off*180/pi,'-ok',markerfacecolor='blue')
-plt.xlabel('Time (s)',fontsize=30)
-plt.ylabel('Heading Changes (deg)',fontsize=20)
-plt.legend(['ADAPTATION OFF'],fontsize=20)
-plt.grid()
-plt.yticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
-plt.xticks(fontsize=15, rotation=0)#to set dimension and orientation of tick labels
-plt.show()'''
+    # plot LOS
+    idx = (i+1)*5*ranges
+    if i == ranges:
+        idx = -1
+    if  i == 1 or i == 3  or i == 5 or i == 6 or i == ranges-1:
+    
+        plt.plot([auv1_x_on[idx],
+            real_x[idx]],[auv1_y_on[idx],real_y[idx]],'tab:grey',linestyle='--',linewidth=2)
+        plt.plot([auv2_x_on[idx],real_x[idx]],[auv2_y_on[idx],
+            real_y[idx]],'tab:grey',linestyle='--',linewidth=2)
+        plt.plot(auv1_x_on[idx],auv1_y_on[idx],'ob',markersize=lw_ms)#
+        plt.plot(auv2_x_on[idx],auv2_y_on[idx],'ob',markersize=lw_ms)
+        circle = plt.Circle((real_x[idx],real_y[idx]),ms/2,color='r')
+        if i >= ranges-1:
+            plt.text(real_x[idx]+20,real_y[idx],'tf',fontsize=fs)
+        else:
+            plt.text(real_x[idx]+20,real_y[idx],'t'+str(j+1),fontsize=fs)
+        plt.plot(s_x_on[idx],s_y_on[idx],color='y',marker='X',markerfacecolor='k',markersize=lw_ms/1.5) 
+        plt.gca().add_patch(circle)  
+    j += 1'''
 
-'''# Output of the prediction phase during optimization:
-
-plt.plot(s_opt_x,s_opt_y)
-plt.plot(opt_x,opt_y)
-plt.plot(real_x,real_y)
-plt.grid()
-plt.axis('equal')
-plt.show()'''
