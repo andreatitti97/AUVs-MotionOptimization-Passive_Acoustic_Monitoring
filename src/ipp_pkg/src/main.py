@@ -246,9 +246,6 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
             
         #################################################################################################################
         ######################################### MOVE THE ROBOTS #######################################################
-        print('PATH LENGTH',len(ryaw))
-        print('IDX MOTION',idx_motion)
-        print('PATH IDX',path_idx)
         if (idx_motion+path_idx) >= (len(rx)-1):#check if the path is finishe, in case update with a stright line
             idx1 = len(ryaw)
             path, ax, ay, last_cmd = cpf_control.update_path([0],last_cmd,config.OPTIMIZATION_TIME_STEP)#1 #go straight, path idx increase of 2 or 3
@@ -269,9 +266,6 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
 
         else:
             d += config.AUV_VEL*dt
-        print('PATH LENGTH',len(ryaw))
-        print('IDX MOTION',idx_motion)
-        print('PATH IDX',path_idx)
         [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt) # compute reference to follow
         [s_pose, auvs_xy, auvs_theta] = cpf_control.move_agents(path, d,s_pose,dt, auvs_xy, auvs_theta, ryaw[path_idx+idx_motion],rx[path_idx+idx_motion],ry[path_idx+idx_motion],False)
         target.move_target(dt)

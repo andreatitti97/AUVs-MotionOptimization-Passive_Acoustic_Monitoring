@@ -76,7 +76,7 @@ vy_OFF = np.loadtxt(lib_path+'/vy_OFF.txt')
 
 # Plot Parameters
 scaling = 10 #scale the width of the drawn lines (i.e. 3 suitable for 10km X 10km area)
-ranges = 16# #scale the number of printed AUVs (ie.e 12 suitable for 600 s of simulation)
+ranges = 12#16# #scale the number of printed AUVs (ie.e 12 suitable for 600 s of simulation)
 
 # Plot Tracking Error and compute RMSE
 sum1, sum2, sum3 = 0,0,0

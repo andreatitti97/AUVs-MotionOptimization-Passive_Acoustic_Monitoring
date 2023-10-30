@@ -8,45 +8,45 @@ utils = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(utils)
 ############################################################ SIMULATION SETUP ########################################################
 # Simulation parameters
-TIME_DURATION = 1200 # (s)
+TIME_DURATION = 600 # (s)
 TIME_STEP = 0.01
 TIME_SCALER = 80 # TIME SCALER OF THE SIMULATION 
 c = 1500 #sound wave speed
 OPTIMIZATION_ON = True
 # Estimation Parameters
 TP = 30 # regressor MAX length 40
-SIGMA_MEAS = 0.08#0.02 #(rad^2) --> 4.5° (as assumed in DAMPS and by cassino)
+SIGMA_MEAS = 0.02#0.08 #(rad^2) --> 4.5° (as assumed in DAMPS and by cassino)
 # Team parameter: number of agents, baselines_XY, inital position, type of formation
 PLATFORM_INIT_POSE = [0, 0, 0] #[x,y,theta]
-AUV_VEL = 2.0 #(m/s)#2 # nominal vel 
-AUV_MAX_VEL = 6.0 #(m/s)#4 # max vel considering v_coop 3.0
+AUV_VEL = 1.0 #(m/s)#2 # nominal vel 
+AUV_MAX_VEL = 3.0 #(m/s)#4 # max vel considering v_coop 3.0
 GAIN_YAW_RATE = 0.8 
 # CHOOSE THE GEOMETRY BETWEEN THE AGENTS
-geometry = 'line'
+geometry = 'line2'
 # Communication Paramaters
-d = 450 #vehicle distance 300
-Tm = 5 # measurements time sampling #3 IDEAL CASE
-Tg = 3 # time slot for each vehicle #2 IDEAL CASE 
+d = 200 #vehicle distance 300
+Tm = 3 # measurements time sampling #5 REAL CASE
+Tg = 2 # time slot for each vehicle #3 REAL CASE 
 # Optimization Parameters
 time_scaler = 5 # TIME SCALER OF THE SIMULATION INSIDE OPTIMIZATION
 u_max = 20*pi/180
 delta_u = 3*pi/180
 MAX = 40*pi/180
 MIN = 5*pi/180
-U = 7 #number of control choices
+U = 5 #number of control choices
 M = 3 # planning horizon
 #ctrl_cmd = [-u_max,0,+u_max]
-#ctrl_cmd = [-u_max, -u_max*4/(U),0,u_max*4/(U),u_max] # simplified set of control actions for fast debugging
-ctrl_cmd = [-u_max, -u_max*4/(U),-u_max*2/(U),0,u_max*2/(U),u_max*4/(U),u_max] #set of control actions
+ctrl_cmd = [-u_max, -u_max*4/(U),0,u_max*4/(U),u_max] # simplified set of control actions for fast debugging
+#ctrl_cmd = [-u_max, -u_max*4/(U),-u_max*2/(U),0,u_max*2/(U),u_max*4/(U),u_max] #set of control actions
 ##################################################################################################################################
 
 
 ######## CHOOSE TARGET DYNAMIC ###################################################################################################
 # CHOOSE Target parameter: start, goal, min max vels
 # PARTE SEMPRE DA UNA DISTANZA COMPRESA TRA I 3.5 E 5 KM con velocità da 4 a 8 m/s
-#TARGET_INIT = [400,-200, pi/2, 3.0, 0.0, 0.0, 0.0] #SIMPLE CASE LOWE DISTANCE!!!!!
+TARGET_INIT = [400,-200, pi/2, 3.0, 0.0, 0.0, 0.0] #SIMPLE CASE LOWE DISTANCE!!!!!
 
-TARGET_INIT = [+2000,-2500, pi, 2.5, 0.0, 0.0, 0.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 1
+#TARGET_INIT = [+2000,-2500, pi, 2.5, 0.0, 0.0, 0.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 1
 #TARGET_INIT = [4000, 200, 140*pi/180, 8.0, 0.0, 0.0, 0.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 2
 #TARGET_INIT = [-5000,-5000, pi/4, 3.0, 0.0, 0.0, 0.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 3
 #TARGET_INIT = [-500,+3500, -pi/10, 2.5, 0.0, 0.0, 0.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 4
@@ -72,6 +72,7 @@ Tf = 2*N_AUV*Tg #time frame TDMA
 
 #OPTIMIZATION_TIME_STEP = 20
 OPTIMIZATION_TIME_STEP = int(np.ceil(2*(Tm*N_AUV+np.sum(mean))))#TODO
+OPTIMIZATION_TIME_STEP = 30
 
 
 
