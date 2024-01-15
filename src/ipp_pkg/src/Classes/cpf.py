@@ -4,7 +4,7 @@ import time, os
 from math import atan2, pi
 import importlib.util
 # Import Costum classes
-class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
+class_path = os.path.abspath('/home/andrea/Desktop/ros_simulation_ws/src/ipp_pkg/src/Classes')
 spec = importlib.util.spec_from_file_location("module.config", class_path+"/config.py")
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
@@ -51,6 +51,7 @@ class CooperativePathFollowing:
                 ay_0.append(0)
             leader_path = cubicSpline.CubicSpline2D(tmp, ay_0)            
             [rx, ry, ryaw, rk, s]= self.spline_course(leader_path,self.ds)
+            
             path_idx = len(ryaw)
             d = leader_path.s[-1]
         elif self.geometry == 'line' or self.geometry == 'line2' or self.geometry == 'polygon':
@@ -63,8 +64,9 @@ class CooperativePathFollowing:
             self.ax.append(ax_0[i])
             self.ay.append(0)
         path = cubicSpline.CubicSpline2D(self.ax, self.ay)
+        
 
-        return path, path_idx, d
+        return path, path_idx, d, self.ax, self.ay
 
     def saturateVel(self,vel,bool=False):
         if bool == False:
@@ -80,13 +82,14 @@ class CooperativePathFollowing:
         # Calculate the desired auvs_xy of the followers in the f
         f = config.formation #THIS IS MANDATORY - DO NOT EDIT
         des_xy = np.zeros_like(auvs_xy)
+ 
         # Compute the desired absolute auvs_xy of the agents according to leader auvs_xy and given f
         if self.geometry == 'line' or self.geometry == 'line2' or self.geometry == 'polygon':
             for i in range(0, self.n_agents):
                 des_xy[i,0] = s_pose[0] + (f[i,0]*np.cos(s_pose[2])+f[i,1]*np.sin(s_pose[2]))
                 des_xy[i,1] = s_pose[1] - (-f[i,0]*np.sin(s_pose[2])+f[i,1]*np.cos(s_pose[2]))
         elif self.geometry == 'column' or self.geometry == 'column2':
-            for i in range(len(f)):
+            for i in range(len(f)):                
                 x,y = path.calc_position(-f[i]+d)
                 des_xy[i,0] = x
                 des_xy[i,1] = y
@@ -118,9 +121,11 @@ class CooperativePathFollowing:
 
         return error_ang
 
-    def update_path(self, waypoints, t_i, DT):
-        
+    def update_path(self, waypoints, t_i, DT, ax, ay,d):
+        self.ax = ax
+        self.ay = ay
         a_i = [self.ax[-1],self.ay[-1]]
+
         for i in range(len(waypoints)):
             t_f = t_i+waypoints[i]
             tmp_x = np.cos(t_f)*self.v_n*DT+a_i[0]
@@ -128,21 +133,27 @@ class CooperativePathFollowing:
             self.ax.append(tmp_x)
             self.ay.append(tmp_y)
             t_i = t_f
-            a_i = [tmp_x, tmp_y]
-        path = cubicSpline.CubicSpline2D(self.ax, self.ay)
-        
+
+        # Remove first waypoints (fixed path dimensions->computational load)
         self.ax.pop(0)
         self.ay.pop(0)
+        # Generate new path 
+        path = cubicSpline.CubicSpline2D(self.ax, self.ay) 
+        # Compute the distance travelled according to the new path
+        if self.geometry == 'line' or self.geometry == 'line2' or self.geometry == 'polygon':
+            d_real = d
+        else:
+            d_real = config.d
 
-        return path, self.ax, self.ay, t_i
+        return path, d_real, self.ax, self.ay, t_i
 
     def move_agents(self, path, d, s_pose, dt, auvs_xy, auvs_theta, r_yaw, r_x=0,r_y=0,bool=False):
         
         # Update Leader Position
         if config.geometry == 'column2' or config.geometry == 'column':
             s_pose[2] = r_yaw
-            s_pose[0] = r_x
-            s_pose[1] = r_y 
+            s_pose[0] = s_pose[0] + self.v_n*np.cos(s_pose[2])*dt
+            s_pose[1] = s_pose[1] + self.v_n*np.sin(s_pose[2])*dt
         elif config.geometry == 'line2' or config.geometry == 'line':
             #angular_vel_leader = (r_yaw-s_pose[2])
             #s_pose[2] = (s_pose[2] + self.ko*angular_vel_leader*dt)
@@ -163,4 +174,5 @@ class CooperativePathFollowing:
             auvs_xy = desired_position
             for i in range(self.n_agents):
                 auvs_theta[i] = atan2(auvs_xy[i,1],auvs_xy[i,0])
+
         return s_pose, auvs_xy, auvs_theta

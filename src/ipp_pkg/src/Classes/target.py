@@ -2,7 +2,7 @@ import os
 import importlib
 import numpy as np
 # Import costum modules
-class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
+class_path = os.path.abspath('/home/andrea/Desktop/ros_simulation_ws/src/ipp_pkg/src/Classes')
 spec = importlib.util.spec_from_file_location("module.config", class_path+"/config.py")
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)

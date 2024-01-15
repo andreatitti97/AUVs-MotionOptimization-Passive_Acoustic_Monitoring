@@ -13,7 +13,7 @@ from rospy_tutorials.msg import Floats
 from rospy.numpy_msg import numpy_msg
 
 # Import costum classes
-class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
+class_path = os.path.abspath('/home/andrea/Desktop/ros_simulation_ws/src/ipp_pkg/src/Classes')
 spec = importlib.util.spec_from_file_location("module.config", class_path+"/config.py")
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
@@ -40,7 +40,7 @@ cubicSpline = planner
 DT = config.OPTIMIZATION_TIME_STEP #should be equal more or less to the expected time to perform an estimation
 desired_vel = config.AUV_VEL
 
-def update_path(ax, ay, waypoint, t_i):
+def update_path(ax, ay, waypoint, t_i, desired_vel):
         init_pose = [ax[-1],ay[-1]]
         t_f = t_i+waypoint 
         tmp_x = np.cos(t_f)*desired_vel*DT+init_pose[0]
@@ -85,7 +85,7 @@ class Estimation():
         self.x = np.dot(np.linalg.pinv(self.phi),tmp_y)
 
 class Simple(pybnb.Problem):
-    def __init__(self,x_hat, s,sensors, cpf_control, ctrl_cmds, ax, ay, d,cov):
+    def __init__(self,x_hat, s,sensors, cpf_control, ctrl_cmds, ax, ay, d,cov,v_n):
         
         inf = float("inf")
         self.value = DELTA  
@@ -102,6 +102,7 @@ class Simple(pybnb.Problem):
         self.ax = ax 
         self.ay = ay
         self.d = d
+        self.v_n = v_n
 
     # required methods
     def sense(self):
@@ -130,7 +131,7 @@ class Simple(pybnb.Problem):
             ax_.append(ax[i])
             ay_.append(ay[i])
         for i in range(config.U):
-            x, phi, y, s, tmp_ax, tmp_ay, tmp_d = simulation(self.ctrl_cmds[i], x_hat, s, self.sensors, self.controller, ax, ay, d, cov)
+            x, phi, y, s, tmp_ax, tmp_ay, tmp_d = simulation(self.ctrl_cmds[i], x_hat, s, self.sensors, self.controller, ax, ay, d, self.v_n ,cov)
             # Update the sequence of control decisions
             tmp = [self.ctrl_cmds[i]]
             choices = self.choices + tmp
@@ -162,7 +163,7 @@ class Simple(pybnb.Problem):
                 s_state_x.append(s[0])
                 s_state_y.append(s[0])'''
 
-def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d, P=[]):
+def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d, v_n,P=[]):
     # Temporal Variable
     t, j = 0, 0 #time and counter init
     meas_table = []
@@ -196,7 +197,8 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
             auvs_xy[i,0] = x
             auvs_xy[i,1] = y
             auvs_theta[i] = path.calc_yaw(d_auv)
-    path, ax, ay, current_theta = update_path(ax,ay,control_input,yaw)
+
+    path, ax, ay, current_theta = update_path(ax,ay,control_input,yaw, v_n)
     for i in range(0,scaler):
 
         [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
@@ -282,7 +284,15 @@ def main():
         ay = rospy.wait_for_message('/ay',numpy_msg(Floats))
         cov = rospy.wait_for_message('/cov',numpy_msg(Floats))
         t_est = t_est.data
-        s_state = s_state.data
+        s_ = s_state.data
+        
+        s_state = [s_[0], s_[1], s_[2]]
+        #print(s_state)
+        v_n = s_[3]
+        
+        #print(v_n)
+        #time.sleep(50)
+        
         ax_array = ax.data
         ay_array = ay.data
         cov = cov.data
@@ -318,7 +328,7 @@ def main():
 
         ######## Compute the best solution solving the optimization with BnB or Greedy search #####
   
-        problem = Simple(t_est, s_state, sensors, cpf_control, ctrl_cmd, ax, ay, d, P)
+        problem = Simple(t_est, s_state, sensors, cpf_control, ctrl_cmd, ax, ay, d, P, v_n)
         solver = pybnb.Solver()
         ''' TEST ON BnB problem_simplified = Simple(t_est, s_state, DELTA, sensors, cpf_control, ctrl_cmd, P)
         results_preview = solver.solve(problem,queue_strategy="objective",node_limit=limit)

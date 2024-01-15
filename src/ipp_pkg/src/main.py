@@ -5,7 +5,7 @@ import time
 import importlib.util
 import matplotlib.pyplot as plt
 # Import math modules
-from math import pi
+from math import pi, atan2
 import numpy as np
 from scipy import stats
 #Import ROS modules
@@ -14,7 +14,7 @@ from rospy_tutorials.msg import Floats
 from rospy.numpy_msg import numpy_msg
 #import matplotlib.pyplot as plt
 # Import Costum classes
-class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
+class_path = os.path.abspath('/home/andrea/Desktop/ros_simulation_ws/src/ipp_pkg/src/Classes')
 spec = importlib.util.spec_from_file_location("module.config", class_path+"/config.py")
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
@@ -34,7 +34,7 @@ spec = importlib.util.spec_from_file_location("module.cpf", class_path+"/cpf.py"
 cpf = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(cpf)
 # PATH DEFINITON
-plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
+plot_path = os.path.abspath('/home/andrea/Desktop/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 
 # Init lists for plot
 # Target and AUVs
@@ -87,6 +87,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
     """
     global count1
     propagation = False
+    updated = False
 
     Hz = 1/(config.TIME_STEP) #NB: different from sampling rate for move things, this is ros rate
     rate = rospy.Rate(Hz)
@@ -105,11 +106,16 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
     for i in range(N):
         delay.append(0.0)
         flags.append(0) 
+
     # Initialize Path
-    path, path_idx, d = cpf_control.initialize_path(f)
+    path, path_idx, d, ax, ay = cpf_control.initialize_path(f)
     [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
+
     # Init AUVs position and orientation according to given formation
     auvs_xy, auvs_theta = initialize_auvs(geometry,s_pose,f,N,d)
+    delta_d = 0
+    
+    v_n = config.AUV_VEL
     ## SIMULATION LOOP ############################################################################################################
     while t <= config.TIME_DURATION:
         rospy.loginfo('SIMULATION TIME(s)')
@@ -193,12 +199,45 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
         ############################################# TRIGGER OPTIMIZATION ##############################################
             if config.OPTIMIZATION_ON == True:
 
+                predicted_pose = np.array(np.zeros(2))
+                predicted_pose[0] = curr_est[0,0] + config.OPTIMIZATION_TIME_STEP*curr_est[2]
+                predicted_pose[1] = curr_est[1,0] + config.OPTIMIZATION_TIME_STEP*curr_est[3]
+
+                tmp_x = s_pose[0]+config.OPTIMIZATION_TIME_STEP*v_n*np.cos(atan2(s_pose[1],s_pose[0]))
+                tmp_y = s_pose[1]+config.OPTIMIZATION_TIME_STEP*v_n*np.sin(atan2(s_pose[1],s_pose[0]))
+
+                p_eucl_dist = np.sqrt((predicted_pose[0]-tmp_x)**2+(predicted_pose[1]-tmp_y)**2)
+                eucl_dist = np.sqrt((curr_est[0,0]-s_pose[0])**2+(curr_est[1,0]-s_pose[1])**2)
+                
+                epsi = eucl_dist*30/100
+
+                #print('dist euclidea',eucl_dist)
+                #print('predicted_eucl_distance',p_eucl_dist)
+                #print('epsi',epsi)
+                if eucl_dist > 20:
+                    v_n = (eucl_dist-epsi)/config.OPTIMIZATION_TIME_STEP
+                else:
+                #    print('REACHED THE TARGET')
+                    v_n = np.sqrt(curr_est[2]**2+curr_est[3]**2)
+                    #s_pose = [curr_est[0,0],curr_est[1,0],curr_est[2,0],curr_est[3,0]]
+
+                #print('desired vel',v_n)
+                if v_n >= 4:
+                    v_n = 4
+                elif v_n <= -4:
+                    v_n = -4
+                elif 0 <= v_n < 2:
+                    v_n = 2
+                
+                print('nominal vel',v_n)
+                cpf_control.v_n = v_n
                 
                 rospy.loginfo('SENDING DATA')
                 pub[0].publish(np.array(curr_est,dtype=np.float32))
                 rospy.sleep(10/Hz)
-
-                tmp = [s_pose[0],s_pose[1],s_pose[2]]
+                
+                tmp = [s_pose[0],s_pose[1],s_pose[2],v_n]
+                print(tmp)
                 pub[1].publish(np.array(tmp,dtype=np.float32))
                 rospy.sleep(10/Hz)
                 ax = cpf_control.ax
@@ -224,51 +263,54 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 cmds = rospy.wait_for_message('ctrl_cmd',numpy_msg(Floats))
                 cmds = cmds.data
                 print('RECEIVED CMDS (deg) -------------------------------------------------',cmds*180/pi)
-                # Update the path and the reference
-                idx1 = len(ryaw)
-                path, ax, ay, last_cmd = cpf_control.update_path([cmds[0]],last_cmd,config.OPTIMIZATION_TIME_STEP) #update path
+                
+
+                int_list = [int(item) for item in rx]
+                #print(rx)
+                print('len rx',len(rx))
+                print(int_list)
+                print(idx_motion)
+                print(idx_motion+path_idx)
+                tmp = rx[23]
+                path, d, ax, ay, last_cmd = cpf_control.update_path([cmds[0]],last_cmd,config.OPTIMIZATION_TIME_STEP,ax,ay,d)
                 [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
+                
                 if config.geometry=='column' or config.geometry=='column2':
-                    idx2 = len(ryaw)
-                    if idx2 <= idx1: #delted initial path portion
-                    #idx_motion = 0 #(you delete from the idx the initial path portion deleted)
-                        path_idx = path_idx - (idx1-idx2)
-                        idx_motion = idx_motion - 1
-                        if idx2 == idx2:
-                        
-                            path_idx = path_idx -1
-                            idx_motion = idx_motion -1  
+                    
+                    int_list = [int(item) for item in rx]
+                    print(int_list)
+                    path_idx = int_list.index(int(tmp),0,-1)
+                    idx_motion = 0 
+
                 elif config.geometry=='line' or config.geometry=='line2' or config.geometry=='polygon':    
-                    idx_motion = len(ryaw)-1 #(you delete from the idx the initial path portion deleted)    
-                d = path.s[-1]-1
-           
-         
+                    idx_motion = len(ryaw)-1 #(you delete from the idx the initial path portion deleted)           
             
         #################################################################################################################
         ######################################### MOVE THE ROBOTS #######################################################
-        if (idx_motion+path_idx) >= (len(rx)-1):#check if the path is finishe, in case update with a stright line
-            idx1 = len(ryaw)
-            path, ax, ay, last_cmd = cpf_control.update_path([0],last_cmd,config.OPTIMIZATION_TIME_STEP)#1 #go straight, path idx increase of 2 or 3
+        if (idx_motion+path_idx) >= (len(rx)-1):#check if the path is finished, in case update with a straight line
+            
+            #TODO: BUG HERE TO SOLVE
+            tmp = rx[idx_motion+path_idx]
+            path, d, ax, ay, last_cmd = cpf_control.update_path([0],last_cmd,config.OPTIMIZATION_TIME_STEP,ax,ay,d)#1 #go straight, path idx increase of 2 or 3
             [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
+
             if config.geometry=='column' or config.geometry=='column2':
-                idx2 = len(ryaw)
-                if idx2 <= idx1: #delted initial path portion
-                    
-                    path_idx = path_idx - (idx1-idx2)
-                    idx_motion = idx_motion - 1
-                    if idx2 == idx2:
-                        
-                        path_idx = path_idx -1
-                        idx_motion = idx_motion -1
+
+                int_list = [int(item) for item in rx]
+                path_idx = int_list.index(int(tmp),0,-1)
+                idx_motion = 0
+
             elif config.geometry=='line' or config.geometry=='line2' or config.geometry=='polygon':
                 idx_motion = len(ryaw)-1 #(you delete from the idx the initial path portion deleted)
-            d = path.s[-1]-1
+                
 
         else:
-            d += config.AUV_VEL*dt
+            d += config.AUV_VEL*dt #distance travelled on the path
+            
         [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt) # compute reference to follow
         [s_pose, auvs_xy, auvs_theta] = cpf_control.move_agents(path, d,s_pose,dt, auvs_xy, auvs_theta, ryaw[path_idx+idx_motion],rx[path_idx+idx_motion],ry[path_idx+idx_motion],False)
         target.move_target(dt)
+
         #################################################################################################################
         ##################### SAVE THE POSITIONS OF TEAM REFERENCE/AGENTS/TARGET/ STATE FOR PLOT ########################
         platform_x.append(s_pose[0])

@@ -4,7 +4,7 @@ import math
 import os, importlib
 from math import pi
 from matplotlib.lines import Line2D
-lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
+lib_path = os.path.abspath('/home/andrea/Desktop/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 
 class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
 spec = importlib.util.spec_from_file_location("module.config", class_path+"/config.py")

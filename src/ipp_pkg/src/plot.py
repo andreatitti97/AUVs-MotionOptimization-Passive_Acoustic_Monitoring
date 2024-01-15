@@ -3,9 +3,9 @@ import numpy as np
 import os, importlib
 from math import pi
 from matplotlib.lines import Line2D
-lib_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
+lib_path = os.path.abspath('/home/andrea/Desktop/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 
-class_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/Classes')
+class_path = os.path.abspath('/home/andrea/Desktop/ros_simulation_ws/src/ipp_pkg/src/Classes')
 spec = importlib.util.spec_from_file_location("module.config", class_path+"/config.py")
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
@@ -75,7 +75,7 @@ vy_OFF = np.loadtxt(lib_path+'/vy_OFF.txt')
 
 # Plot Parameters
 scaling = 10 #scale the width of the drawn lines (i.e. 3 suitable for 10km X 10km area)
-ranges = 16 #scale the number of printed AUVs (ie.e 12 suitable for 600 s of simulation)
+ranges = 12 #scale the number of printed AUVs (ie.e 12 suitable for 600 s of simulation)
 
 # Plot Tracking Error and compute RMSE
 sum1, sum2, sum3 = 0,0,0

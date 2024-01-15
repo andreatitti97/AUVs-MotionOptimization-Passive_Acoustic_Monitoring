@@ -168,11 +168,13 @@ class CubicSpline2D:
         self.sy = CubicSpline1D(self.s, y)
 
     def __calc_s(self, x, y):
+
         dx = np.diff(x)
         dy = np.diff(y)
         self.ds = np.hypot(dx, dy)
         s = [0]
         s.extend(np.cumsum(self.ds))
+
         return s
 
     def calc_position(self, s):
