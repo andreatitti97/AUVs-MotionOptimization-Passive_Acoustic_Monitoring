@@ -42,6 +42,7 @@ class CooperativePathFollowing:
 
     def initialize_path(self, f):#f=formation
         if self.geometry == 'column' or self.geometry == 'column2':
+
             d = f[0]-f[1]
             ax_0 =[*range(0,  f[0]+2*self.DT, self.DT)]
             tmp = [*range(0, f[0]+self.DT,  self.DT)]
@@ -58,18 +59,19 @@ class CooperativePathFollowing:
                 self.ax.append(ax_0[i])
                 self.ay.append(0)
             path = cubicSpline.CubicSpline2D(self.ax, self.ay)
+
         elif self.geometry == 'line' or self.geometry == 'line2' or self.geometry == 'polygon':
             
             ax_0 =[*range(0,  self.DT*4, self.DT)]
             d = self.DT*2
-
+            print(ax_0)
             for i in range(len(ax_0)):
                 self.ax.append(ax_0[i])
                 self.ay.append(0)
             path = cubicSpline.CubicSpline2D(self.ax, self.ay)
             [rx, ry, ryaw, rk, s]= self.spline_course(path,self.ds)
             int_list = [int(item) for item in rx]
-
+            print(int_list)
             path_idx = int_list.index(int(d),0,-1)
         
 

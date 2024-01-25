@@ -241,7 +241,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                     v_n = 2
                 
                 print('nominal vel',v_n)
-                #v_n = 1
+                ##v_n = 1
                 cpf_control.v_n = v_n
                 
                 rospy.loginfo('SENDING DATA')
@@ -284,7 +284,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 print(idx_motion)
                 print(idx_motion+path_idx)
                 tmp = rx[idx_motion+path_idx]
-                path, d, ax, ay, last_cmd = cpf_control.update_path([cmds[0]],last_cmd,config.OPTIMIZATION_TIME_STEP,ax,ay,d,s_pose)
+                path, d, ax, ay, last_cmd = cpf_control.update_path([cmds[0]],last_cmd,config.OPTIMIZATION_TIME_STEP/2,ax,ay,d,s_pose)
                 [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
                 
                 if config.geometry=='column' or config.geometry=='column2':
@@ -297,16 +297,17 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 elif config.geometry=='line' or config.geometry=='line2' or config.geometry=='polygon':    
                     idx_motion = 0 #(you delete from the idx the initial path portion deleted)           
 
-                plt.plot(ax, ay, "xb", label="Data points")
-                plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
-                #print(auvs_xy)
-                for i in range(config.N_AUV):
-                    
-                    plt.plot(auvs_xy[i,0],auvs_xy[i,1],'ok',label="AUV"+str(i))
-                plt.plot(rx, ry, "-r", label="Cubic spline path")
-                plt.legend()
-                plt.axis('equal')
-                plt.show() # uncomment for debugging'''
+                if t > 400:
+                    plt.plot(ax, ay, "xb", label="Data points")
+                    plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
+                    #print(auvs_xy)
+                    for i in range(config.N_AUV):
+                        
+                        plt.plot(auvs_xy[i,0],auvs_xy[i,1],'ok',label="AUV"+str(i))
+                    plt.plot(rx, ry, "-r", label="Cubic spline path")
+                    plt.legend()
+                    plt.axis('equal')
+                    plt.show() # uncomment for debugging'''
 
         #################################################################################################################
         ######################################### MOVE THE ROBOTS #######################################################
@@ -315,7 +316,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
             print('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++UPDATING PATH')
             #TODO: BUG HERE TO SOLVE
             tmp = rx[idx_motion+path_idx]
-            path, d, ax, ay, last_cmd = cpf_control.update_path([0],last_cmd,config.OPTIMIZATION_TIME_STEP,ax,ay,d,s_pose)#1 #go straight, path idx increase of 2 or 3
+            path, d, ax, ay, last_cmd = cpf_control.update_path([0],last_cmd,config.OPTIMIZATION_TIME_STEP/4,ax,ay,d,s_pose)#1 #go straight, path idx increase of 2 or 3
             [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
 
             if config.geometry=='column' or config.geometry=='column2':
@@ -325,10 +326,12 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 idx_motion = 0
 
             elif config.geometry=='line' or config.geometry=='line2' or config.geometry=='polygon':
-                idx_motion = 0 #(you delete from the idx the initial path portion deleted)
                 
+                int_list = [int(item) for item in rx]
+                path_idx = int_list.index(int(tmp),0,-1)
+                idx_motion = 0
 
-            plt.plot(ax, ay, "xb", label="Data points")
+            '''plt.plot(ax, ay, "xb", label="Data points")
             plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
             #print(auvs_xy)
             for i in range(config.N_AUV):
