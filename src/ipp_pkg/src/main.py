@@ -53,7 +53,7 @@ def compute_cost(phi,len_y):
     cost = np.linalg.norm(np.linalg.inv(PHI),ord=2)*np.linalg.norm(PHI,ord=2)
     return cost
 
-def initialize_auvs(geometry,s_pose,f,N_AUV,d=0):
+def initialize_auvs(geometry,s_pose,f,N_AUV,d):
     auvs_xy = np.zeros((N_AUV,2))
     auvs_theta = np.zeros(N_AUV)   
     for i in range(N_AUV):
@@ -110,11 +110,22 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
     # Initialize Path
     path, path_idx, d, ax, ay = cpf_control.initialize_path(f)
     [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
-
+    s_pose[0] = d
     # Init AUVs position and orientation according to given formation
     auvs_xy, auvs_theta = initialize_auvs(geometry,s_pose,f,N,d)
-    delta_d = 0
     
+    plt.plot(ax, ay, "xb", label="Data points")
+    plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
+    #print(auvs_xy)
+    for i in range(config.N_AUV):
+        
+        plt.plot(auvs_xy[i,0],auvs_xy[i,1],'ok',label="AUV"+str(i))
+    plt.plot(rx, ry, "-r", label="Cubic spline path")
+    plt.legend()
+    plt.axis('equal')
+    plt.show() # uncomment for debugging'''
+
+
     v_n = config.AUV_VEL
     ## SIMULATION LOOP ############################################################################################################
     while t <= config.TIME_DURATION:
@@ -209,7 +220,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 p_eucl_dist = np.sqrt((predicted_pose[0]-tmp_x)**2+(predicted_pose[1]-tmp_y)**2)
                 eucl_dist = np.sqrt((curr_est[0,0]-s_pose[0])**2+(curr_est[1,0]-s_pose[1])**2)
                 
-                epsi = eucl_dist*30/100
+                epsi = eucl_dist*80/100 #for OPT_TIME_STEP c.a. 15 sec
 
                 #print('dist euclidea',eucl_dist)
                 #print('predicted_eucl_distance',p_eucl_dist)
@@ -230,6 +241,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                     v_n = 2
                 
                 print('nominal vel',v_n)
+                #v_n = 1
                 cpf_control.v_n = v_n
                 
                 rospy.loginfo('SENDING DATA')
@@ -264,34 +276,46 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 cmds = cmds.data
                 print('RECEIVED CMDS (deg) -------------------------------------------------',cmds*180/pi)
                 
-
+                print('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++UPDATING PATH')
                 int_list = [int(item) for item in rx]
-                #print(rx)
+                
                 print('len rx',len(rx))
                 print(int_list)
                 print(idx_motion)
                 print(idx_motion+path_idx)
-                tmp = rx[23]
-                path, d, ax, ay, last_cmd = cpf_control.update_path([cmds[0]],last_cmd,config.OPTIMIZATION_TIME_STEP,ax,ay,d)
+                tmp = rx[idx_motion+path_idx]
+                path, d, ax, ay, last_cmd = cpf_control.update_path([cmds[0]],last_cmd,config.OPTIMIZATION_TIME_STEP,ax,ay,d,s_pose)
                 [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
                 
                 if config.geometry=='column' or config.geometry=='column2':
                     
                     int_list = [int(item) for item in rx]
-                    print(int_list)
+
                     path_idx = int_list.index(int(tmp),0,-1)
                     idx_motion = 0 
 
                 elif config.geometry=='line' or config.geometry=='line2' or config.geometry=='polygon':    
-                    idx_motion = len(ryaw)-1 #(you delete from the idx the initial path portion deleted)           
-            
+                    idx_motion = 0 #(you delete from the idx the initial path portion deleted)           
+
+                plt.plot(ax, ay, "xb", label="Data points")
+                plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
+                #print(auvs_xy)
+                for i in range(config.N_AUV):
+                    
+                    plt.plot(auvs_xy[i,0],auvs_xy[i,1],'ok',label="AUV"+str(i))
+                plt.plot(rx, ry, "-r", label="Cubic spline path")
+                plt.legend()
+                plt.axis('equal')
+                plt.show() # uncomment for debugging'''
+
         #################################################################################################################
         ######################################### MOVE THE ROBOTS #######################################################
         if (idx_motion+path_idx) >= (len(rx)-1):#check if the path is finished, in case update with a straight line
             
+            print('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++UPDATING PATH')
             #TODO: BUG HERE TO SOLVE
             tmp = rx[idx_motion+path_idx]
-            path, d, ax, ay, last_cmd = cpf_control.update_path([0],last_cmd,config.OPTIMIZATION_TIME_STEP,ax,ay,d)#1 #go straight, path idx increase of 2 or 3
+            path, d, ax, ay, last_cmd = cpf_control.update_path([0],last_cmd,config.OPTIMIZATION_TIME_STEP,ax,ay,d,s_pose)#1 #go straight, path idx increase of 2 or 3
             [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
 
             if config.geometry=='column' or config.geometry=='column2':
@@ -301,11 +325,23 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 idx_motion = 0
 
             elif config.geometry=='line' or config.geometry=='line2' or config.geometry=='polygon':
-                idx_motion = len(ryaw)-1 #(you delete from the idx the initial path portion deleted)
+                idx_motion = 0 #(you delete from the idx the initial path portion deleted)
                 
 
+            plt.plot(ax, ay, "xb", label="Data points")
+            plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
+            #print(auvs_xy)
+            for i in range(config.N_AUV):
+                
+                plt.plot(auvs_xy[i,0],auvs_xy[i,1],'ok',label="AUV"+str(i))
+            plt.plot(rx, ry, "-r", label="Cubic spline path")
+            plt.legend()
+            plt.axis('equal')
+            plt.show() # uncomment for debugging'''
+
         else:
-            d += config.AUV_VEL*dt #distance travelled on the path
+            d += cpf_control.v_n*dt #distance travelled on the path
+            idx_motion += 1
             
         [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt) # compute reference to follow
         [s_pose, auvs_xy, auvs_theta] = cpf_control.move_agents(path, d,s_pose,dt, auvs_xy, auvs_theta, ryaw[path_idx+idx_motion],rx[path_idx+idx_motion],ry[path_idx+idx_motion],False)
@@ -378,7 +414,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 np.savetxt(plot_path+'/cond_OFF',cond_phi)
         t += dt
         count1 += 1
-        idx_motion += 1
+        
         
         rate.sleep()
 

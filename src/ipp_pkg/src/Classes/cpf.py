@@ -54,16 +54,23 @@ class CooperativePathFollowing:
             
             path_idx = len(ryaw)
             d = leader_path.s[-1]
+            for i in range(len(ax_0)):
+                self.ax.append(ax_0[i])
+                self.ay.append(0)
+            path = cubicSpline.CubicSpline2D(self.ax, self.ay)
         elif self.geometry == 'line' or self.geometry == 'line2' or self.geometry == 'polygon':
             
-            ax_0 =[*range(0,  self.DT*2, self.DT)]
-            d = 0 
-            path_idx = 0
+            ax_0 =[*range(0,  self.DT*4, self.DT)]
+            d = self.DT*2
 
-        for i in range(len(ax_0)):
-            self.ax.append(ax_0[i])
-            self.ay.append(0)
-        path = cubicSpline.CubicSpline2D(self.ax, self.ay)
+            for i in range(len(ax_0)):
+                self.ax.append(ax_0[i])
+                self.ay.append(0)
+            path = cubicSpline.CubicSpline2D(self.ax, self.ay)
+            [rx, ry, ryaw, rk, s]= self.spline_course(path,self.ds)
+            int_list = [int(item) for item in rx]
+
+            path_idx = int_list.index(int(d),0,-1)
         
 
         return path, path_idx, d, self.ax, self.ay
@@ -121,10 +128,19 @@ class CooperativePathFollowing:
 
         return error_ang
 
-    def update_path(self, waypoints, t_i, DT, ax, ay,d):
+    def update_path(self, waypoints, t_i, DT, ax, ay,d,s_pose):
         self.ax = ax
         self.ay = ay
-        a_i = [self.ax[-1],self.ay[-1]]
+
+        # Compute the distance travelled according to the new path
+        if self.geometry == 'line' or self.geometry == 'line2' or self.geometry == 'polygon':
+            d_real = self.v_n*DT
+            a_i = [self.ax[-1],self.ay[-1]]
+            #a_i = [s_pose[0],s_pose[1]]
+        else:
+            d_real = config.d
+            a_i = [s_pose[0],s_pose[1]]
+        
 
         for i in range(len(waypoints)):
             t_f = t_i+waypoints[i]
@@ -139,11 +155,9 @@ class CooperativePathFollowing:
         self.ay.pop(0)
         # Generate new path 
         path = cubicSpline.CubicSpline2D(self.ax, self.ay) 
-        # Compute the distance travelled according to the new path
-        if self.geometry == 'line' or self.geometry == 'line2' or self.geometry == 'polygon':
-            d_real = d
-        else:
-            d_real = config.d
+        
+
+
 
         return path, d_real, self.ax, self.ay, t_i
 
@@ -158,8 +172,8 @@ class CooperativePathFollowing:
             #angular_vel_leader = (r_yaw-s_pose[2])
             #s_pose[2] = (s_pose[2] + self.ko*angular_vel_leader*dt)
             s_pose[2] = r_yaw
-            s_pose[0] = s_pose[0] + self.v_n*np.cos(s_pose[2])*dt
-            s_pose[1] = s_pose[1] + self.v_n*np.sin(s_pose[2])*dt
+            s_pose[0] = r_x#s_pose[0] + self.v_n*np.cos(s_pose[2])*dt
+            s_pose[1] = r_y#s_pose[1] + self.v_n*np.sin(s_pose[2])*dt
         # Update the position and orientation of the follower robots
         F_coop, desired_position = self.potential_field(path, s_pose, auvs_xy, d)
         # Compute the heading according to the desired position
@@ -168,8 +182,8 @@ class CooperativePathFollowing:
             auvs_theta[i] = auvs_theta[i] + self.ko*e_theta[i]*dt
             tmp1 = self.saturateVel((self.v_n*np.cos(auvs_theta[i]) + F_coop[i,0]*dt)*dt,bool)
             tmp2 = self.saturateVel((self.v_n*np.sin(auvs_theta[i]) + F_coop[i,1]*dt)*dt,bool)          
-            auvs_xy[i,0] = auvs_xy[i,0] + tmp1
-            auvs_xy[i,1] = auvs_xy[i,1] + tmp2
+            auvs_xy[i,0] = auvs_xy[i,0] + F_coop[i,0]*dt*dt
+            auvs_xy[i,1] = auvs_xy[i,1] + F_coop[i,1]*dt*dt
         if bool == True:
             auvs_xy = desired_position
             for i in range(self.n_agents):

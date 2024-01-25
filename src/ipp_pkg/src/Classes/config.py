@@ -80,7 +80,7 @@ d_rep = d # Distance threshold for repulsion
 Tf = 2*N_AUV*Tg #time frame TDMA
 
 #OPTIMIZATION_TIME_STEP = 20
-OPTIMIZATION_TIME_STEP = int(np.ceil(2*(Tm*N_AUV+np.sum(mean))))#TODO
+OPTIMIZATION_TIME_STEP = int(np.ceil(2*(Tm*N_AUV+np.sum(mean)))/2)#TODO
 #OPTIMIZATION_TIME_STEP = 30
 
 
