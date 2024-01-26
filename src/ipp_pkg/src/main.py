@@ -70,6 +70,7 @@ def initialize_auvs(geometry,s_pose,f,N_AUV,d):
         for i in range(N_AUV):
             auvs_xy[i,0] = s_pose[0]-f[i]
             auvs_xy[i,1] = 0
+
     return auvs_xy, auvs_theta
 
 def computePursuitVel(curr_est,s_pose,v_n):
@@ -163,9 +164,10 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
     auvs_xy, auvs_theta = initialize_auvs(geometry,s_pose,f,N,d)
     # Initialize nominal vel for the CPF algorithm
     v_n = config.AUV_VEL
+    print(auvs_xy)
+    print(s_pose)
 
-
-    plt.plot(ax, ay, "xb", label="Data points")
+    '''plt.plot(ax, ay, "xb", label="Data points")
     plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
     #print(auvs_xy)
     for i in range(config.N_AUV):
@@ -175,9 +177,8 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
     plt.legend()
     plt.axis('equal')
     plt.show() # uncomment for debugging'''
-
-
-
+   
+    c = 0
     ## SIMULATION LOOP ############################################################################################################
     while t <= config.TIME_DURATION:
         rospy.loginfo('SIMULATION TIME(s)')
@@ -256,6 +257,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
 
                 v_n = computePursuitVel(curr_est,s_pose,v_n)
                 print('PURSUIT VEL:' ,v_n)
+                v_n = 1
                 cpf_control.v_n = v_n 
                 
                 rospy.loginfo('SENDING DATA')
@@ -296,22 +298,44 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 
                 print('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++UPDATING PATH')
                 int_list = [int(item) for item in rx]
+                
                 tmp = rx[idx_motion+path_idx]
-                path, d, ax, ay, last_cmd = cpf_control.update_path([cmds[0]],last_cmd,config.OPTIMIZATION_TIME_STEP/2,ax,ay,d,s_pose)
+
+                
+
+                #cmds=[0,0,0,0]
+                '''if c == 0:
+                    cmds = [0]
+                    c=1
+                else:
+                    cmds = [+pi/8]
+                    c=0'''
+                print('----------------------WAYPOINTS PRE UPDATE',ax)
+                path, d, ax, ay, last_cmd = cpf_control.update_path([cmds[0]],last_cmd,config.OPTIMIZATION_TIME_STEP,ax,ay,d,s_pose)
+                print('----------------------WAYPOINTS POST UPDATE',ax)
                 [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
                 
+                tmp0 = np.abs(tmp - ax[0])
+                for i in range(len(ax)):
+                    tmp2 = np.abs(s_pose[0] - ax[i])
+                    if tmp2<tmp0:
+                        tmp = ax[i]
+                    tmp0 = tmp2
+
                 if config.geometry=='column' or config.geometry=='column2':
                     
-                    int_list = [int(item) for item in rx]
-                    path_idx = int_list.index(int(tmp),0,-1)
+                    int_list = [np.ceil(item) for item in rx]
+                    path_idx = int_list.index(np.ceil(tmp),0,len(int_list))
                     idx_motion = 0 
 
                 elif config.geometry=='line' or config.geometry=='line2':    
-                    #int_list = [int(item) for item in rx] #TODO: check why here this two lined are note necessary.
-                    #path_idx = int_list.index(int(tmp),0,-1)
+
+                    int_list = [np.ceil(item) for item in rx] #TODO: check why here this two lined are note necessary.
+                    print('int list',int_list)
+                    path_idx = int_list.index(np.ceil(tmp),0,len(int_list))
                     idx_motion = 0      
 
-                if t > 0:
+                '''if t > 0:
                     plt.plot(ax, ay, "xb", label="Data points")
                     plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
                     for i in range(config.N_AUV):
@@ -328,23 +352,28 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
             
             print('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++UPDATING PATH')
             #TODO: BUG HERE TO SOLVE
-            tmp = rx[idx_motion+path_idx]
-            path, d, ax, ay, last_cmd = cpf_control.update_path([0],last_cmd,config.OPTIMIZATION_TIME_STEP/4,ax,ay,d,s_pose)#1 #go straight, path idx increase of 2 or 3
+            tmp = rx[idx_motion+path_idx]+1
+            print('++++++++++++++++++++++++++++++++tmp',tmp)
+            print('----------------------WAYPOINTS PRE UPDATE',ax)
+            path, d, ax, ay, last_cmd = cpf_control.update_path([0],last_cmd,config.OPTIMIZATION_TIME_STEP,ax,ay,d,s_pose)#1 #go straight, path idx increase of 2 or 3
             [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
-
+            print('rx',rx)
+            print('----------------------WAYPOINTS POST UPDATE',ax)
             if config.geometry=='column' or config.geometry=='column2':
 
-                int_list = [int(item) for item in rx]
-                path_idx = int_list.index(int(tmp),0,-1)
+                int_list = [np.ceil(item) for item in rx]
+
+                path_idx = int_list.index(np.ceil(tmp),0,len(int_list))
+
                 idx_motion = 0
 
             elif config.geometry=='line' or config.geometry=='line2':
                 
-                int_list = [int(item) for item in rx]
-                path_idx = int_list.index(int(tmp),0,-1)
+                int_list = [np.ceil(item) for item in rx]
+                path_idx = int_list.index(np.ceil(tmp),0,len(int_list))
                 idx_motion = 0
 
-            plt.plot(ax, ay, "xb", label="Data points")
+            '''plt.plot(ax, ay, "xb", label="Data points")
             plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
             for i in range(config.N_AUV):
                 
@@ -361,7 +390,8 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
         [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt) # compute reference to follow
         [s_pose, auvs_xy, auvs_theta] = cpf_control.move_agents(path, d,s_pose,dt, auvs_xy, auvs_theta, ryaw[path_idx+idx_motion],rx[path_idx+idx_motion],ry[path_idx+idx_motion],False)
         target.move_target(dt)
-
+        print('--------------------------------------s pose',s_pose)
+        print('--------------------------------------auvs_xy',auvs_xy)
         #################################################################################################################
         ##################### SAVE THE POSITIONS OF TEAM REFERENCE/AGENTS/TARGET/ STATE FOR PLOT ########################
         platform_x.append(s_pose[0])

@@ -117,8 +117,9 @@ print('DEV STD OFF',np.float32(np.round(dev_std_off,3)))
 print('DEV STD ON',np.round(dev_std_on,3))
 
 print('Percentage of lost packets',lost_pkt)
-print('Average Optimization Time',np.sum(avg_time)/len(avg_time))
-print('Averaget Nodes Explored',np.sum(avg_nodes)/len(avg_nodes))
+if config.OPTIMIZATION_ON == True:
+    print('Average Optimization Time',np.sum(avg_time)/len(avg_time))
+    print('Averaget Nodes Explored',np.sum(avg_nodes)/len(avg_nodes))
 
 # Magnitude Tracking Error plot
 if len(err_off) < len(err_on):

@@ -12,7 +12,7 @@ TIME_DURATION = 600 # (s)
 TIME_STEP = 0.01
 TIME_SCALER = 80 # TIME SCALER OF THE SIMULATION 
 c = 1500 #sound wave speed
-OPTIMIZATION_ON = False
+OPTIMIZATION_ON = True
 
 # Estimation Parameters
 TP = 30 # regressor MAX length 40
@@ -54,7 +54,7 @@ ctrl_cmd = [-u_max, -u_max*4/(U),0,u_max*4/(U),u_max] # simplified set of contro
 # CHOOSE Target parameter: start, goal, min max vels
 # PARTE SEMPRE DA UNA DISTANZA COMPRESA TRA I 3.5 E 5 KM con velocità da 4 a 8 m/s
 TARGET_INIT = [400,-200, pi/2, 3.0, 0.0, 0.0, 0.0] #SIMPLE CASE LOWE DISTANCE!!!!!
-TARGET_INIT = [800,100, 140*pi/180, 3.0, 0.0, 0.0, 0.0]
+TARGET_INIT = [800, 100, 140*pi/180, 3.0, 0.0, 0.0, 0.0]
 #TARGET_INIT = [+2000,-2500, pi, 2.5, 0.0, 0.0, 0.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 1
 #TARGET_INIT = [4000, 200, 140*pi/180, 8.0, 0.0, 0.0, 0.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 2
 #TARGET_INIT = [-5000,-5000, pi/4, 3.0, 0.0, 0.0, 0.0] #[x(m),y(m),theta(rad),linear vel(m/s)] - DINAMICA 3
@@ -87,5 +87,5 @@ OPTIMIZATION_TIME_STEP = int(np.ceil(2*(Tm*N_AUV+np.sum(mean)))/2)#TODO
 
 
 
-
+OPTIMIZATION_TIME_STEP = 15
 
