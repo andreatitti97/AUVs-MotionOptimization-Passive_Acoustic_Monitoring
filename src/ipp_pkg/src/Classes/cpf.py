@@ -60,7 +60,7 @@ class CooperativePathFollowing:
                 self.ay.append(0)
             path = cubicSpline.CubicSpline2D(self.ax, self.ay)
 
-        elif self.geometry == 'line' or self.geometry == 'line2' or self.geometry == 'polygon':
+        elif self.geometry == 'line' or self.geometry == 'line2':
             
             ax_0 =[*range(0,  self.DT*4, self.DT)]
             d = self.DT*2
@@ -93,7 +93,7 @@ class CooperativePathFollowing:
         des_xy = np.zeros_like(auvs_xy)
  
         # Compute the desired absolute auvs_xy of the agents according to leader auvs_xy and given f
-        if self.geometry == 'line' or self.geometry == 'line2' or self.geometry == 'polygon':
+        if self.geometry == 'line' or self.geometry == 'line2':
             for i in range(0, self.n_agents):
                 des_xy[i,0] = s_pose[0] + (f[i,0]*np.cos(s_pose[2])+f[i,1]*np.sin(s_pose[2]))
                 des_xy[i,1] = s_pose[1] - (-f[i,0]*np.sin(s_pose[2])+f[i,1]*np.cos(s_pose[2]))
@@ -135,7 +135,7 @@ class CooperativePathFollowing:
         self.ay = ay
 
         # Compute the distance travelled according to the new path
-        if self.geometry == 'line' or self.geometry == 'line2' or self.geometry == 'polygon':
+        if self.geometry == 'line' or self.geometry == 'line2':
             d_real = self.v_n*DT
             a_i = [self.ax[-1],self.ay[-1]]
             #a_i = [s_pose[0],s_pose[1]]

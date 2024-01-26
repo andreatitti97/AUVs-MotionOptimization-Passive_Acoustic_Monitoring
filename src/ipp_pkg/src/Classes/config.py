@@ -23,7 +23,7 @@ geometry = 'line2'
 
 
 # Communication Paramaters
-d = 100 #vehicle distance 300
+d = 200 #vehicle distance 300
 Tm = 3 # measurements time sampling #5 REAL CASE
 Tg = 2 # time slot for each vehicle #3 REAL CASE 
 

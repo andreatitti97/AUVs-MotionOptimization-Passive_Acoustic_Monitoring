@@ -30,7 +30,7 @@ spec = importlib.util.spec_from_file_location("module.planner", class_path+"/spl
 planner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(planner)
 # FOLDER PATH DEFINITION
-plot_path = os.path.abspath('/home/andrea/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
+plot_path = os.path.abspath('/home/andrea/Desktop/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 # Init global variables for callbacks
 t_est_x, t_est_y, s_state_x, s_state_y = [], [], [], []
 
@@ -186,7 +186,7 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
 
     for i in range(config.N_AUV):
 
-        if geometry == 'line' or geometry == 'line2' or geometry == 'polygon':
+        if geometry == 'line' or geometry == 'line2':
             auvs_theta[i] = s_pose[2]
             auvs_xy[i,0] = s_pose[0] + (f[i,0]*np.cos(s_pose[2])+f[i,1]*np.sin(s_pose[2]))
             auvs_xy[i,1] = s_pose[1] - (-f[i,0]*np.sin(s_pose[2])+f[i,1]*np.cos(s_pose[2]))      
@@ -299,7 +299,7 @@ def main():
             path = cubicSpline.CubicSpline2D(ax, ay)
             d = path.s[-1]-1
 
-        elif geometry == 'line' or geometry == 'line2' or geometry=='polygon':
+        elif geometry == 'line' or geometry == 'line2':
             for i in range(len(ay_array)):
                 length = len(ay_array)-2
                 ax.append(ax_array[i])
@@ -308,7 +308,7 @@ def main():
             d = path.s[-1]-1
 
         # Initialize Cooperative Path Following Class 
-        cpf_control = cpf.CooperativePathFollowing(config.N_AUV, config.k_att, config.k_rep, config.d_rep, True)
+        cpf_control = cpf.CooperativePathFollowing(config.N_AUV, config.K_att, config.K_rep, config.d_rep, True)
         n = len(t_est)
         P = np.zeros((n,n))
         for i in range(n):

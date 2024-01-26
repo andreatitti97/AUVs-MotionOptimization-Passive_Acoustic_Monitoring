@@ -60,7 +60,7 @@ def initialize_auvs(geometry,s_pose,f,N_AUV,d):
     auvs_theta = np.zeros(N_AUV)   
     for i in range(N_AUV):
         auvs_theta[i] = s_pose[2]
-    if geometry == 'line' or geometry == 'line2'or geometry=='polygon':
+    if geometry == 'line' or geometry == 'line2':
         s_pose = [s_pose[0],s_pose[1],s_pose[2]]
         for i in range(0, N_AUV):
             auvs_xy[i,0] = s_pose[0] + (f[i,0]*np.cos(s_pose[2])+f[i,1]*np.sin(s_pose[2]))
@@ -135,18 +135,15 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
     """
     global count1
     propagation = False
-    updated = False
-
+    N = len(auv)
     Hz = 1/(config.TIME_STEP) #NB: different from sampling rate for move things, this is ros rate
     rate = rospy.Rate(Hz)
+
     # Init time variables and counters and lists
     t, count1, j, k, last_cmd, idx_motion = 0, 0, 0, 0, 0, 0
     sent_pkt, rcvd_pkt, lost_pkt = 0,0,0
-
-
     meas_table, cmds, delay, flags = [], [], [], []
     dt = config.TIME_STEP*config.TIME_SCALER
-    N = len(auv)
 
     geometry = config.geometry
     for i in range(config.M):
@@ -166,6 +163,20 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
     auvs_xy, auvs_theta = initialize_auvs(geometry,s_pose,f,N,d)
     # Initialize nominal vel for the CPF algorithm
     v_n = config.AUV_VEL
+
+
+    plt.plot(ax, ay, "xb", label="Data points")
+    plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
+    #print(auvs_xy)
+    for i in range(config.N_AUV):
+        
+        plt.plot(auvs_xy[i,0],auvs_xy[i,1],'ok',label="AUV"+str(i))
+    plt.plot(rx, ry, "-r", label="Cubic spline path")
+    plt.legend()
+    plt.axis('equal')
+    plt.show() # uncomment for debugging'''
+
+
 
     ## SIMULATION LOOP ############################################################################################################
     while t <= config.TIME_DURATION:
@@ -292,17 +303,17 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 if config.geometry=='column' or config.geometry=='column2':
                     
                     int_list = [int(item) for item in rx]
-
                     path_idx = int_list.index(int(tmp),0,-1)
                     idx_motion = 0 
 
-                elif config.geometry=='line' or config.geometry=='line2' or config.geometry=='polygon':    
-                    idx_motion = 0 #(you delete from the idx the initial path portion deleted)           
+                elif config.geometry=='line' or config.geometry=='line2':    
+                    #int_list = [int(item) for item in rx] #TODO: check why here this two lined are note necessary.
+                    #path_idx = int_list.index(int(tmp),0,-1)
+                    idx_motion = 0      
 
-                '''if t > 800:
+                if t > 0:
                     plt.plot(ax, ay, "xb", label="Data points")
                     plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
-                    #print(auvs_xy)
                     for i in range(config.N_AUV):
                         
                         plt.plot(auvs_xy[i,0],auvs_xy[i,1],'ok',label="AUV"+str(i))
@@ -327,15 +338,14 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 path_idx = int_list.index(int(tmp),0,-1)
                 idx_motion = 0
 
-            elif config.geometry=='line' or config.geometry=='line2' or config.geometry=='polygon':
+            elif config.geometry=='line' or config.geometry=='line2':
                 
                 int_list = [int(item) for item in rx]
                 path_idx = int_list.index(int(tmp),0,-1)
                 idx_motion = 0
 
-            '''plt.plot(ax, ay, "xb", label="Data points")
+            plt.plot(ax, ay, "xb", label="Data points")
             plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
-            #print(auvs_xy)
             for i in range(config.N_AUV):
                 
                 plt.plot(auvs_xy[i,0],auvs_xy[i,1],'ok',label="AUV"+str(i))

@@ -91,7 +91,7 @@ errore_medio_on = sum(err_on)/len(err_on)
 print('Simulation Time (s)',config.TIME_DURATION)
 print('Regressor Max Length',config.TP)
 print('Measuraments noise (deg)',config.SIGMA_MEAS*180/np.pi)
-print('Vehicles distance (m)',2*config.d)
+print('Vehicles distance (m)',config.d)
 
 print('errore medio OFF (m)',errore_medio_off)
 print('errore medio ON (m)',errore_medio_on)
