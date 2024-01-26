@@ -45,6 +45,7 @@ est1_x, est1_y, est2_x, est2_y,est3_x, est3_y,est_x, est_y, est_vx, est_vy = [],
 cov1, cov2, cov3, cov4, err_quad, cond_phi = [],[],[],[],[],[]
 
 def compute_cost(phi,len_y):
+
     tmp_phi = np.zeros((len_y,4))
     for i in range(len_y):
         row = phi[i]
@@ -54,6 +55,7 @@ def compute_cost(phi,len_y):
     return cost
 
 def initialize_auvs(geometry,s_pose,f,N_AUV,d):
+
     auvs_xy = np.zeros((N_AUV,2))
     auvs_theta = np.zeros(N_AUV)   
     for i in range(N_AUV):
@@ -70,7 +72,53 @@ def initialize_auvs(geometry,s_pose,f,N_AUV,d):
             auvs_xy[i,1] = 0
     return auvs_xy, auvs_theta
 
+def computePursuitVel(curr_est,s_pose,v_n):
+
+    predicted_pose = np.array(np.zeros(2))
+    predicted_pose[0] = curr_est[0,0] + config.OPTIMIZATION_TIME_STEP*curr_est[2]
+    predicted_pose[1] = curr_est[1,0] + config.OPTIMIZATION_TIME_STEP*curr_est[3]
+
+    tmp_x = s_pose[0]+config.OPTIMIZATION_TIME_STEP*v_n*np.cos(atan2(s_pose[1],s_pose[0]))
+    tmp_y = s_pose[1]+config.OPTIMIZATION_TIME_STEP*v_n*np.sin(atan2(s_pose[1],s_pose[0]))
+
+    p_eucl_dist = np.sqrt((predicted_pose[0]-tmp_x)**2+(predicted_pose[1]-tmp_y)**2)
+    eucl_dist = np.sqrt((curr_est[0,0]-s_pose[0])**2+(curr_est[1,0]-s_pose[1])**2)
+    
+    epsi = eucl_dist*20/100 #for OPT_TIME_STEP c.a. 15 sec
+
+    if eucl_dist > 20:
+        v_n = (eucl_dist-epsi)/config.OPTIMIZATION_TIME_STEP
+    else:
+
+        v_n = np.sqrt(curr_est[2]**2+curr_est[3]**2)
+
+    if v_n >= 4:
+        v_n = 4
+    elif v_n <= -4:
+        v_n = -4
+    elif 0 <= v_n < 2:
+        v_n = 2
+    return v_n
+
+def computeCov(y,phi):
+
+    # Compute Covariance of the target state
+    R = np.zeros((len(y),len(y))) #matrice diagonale perchè errori sulle singole misure indipendenti tra loro            
+    for i in range(len(y)): 
+        for j in range(len(y)):
+            if i == j:
+                R[i,j] = (config.SIGMA_MEAS)
+            else:
+                R[i,j] = 0 
+    if count1 > 0 and len(phi)>=4:
+        a = config.SIGMA_MEAS
+        cov = np.linalg.inv(np.dot(np.dot(np.transpose(phi),np.linalg.inv(a*np.identity(len(y)))),phi))
+    else: 
+        cov = np.zeros((4,4))
+    return cov
+
 def sig(x):
+    
     alpha = -0.003
     gamma = config.d
     return 1/(1+np.e**(alpha*(gamma-x)))
@@ -93,7 +141,10 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
     rate = rospy.Rate(Hz)
     # Init time variables and counters and lists
     t, count1, j, k, last_cmd, idx_motion = 0, 0, 0, 0, 0, 0
-    meas_table, measurements, cmds, delay, flags = [], [], [], [], []
+    sent_pkt, rcvd_pkt, lost_pkt = 0,0,0
+
+
+    meas_table, cmds, delay, flags = [], [], [], []
     dt = config.TIME_STEP*config.TIME_SCALER
     N = len(auv)
 
@@ -110,23 +161,12 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
     # Initialize Path
     path, path_idx, d, ax, ay = cpf_control.initialize_path(f)
     [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
-    s_pose[0] = d
+
     # Init AUVs position and orientation according to given formation
     auvs_xy, auvs_theta = initialize_auvs(geometry,s_pose,f,N,d)
-    
-    plt.plot(ax, ay, "xb", label="Data points")
-    plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
-    #print(auvs_xy)
-    for i in range(config.N_AUV):
-        
-        plt.plot(auvs_xy[i,0],auvs_xy[i,1],'ok',label="AUV"+str(i))
-    plt.plot(rx, ry, "-r", label="Cubic spline path")
-    plt.legend()
-    plt.axis('equal')
-    plt.show() # uncomment for debugging'''
-
-
+    # Initialize nominal vel for the CPF algorithm
     v_n = config.AUV_VEL
+
     ## SIMULATION LOOP ############################################################################################################
     while t <= config.TIME_DURATION:
         rospy.loginfo('SIMULATION TIME(s)')
@@ -142,14 +182,16 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                     if i == 0:
                         meas_table.append(arr)
                     else:
+                        sent_pkt += 1
                         ps_1 = auvs_xy[0]
                         dist = np.sqrt((meas_pos[0]-ps_1[0])**2+(meas_pos[1]-ps_1[1])**2)
                         prob = sig(dist)
                         if (np.random.random() <= prob):
                             #msg received
-
+                            rcvd_pkt +=1
                             meas_table.append(arr)
                         else:
+                            lost_pkt += 1
                             print('LOST PACKETT')
         for i in range(N-1):
             if flags[i] == 0 and propagation == False:
@@ -178,19 +220,15 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
             curr_est4, phi4, y4 = obs[3].state
             cost = compute_cost(phi,len(y))
             cond_phi.append(cost)
-            # Compute Covariance of the target state
-            R = np.zeros((len(y),len(y))) #matrice diagonale perchè errori sulle singole misure indipendenti tra loro            
-            for i in range(len(y)): 
-                for j in range(len(y)):
-                    if i == j:
-                        R[i,j] = (config.SIGMA_MEAS)
-                    else:
-                        R[i,j] = 0 
-            if count1 > 0 and len(phi)>=4:
-                a = config.SIGMA_MEAS
-                cov = np.linalg.inv(np.dot(np.dot(np.transpose(phi),np.linalg.inv(a*np.identity(len(y)))),phi))
-            else: 
-                cov = np.zeros((4,4))
+            cov = computeCov(y,phi)
+            # Computte the tracking error
+            err_x = (target.pose.x - curr_est[0,0])
+            err_y = (target.pose.y - curr_est[1,0])
+            e = np.sqrt(err_x**2+err_y**2)
+            # Reset the flag for propagation
+            propagation = False
+
+            # Save Estimation Data #####################################################################################
             est_x.append(curr_est[0,0])
             est_y.append(curr_est[1,0])
             est_vx.append(curr_est[2,0])
@@ -200,49 +238,14 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
             cov2.append(cov[1,1])
             cov3.append(cov[2,2])
             cov4.append(cov[3,3])
-            # Computte the tracking error
-            err_x = (target.pose.x - curr_est[0,0])
-            err_y = (target.pose.y - curr_est[1,0])
-            e = np.sqrt(err_x**2+err_y**2)
             err_quad.append(e)
-            # Reset the flag for propagation
-            propagation = False
+            
         ############################################# TRIGGER OPTIMIZATION ##############################################
             if config.OPTIMIZATION_ON == True:
 
-                predicted_pose = np.array(np.zeros(2))
-                predicted_pose[0] = curr_est[0,0] + config.OPTIMIZATION_TIME_STEP*curr_est[2]
-                predicted_pose[1] = curr_est[1,0] + config.OPTIMIZATION_TIME_STEP*curr_est[3]
-
-                tmp_x = s_pose[0]+config.OPTIMIZATION_TIME_STEP*v_n*np.cos(atan2(s_pose[1],s_pose[0]))
-                tmp_y = s_pose[1]+config.OPTIMIZATION_TIME_STEP*v_n*np.sin(atan2(s_pose[1],s_pose[0]))
-
-                p_eucl_dist = np.sqrt((predicted_pose[0]-tmp_x)**2+(predicted_pose[1]-tmp_y)**2)
-                eucl_dist = np.sqrt((curr_est[0,0]-s_pose[0])**2+(curr_est[1,0]-s_pose[1])**2)
-                
-                epsi = eucl_dist*80/100 #for OPT_TIME_STEP c.a. 15 sec
-
-                #print('dist euclidea',eucl_dist)
-                #print('predicted_eucl_distance',p_eucl_dist)
-                #print('epsi',epsi)
-                if eucl_dist > 20:
-                    v_n = (eucl_dist-epsi)/config.OPTIMIZATION_TIME_STEP
-                else:
-                #    print('REACHED THE TARGET')
-                    v_n = np.sqrt(curr_est[2]**2+curr_est[3]**2)
-                    #s_pose = [curr_est[0,0],curr_est[1,0],curr_est[2,0],curr_est[3,0]]
-
-                #print('desired vel',v_n)
-                if v_n >= 4:
-                    v_n = 4
-                elif v_n <= -4:
-                    v_n = -4
-                elif 0 <= v_n < 2:
-                    v_n = 2
-                
-                print('nominal vel',v_n)
-                ##v_n = 1
-                cpf_control.v_n = v_n
+                v_n = computePursuitVel(curr_est,s_pose,v_n)
+                print('PURSUIT VEL:' ,v_n)
+                cpf_control.v_n = v_n 
                 
                 rospy.loginfo('SENDING DATA')
                 pub[0].publish(np.array(curr_est,dtype=np.float32))
@@ -252,19 +255,23 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 print(tmp)
                 pub[1].publish(np.array(tmp,dtype=np.float32))
                 rospy.sleep(10/Hz)
+
                 ax = cpf_control.ax
                 ay = cpf_control.ay
                 print('LENGTH AX AY',len(ax))
                 pub[2].publish(np.array(ax,dtype=np.float32))
                 rospy.sleep(10/Hz)
+
                 pub[3].publish(np.array(ay,dtype=np.float32))
                 rospy.sleep(10/Hz)
+
                 tmp = []
                 for i in range(4):
                     for j in range(4):
                         tmp.append(cov[i,j])
                 pub[4].publish(np.array(tmp,dtype=np.float32))
                 rospy.sleep(10/Hz)
+
                 tmp = []
                 for i in range(4):
                     for j in range(4):
@@ -278,11 +285,6 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 
                 print('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++UPDATING PATH')
                 int_list = [int(item) for item in rx]
-                
-                print('len rx',len(rx))
-                print(int_list)
-                print(idx_motion)
-                print(idx_motion+path_idx)
                 tmp = rx[idx_motion+path_idx]
                 path, d, ax, ay, last_cmd = cpf_control.update_path([cmds[0]],last_cmd,config.OPTIMIZATION_TIME_STEP/2,ax,ay,d,s_pose)
                 [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
@@ -297,7 +299,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 elif config.geometry=='line' or config.geometry=='line2' or config.geometry=='polygon':    
                     idx_motion = 0 #(you delete from the idx the initial path portion deleted)           
 
-                if t > 400:
+                '''if t > 800:
                     plt.plot(ax, ay, "xb", label="Data points")
                     plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
                     #print(auvs_xy)
@@ -393,6 +395,8 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 np.savetxt(plot_path+'/vx_ON.txt',est_vx)
                 np.savetxt(plot_path+'/vy_ON.txt',est_vy)
                 np.savetxt(plot_path+'/cond_ON',cond_phi)
+                lost_pkt_perc = lost_pkt*100/sent_pkt
+                np.savetxt(plot_path+'/lost_pkt',[lost_pkt_perc])
 
             else:
                 np.savetxt(plot_path+'/est4_x_OFF.txt',est_x)
@@ -415,10 +419,11 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 np.savetxt(plot_path+'/vx_OFF.txt',est_vx)
                 np.savetxt(plot_path+'/vy_OFF.txt',est_vy)
                 np.savetxt(plot_path+'/cond_OFF',cond_phi)
+                np.savetxt(plot_path+'/cond_ON',cond_phi)
+                lost_pkt_perc = lost_pkt*100/sent_pkt
+                np.savetxt(plot_path+'/lost_pkt',[lost_pkt_perc])
         t += dt
-        count1 += 1
-        
-        
+        count1 += 1 
         rate.sleep()
 
 def main():

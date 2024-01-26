@@ -157,9 +157,6 @@ class CooperativePathFollowing:
         self.ay.pop(0)
         # Generate new path 
         path = cubicSpline.CubicSpline2D(self.ax, self.ay) 
-        
-
-
 
         return path, d_real, self.ax, self.ay, t_i
 

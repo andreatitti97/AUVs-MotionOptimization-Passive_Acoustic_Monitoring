@@ -55,7 +55,7 @@ def generate_formation(geometry,d,Tg,Tm,c):
         mean = [Tg+6*d/c,Tg+4*d/c,Tg+2*d/c,0]  
         variance = [Tm*3.0, Tm*1.8, Tm*0.8, 0.0]
     elif geometry == 'column2':
-        formation =  [d,d/2,d,d/2]
+        formation =  [d*2,d,d*2,d]
         mean = [Tg*d/c,Tg*d/c,Tg*d/c,0]  
         variance = [Tm*1.5, Tm*0.8, Tm*0.3, 0.0]
     elif geometry == 'one_auv':

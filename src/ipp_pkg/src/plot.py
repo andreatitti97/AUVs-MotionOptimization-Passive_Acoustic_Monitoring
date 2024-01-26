@@ -73,6 +73,11 @@ cov4_OFF = np.loadtxt(lib_path+'/cov4_OFF.txt')
 vx_OFF = np.loadtxt(lib_path+'/vx_OFF.txt')
 vy_OFF = np.loadtxt(lib_path+'/vy_OFF.txt')
 
+# Addition statistics
+lost_pkt = np.loadtxt(lib_path+'/lost_pkt')
+avg_time = np.loadtxt(lib_path+'/wall_times.txt')
+avg_nodes = np.loadtxt(lib_path+'/nodes.txt')
+
 # Plot Parameters
 scaling = 10 #scale the width of the drawn lines (i.e. 3 suitable for 10km X 10km area)
 ranges = 12 #scale the number of printed AUVs (ie.e 12 suitable for 600 s of simulation)
@@ -82,14 +87,19 @@ sum1, sum2, sum3 = 0,0,0
 
 errore_medio_off = sum(err_off)/len(err_off)
 errore_medio_on = sum(err_on)/len(err_on)
-print('errore medio OFF',errore_medio_off)
-print('errore medio ON',errore_medio_on)
-print('MSE OFF',sum(err_off**2)/len(err_off))
-print('MSE ON',sum(err_on**2)/len(err_on))
+
+print('Simulation Time (s)',config.TIME_DURATION)
+print('Regressor Max Length',config.TP)
+print('Measuraments noise (deg)',config.SIGMA_MEAS*180/np.pi)
+print('Vehicles distance (m)',2*config.d)
+
+print('errore medio OFF (m)',errore_medio_off)
+print('errore medio ON (m)',errore_medio_on)
+
 rmse_off = np.sqrt(sum(err_off**2)/len(err_off))
 rmse_on = np.sqrt(sum(err_on**2)/len(err_on))
-print('RMSE OFF:',np.round(rmse_off,3))
-print('RMSE ON:',np.round(rmse_on,3))
+print('RMSE OFF (m):',np.round(rmse_off,3))
+print('RMSE ON (m):',np.round(rmse_on,3))
 
 sum1,sum2,sum3 = 0,0,0
 
@@ -101,10 +111,14 @@ for i in range(len(err_on)):
 dev_std_off = np.sqrt(sum1/len(err_off))
 dev_std_on = np.sqrt(sum2/len(err_on))
 
-print('VARIANZA OFF',np.float32(dev_std_off**2))
-print('VARIANZA ON',np.float32(dev_std_on**2))
+#print('VARIANZA OFF',np.float32(dev_std_off**2))
+#print('VARIANZA ON',np.float32(dev_std_on**2))
 print('DEV STD OFF',np.float32(np.round(dev_std_off,3)))
 print('DEV STD ON',np.round(dev_std_on,3))
+
+print('Percentage of lost packets',lost_pkt)
+print('Average Optimization Time',np.sum(avg_time)/len(avg_time))
+print('Averaget Nodes Explored',np.sum(avg_nodes)/len(avg_nodes))
 
 # Magnitude Tracking Error plot
 if len(err_off) < len(err_on):
@@ -208,7 +222,9 @@ plt.show()
 
 # PLOT THE RESULT OF THE SIMULATION with OPTIMIZATION
 
-#plt.plot(s_x_on,s_y_on)
+plt.plot(s_x_on,s_y_on)
+plt.plot(auv1_x_on,auv1_y_on,'k')
+plt.plot(auv2_x_on,auv2_y_on,'k')
 plt.plot(real_x,real_y,linewidth=5,color='y')
 plt.plot(est4_x_ON,est4_y_ON,'r',linewidth=3)
 plt.xlabel('x (m)',fontsize=30)
@@ -257,6 +273,7 @@ for i in range(ranges):
     plt.plot(s_x_on[idx],s_y_on[idx],'Xb',linewidth=5) 
     plt.gca().add_patch(circle)
     j += 1
+
 plt.axis('equal')
 idx1 = int(len(real_x)/2) 
 plt.arrow(real_x[np.round(0)],real_y[np.round(0)],+5.0*scaling*np.cos(target_init[2]), 5.0*scaling*np.sin(target_init[2]),width=2*scaling,color='y')

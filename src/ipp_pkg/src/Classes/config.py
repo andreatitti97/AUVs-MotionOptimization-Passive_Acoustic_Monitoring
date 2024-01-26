@@ -12,7 +12,7 @@ TIME_DURATION = 600 # (s)
 TIME_STEP = 0.01
 TIME_SCALER = 80 # TIME SCALER OF THE SIMULATION 
 c = 1500 #sound wave speed
-OPTIMIZATION_ON = True
+OPTIMIZATION_ON = False
 
 # Estimation Parameters
 TP = 30 # regressor MAX length 40
@@ -44,7 +44,7 @@ MAX = 40*pi/180
 MIN = 5*pi/180
 U = 5 #number of control choices
 M = 3 # planning horizon
-#ctrl_cmd = [-u_max,0,+u_max]
+
 ctrl_cmd = [-u_max, -u_max*4/(U),0,u_max*4/(U),u_max] # simplified set of control actions for fast debugging
 #ctrl_cmd = [-u_max, -u_max*4/(U),-u_max*2/(U),0,u_max*2/(U),u_max*4/(U),u_max] #set of control actions
 ##################################################################################################################################

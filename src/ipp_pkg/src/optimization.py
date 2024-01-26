@@ -156,29 +156,28 @@ class Simple(pybnb.Problem):
             ax.pop(-1)
             ay.pop(-1)
             yield child
-            '''# Save data for debugging
-            if len(choices) == 1:
-                t_est_x.append(x[0])
-                t_est_y.append(x[1])
-                s_state_x.append(s[0])
-                s_state_y.append(s[0])'''
 
 def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d, v_n,P=[]):
+    
     # Temporal Variable
     t, j = 0, 0 #time and counter init
     meas_table = []
     scaler = config.time_scaler
     dt = config.OPTIMIZATION_TIME_STEP/scaler
+    
     # Init classes for tracker and target
     target = Target(target_est, dt, P)
     estimator = Estimation()
+    
     # Load Path
     path = cubicSpline.CubicSpline2D(ax, ay)#re-generate the path followed up to now
     [rx, ry, ryaw, rk, s]=utils.calc_spline_course(path,dt)
     p_idx = len(ryaw)-1
+    
     # Compute leader pose
     yaw = path.calc_yaw(d)
     s_pose = [s_pose[0],s_pose[1],yaw]
+    
     # Compute agents pose
     geometry = config.geometry
     f = config.formation
@@ -231,7 +230,7 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
     plt.legend()
     plt.axis('equal')
     plt.show() # uncomment for debugging'''
-    #print(len(ax))
+
     return target.x, estimator.phi, estimator.y, s_pose, ax[-1], ay[-1], d
 
 def compute_cost(phi,length_y):
@@ -245,20 +244,16 @@ def compute_cost(phi,length_y):
 
 def main():
 
-    #global target_est
     # Ros Initialization
     rospy.init_node('optimization')
     pub = rospy.Publisher("ctrl_cmd",numpy_msg(Floats),queue_size=100)
     Hz = 1/(config.TIME_STEP)
     rate = rospy.Rate(Hz)
+
     # Init lists for log files.
     ctrl_opt, ctrl_plot, sensors, old_ctrls = [], [], [], []  
     avg_time, avg_nodes = [],[]
-    # Init CPF Parameters
-    k_att = config.K_att/100
-    k_rep = config.K_rep
-    d_rep = config.d_rep
-    geometry = config.geometry
+
     # Init Parameters for U setup
     count_low, count_max = 0,0
     ctrl_cmd = config.ctrl_cmd
@@ -267,7 +262,9 @@ def main():
     limit = 0.0
     for i in range(config.M+1):
         limit += config.U**i
+
     # Initialize sensors class (Reproduce the AVS)
+    geometry = config.geometry
     for i in range(config.N_AUV): 
         sensors.append(sensor.Sensor(str(i),1,0,0.000))#config.SIGMA_MEAS
     
@@ -277,7 +274,6 @@ def main():
     while not rospy.is_shutdown():
 
         # Retrieve information from estimation module (propagate estimation) and planning module (update the path)
-        
         t_est = rospy.wait_for_message('/estimation',numpy_msg(Floats))
         s_state = rospy.wait_for_message('/platform_state',numpy_msg(Floats))
         ax = rospy.wait_for_message('/ax',numpy_msg(Floats))
@@ -286,32 +282,23 @@ def main():
         t_est = t_est.data
         s_ = s_state.data
         
+        # Data conversion
         s_state = [s_[0], s_[1], s_[2]]
-        #print(s_state)
         v_n = s_[3]
-        
-        #print(v_n)
-        #time.sleep(50)
-        
         ax_array = ax.data
         ay_array = ay.data
         cov = cov.data
+        
         # Load the last section of followed path
         ax, ay = [], []
         if geometry == 'column' or geometry == 'column2': # THIS CAN BECAME A FUNCTION
-            '''if len(ay_array) <= 5:
-                n = 5
-            else:   
-                n = len(ay_array)
-                if n >= np.ceil(config.formation[0]/DT):
-                    n = np.ceil(config.formation[0]/DT)
-                n = int(n)'''
             for i in range(len(ay_array)):
                 #length = len(ay_array)-n
                 ax.append(ax_array[i])#ax.append(ax_array[length+])
                 ay.append(ay_array[i])
             path = cubicSpline.CubicSpline2D(ax, ay)
             d = path.s[-1]-1
+
         elif geometry == 'line' or geometry == 'line2' or geometry=='polygon':
             for i in range(len(ay_array)):
                 length = len(ay_array)-2
@@ -319,8 +306,9 @@ def main():
                 ay.append(ay_array[i])
             path = cubicSpline.CubicSpline2D(ax, ay)
             d = path.s[-1]-1
+
         # Initialize Cooperative Path Following Class 
-        cpf_control = cpf.CooperativePathFollowing(config.N_AUV, k_att, k_rep, d_rep, True)
+        cpf_control = cpf.CooperativePathFollowing(config.N_AUV, config.k_att, config.k_rep, config.d_rep, True)
         n = len(t_est)
         P = np.zeros((n,n))
         for i in range(n):
@@ -346,6 +334,7 @@ def main():
         pub.publish(np.array(ctrl_opt,dtype=np.float32))
         ctrl_plot.append(ctrl_opt[0])
         old_ctrls.append(ctrl_opt[0])
+        
         # Adapt online the heading changes: # TO DEBUG !!!!! OR TO TUNE PROPERLY -  in theory done to check
         if len(old_ctrls) == 3:
             for i in range(len(old_ctrls)):
@@ -382,17 +371,20 @@ def main():
             print('COUNT MAX+++++++++++++++++++++++++++++++',count_max)
 
         #SAVE DATA FOR PLOT
-        '''np.savetxt(plot_path+'/plot_cmds.txt',ctrl_plot)
-        np.savetxt(plot_path+'/t_est_x_opt.txt',t_est_x[0])
-        np.savetxt(plot_path+'/t_est_y_opt.txt',t_est_y[0])
-        np.savetxt(plot_path+'/s_state_x.txt',s_state_x)
-        np.savetxt(plot_path+'/s_state_y.txt',s_state_y)
-
         np.savetxt(plot_path+'/wall_times.txt',avg_time)
-        np.savetxt(plot_path+'/nodes.txt',avg_nodes)'''
+        np.savetxt(plot_path+'/nodes.txt',avg_nodes)
+
         ctrl_opt = []
         rate.sleep()
     
 if __name__ == '__main__':
     
     main()
+
+
+
+'''np.savetxt(plot_path+'/plot_cmds.txt',ctrl_plot)
+np.savetxt(plot_path+'/t_est_x_opt.txt',t_est_x[0])
+np.savetxt(plot_path+'/t_est_y_opt.txt',t_est_y[0])
+np.savetxt(plot_path+'/s_state_x.txt',s_state_x)
+np.savetxt(plot_path+'/s_state_y.txt',s_state_y)'''
