@@ -118,6 +118,46 @@ def computeCov(y,phi):
         cov = np.zeros((4,4))
     return cov
 
+def updatePathrRoutine(tmp_x,tmp_y,ax,ay,path,s_pose,dt):
+    
+    [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
+    
+        
+    tmp0_x = np.abs(tmp_x - ax[0])
+    tmp0_y = np.abs(tmp_y - ay[0])
+    print('...........s_pose',s_pose)
+    for i in range(len(ax)):
+        tmp2_x = np.abs(s_pose[0] - ax[i])
+        tmp2_y = np.abs(s_pose[1] - ay[i])
+        if tmp2_x >= s_pose[0] and tmp2_y >= s_pose[1]:
+            
+            if tmp2_x <= tmp0_x:
+                tmp_x = ax[i]
+                print('-------------------------------------------x',tmp_x)
+                
+                tmp0_x = tmp2_x
+                if tmp2_y <= tmp0_y:
+                    tmp_y = ay[i]
+                    print('-------------------------------------------y',tmp_y)
+                    tmp0_y = tmp2_y
+
+    int_list = [int(np.floor(item))for item in rx] #TODO: check why here this two lined are note necessary.
+    path_idx_x = int_list.index(int(np.floor(tmp_x)),0,len(int_list))
+
+    int_list = [int(np.floor(item))for item in ry] #TODO: check why here this two lined are note necessary.
+    path_idx_y = int_list.index(int(np.floor(tmp_y)),0,len(int_list))
+
+    if path_idx_x != path_idx_y:
+        if path_idx_x>path_idx_y:   
+            path_idx = path_idx_x
+        else:
+            path_idx = path_idx_y
+    else:
+        path_idx = path_idx_x
+    idx_motion = 0
+
+    return idx_motion, path_idx
+
 def sig(x):
     
     alpha = -0.003
@@ -163,21 +203,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
     # Init AUVs position and orientation according to given formation
     auvs_xy, auvs_theta = initialize_auvs(geometry,s_pose,f,N,d)
     # Initialize nominal vel for the CPF algorithm
-    v_n = config.AUV_VEL
-    print(auvs_xy)
-    print(s_pose)
-
-    '''plt.plot(ax, ay, "xb", label="Data points")
-    plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
-    #print(auvs_xy)
-    for i in range(config.N_AUV):
-        
-        plt.plot(auvs_xy[i,0],auvs_xy[i,1],'ok',label="AUV"+str(i))
-    plt.plot(rx, ry, "-r", label="Cubic spline path")
-    plt.legend()
-    plt.axis('equal')
-    plt.show() # uncomment for debugging'''
-   
+    v_n = config.AUV_VEL   
     c = 0
     ## SIMULATION LOOP ############################################################################################################
     while t <= config.TIME_DURATION:
@@ -297,43 +323,17 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 print('RECEIVED CMDS (deg) -------------------------------------------------',cmds*180/pi)
                 
                 print('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++UPDATING PATH')
-                int_list = [int(item) for item in rx]
-                
-                tmp = rx[idx_motion+path_idx]
-
-                
-
-                #cmds=[0,0,0,0]
-                '''if c == 0:
-                    cmds = [0]
-                    c=1
-                else:
-                    cmds = [+pi/8]
-                    c=0'''
-                print('----------------------WAYPOINTS PRE UPDATE',ax)
+                tmp_x = rx[idx_motion+path_idx]
+                tmp_y = ry[idx_motion+path_idx]
                 path, d, ax, ay, last_cmd = cpf_control.update_path([cmds[0]],last_cmd,config.OPTIMIZATION_TIME_STEP,ax,ay,d,s_pose)
-                print('----------------------WAYPOINTS POST UPDATE',ax)
-                [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
+                print('----------------------WAYPOINTS POST UPDATE -- ax',ax)
+                print('----------------------WAYPOINTS POST UPDATE -- ay',ay)
+           
+                idx_motion, path_idx = updatePathrRoutine(tmp_x,tmp_y,ax,ay,path,s_pose,dt)
                 
-                tmp0 = np.abs(tmp - ax[0])
-                for i in range(len(ax)):
-                    tmp2 = np.abs(s_pose[0] - ax[i])
-                    if tmp2<tmp0:
-                        tmp = ax[i]
-                    tmp0 = tmp2
-
-                if config.geometry=='column' or config.geometry=='column2':
                     
-                    int_list = [np.ceil(item) for item in rx]
-                    path_idx = int_list.index(np.ceil(tmp),0,len(int_list))
-                    idx_motion = 0 
-
-                elif config.geometry=='line' or config.geometry=='line2':    
-
-                    int_list = [np.ceil(item) for item in rx] #TODO: check why here this two lined are note necessary.
-                    print('int list',int_list)
-                    path_idx = int_list.index(np.ceil(tmp),0,len(int_list))
-                    idx_motion = 0      
+                print('----------------------------------------------------------------------------------------------path idx-len(rx)',path_idx,len(rx),idx_motion)
+                    
 
                 '''if t > 0:
                     plt.plot(ax, ay, "xb", label="Data points")
@@ -351,38 +351,14 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
         if (idx_motion+path_idx) >= (len(rx)-1):#check if the path is finished, in case update with a straight line
             
             print('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++UPDATING PATH')
-            #TODO: BUG HERE TO SOLVE
-            tmp = rx[idx_motion+path_idx]+1
-            print('++++++++++++++++++++++++++++++++tmp',tmp)
-            print('----------------------WAYPOINTS PRE UPDATE',ax)
-            path, d, ax, ay, last_cmd = cpf_control.update_path([0],last_cmd,config.OPTIMIZATION_TIME_STEP,ax,ay,d,s_pose)#1 #go straight, path idx increase of 2 or 3
-            [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
-            print('rx',rx)
-            print('----------------------WAYPOINTS POST UPDATE',ax)
-            if config.geometry=='column' or config.geometry=='column2':
-
-                int_list = [np.ceil(item) for item in rx]
-
-                path_idx = int_list.index(np.ceil(tmp),0,len(int_list))
-
-                idx_motion = 0
-
-            elif config.geometry=='line' or config.geometry=='line2':
-                
-                int_list = [np.ceil(item) for item in rx]
-                path_idx = int_list.index(np.ceil(tmp),0,len(int_list))
-                idx_motion = 0
-
-            '''plt.plot(ax, ay, "xb", label="Data points")
-            plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
-            for i in range(config.N_AUV):
-                
-                plt.plot(auvs_xy[i,0],auvs_xy[i,1],'ok',label="AUV"+str(i))
-            plt.plot(rx, ry, "-r", label="Cubic spline path")
-            plt.legend()
-            plt.axis('equal')
-            plt.show() # uncomment for debugging'''
-
+            tmp_x = rx[idx_motion+path_idx]
+            tmp_y = ry[idx_motion+path_idx]
+            path, d, ax, ay, last_cmd = cpf_control.update_path([0],last_cmd,config.OPTIMIZATION_TIME_STEP,ax,ay,d,s_pose)
+            print('----------------------WAYPOINTS POST UPDATE -- ax',ax)
+            print('----------------------WAYPOINTS POST UPDATE -- ay',ay)
+        
+            idx_motion, path_idx = updatePathrRoutine(tmp_x,tmp_y,ax,ay,path,s_pose,dt)
+            print('----------------------------------------------------------------------------------------------path idx-len(rx)',path_idx,len(rx),idx_motion)
         else:
             d += cpf_control.v_n*dt #distance travelled on the path
             idx_motion += 1
@@ -390,8 +366,10 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
         [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt) # compute reference to follow
         [s_pose, auvs_xy, auvs_theta] = cpf_control.move_agents(path, d,s_pose,dt, auvs_xy, auvs_theta, ryaw[path_idx+idx_motion],rx[path_idx+idx_motion],ry[path_idx+idx_motion],False)
         target.move_target(dt)
-        print('--------------------------------------s pose',s_pose)
-        print('--------------------------------------auvs_xy',auvs_xy)
+        print('----------------------------------------------------------------s pose',s_pose)
+        print('----------------------------------------------------------------auvs_xy',auvs_xy)
+        print('----------------------------------------------------------------waypoints',ax)
+     
         #################################################################################################################
         ##################### SAVE THE POSITIONS OF TEAM REFERENCE/AGENTS/TARGET/ STATE FOR PLOT ########################
         platform_x.append(s_pose[0])

@@ -134,20 +134,30 @@ class CooperativePathFollowing:
     def update_path(self, waypoints, t_i, DT, ax, ay,d,s_pose):
         self.ax = ax
         self.ay = ay
-        tmp0 = np.abs(s_pose[0] - self.ax[0])
+        tmp_x = ax[-1]
+        tmp_y = ay[-1]
+        tmp0_x = np.abs(s_pose[0] - self.ax[0])
+        tmp0_y = np.abs(s_pose[1] - self.ay[0])
         for i in range(len(ax)):
-            tmp2 = np.abs(s_pose[0] - self.ax[i])
-            if tmp2<tmp0:
-                tmp = self.ax[i]
-            tmp0 = tmp2
+            tmp2_x = np.abs(s_pose[0] - self.ax[i])
+            tmp2_y = np.abs(s_pose[1] - self.ay[i])
+            if tmp2_x >= s_pose[0] and tmp2_y >= s_pose[1]:
+                if tmp2_x<=tmp0_x:
+                    tmp_x = self.ax[i]
+                    tmp0_x = tmp2_x
+                    if tmp2_y<tmp0_y:
+                        tmp_y = self.ay[i]
+                        tmp0_y = tmp2_y
+            
 
-        idx = self.ax.index(tmp,0,len(self.ax))
+        idx_x = self.ax.index(int(np.floor(tmp_x)),0,len(self.ax))
+        idx_y = self.ay.index(int(np.floor(tmp_y)),0,len(self.ay))
+        if idx_x >= idx_y:
+            idx = idx_x
+        else:
+            idx = idx_y
+
         
-        print('expected len of ax to discard',len(self.ax[idx:-1]))
-
-        removed_waypoints = len(self.ax[idx:-1])
-
-
         for i in range(len(self.ax[idx:-1])):
 
             self.ax.pop(-1)
@@ -156,10 +166,10 @@ class CooperativePathFollowing:
         path = cubicSpline.CubicSpline2D(self.ax, self.ay)
        
         d = path.s[-1]
-        print('ax and ay post cut',ax,ay)
+
         # Compute the distance travelled according to the new path
         if self.geometry == 'line' or self.geometry == 'line2':
-            d_real = self.v_n*DT
+            d_real = d#self.v_n*DT
             a_i = [s_pose[0],s_pose[1]]
             a_i = [self.ax[-1],self.ay[-1]]
             
@@ -199,7 +209,7 @@ class CooperativePathFollowing:
         elif config.geometry == 'line2' or config.geometry == 'line':
             angular_vel_leader = (r_yaw-s_pose[2])
             s_pose[2] = (s_pose[2] + self.ko*angular_vel_leader*dt)
-            #s_pose[2] = #r_yaw
+            #s_pose[2] = r_yaw
             s_pose[0] = s_pose[0] + self.v_n*np.cos(s_pose[2])*dt
             s_pose[1] = s_pose[1] + self.v_n*np.sin(s_pose[2])*dt
         # Update the position and orientation of the follower robots

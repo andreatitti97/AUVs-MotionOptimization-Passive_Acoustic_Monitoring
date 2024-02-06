@@ -1,11 +1,18 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import os, importlib
+import pathlib
 from math import pi
 from matplotlib.lines import Line2D
 lib_path = os.path.abspath('/home/andrea/Desktop/ros_simulation_ws/src/ipp_pkg/src/logs/plot')
 
 class_path = os.path.abspath('/home/andrea/Desktop/ros_simulation_ws/src/ipp_pkg/src/Classes')
+path = pathlib.Path(__file__).parent.resolve()
+path = path/'logs'
+
+
+print(path)
+
 spec = importlib.util.spec_from_file_location("module.config", class_path+"/config.py")
 config = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(config)
