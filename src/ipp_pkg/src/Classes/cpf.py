@@ -43,37 +43,21 @@ class CooperativePathFollowing:
 
     def initialize_path(self, f):#f=formation
         if self.geometry == 'column' or self.geometry == 'column2':
-
-            d = f[0]-f[1]
-            ax_0 =[*range(0,  f[0]+2*self.DT, self.dt)]
-            tmp = [*range(0, f[0]+self.DT,  self.dt)]
-
-            ay_0 = []
-            for i in range(len(tmp)):
-                ay_0.append(0)
-            leader_path = cubicSpline.CubicSpline2D(tmp, ay_0)            
-            [rx, ry, ryaw, rk, s]= self.spline_course(leader_path,self.ds)
+            d = f[0]
+            ax_0 =[*range(-self.dt,  f[0]+self.DT, self.dt)]
             
-            path_idx = len(ryaw)
-            d = leader_path.s[-1]
-            for i in range(len(ax_0)):
-                self.ax.append(ax_0[i])
-                self.ay.append(0)
-            path = cubicSpline.CubicSpline2D(self.ax, self.ay)
-
         elif self.geometry == 'line' or self.geometry == 'line2':
-            
-            ax_0 =[*range(-self.dt,  self.DT,self.dt)]
             d = self.dt
+            ax_0 =[*range(-self.dt,  self.DT,self.dt)]
+            
+        for i in range(len(ax_0)):
+            self.ax.append(ax_0[i])
+            self.ay.append(0)
+        path = cubicSpline.CubicSpline2D(self.ax, self.ay)
+        [rx, ry, ryaw, rk, s]= self.spline_course(path,self.ds)
+        int_list = [int(item) for item in rx]
 
-            for i in range(len(ax_0)):
-                self.ax.append(ax_0[i])
-                self.ay.append(0)
-            path = cubicSpline.CubicSpline2D(self.ax, self.ay)
-            [rx, ry, ryaw, rk, s]= self.spline_course(path,self.ds)
-            int_list = [int(item) for item in rx]
-
-            path_idx = int_list.index(int(d),0,len(int_list))
+        path_idx = int_list.index(int(d),0,len(int_list))
         
 
         return path, path_idx, d, self.ax, self.ay
@@ -141,13 +125,13 @@ class CooperativePathFollowing:
         for i in range(len(ax)):
             tmp2_x = np.abs(s_pose[0] - self.ax[i])
             tmp2_y = np.abs(s_pose[1] - self.ay[i])
-            if tmp2_x >= s_pose[0] and tmp2_y >= s_pose[1]:
+            if self.ax[i] >= s_pose[0] and self.ay[i] >= s_pose[1]:
                 if tmp2_x<=tmp0_x:
                     tmp_x = self.ax[i]
                     tmp0_x = tmp2_x
-                    if tmp2_y<tmp0_y:
-                        tmp_y = self.ay[i]
-                        tmp0_y = tmp2_y
+                if tmp2_y<=tmp0_y:
+                    tmp_y = self.ay[i]
+                    tmp0_y = tmp2_y
             
 
         idx_x = self.ax.index(int(np.floor(tmp_x)),0,len(self.ax))
@@ -174,7 +158,7 @@ class CooperativePathFollowing:
             a_i = [self.ax[-1],self.ay[-1]]
             
         else:
-            d_real = self.v_n*DT
+            d_real = d#self.v_n*DT
             a_i = [s_pose[0],s_pose[1]]
             a_i = [self.ax[-1],self.ay[-1]]
         
@@ -189,7 +173,7 @@ class CooperativePathFollowing:
                 self.ay.append(int(tmp_y))
                 t_i = t_f
                 a_i = [tmp_x,tmp_y]
-        #for i in range(int(DT/self.dt)-removed_waypoints):#-removed_waypoints
+        
         if len(self.ax)>10:
             # Remove first waypoints (fixed path dimensions->computational load)
             self.ax.pop(0)
@@ -204,14 +188,14 @@ class CooperativePathFollowing:
         # Update Leader Position
         if config.geometry == 'column2' or config.geometry == 'column':
             s_pose[2] = r_yaw
-            s_pose[0] = s_pose[0] + self.v_n*np.cos(s_pose[2])*dt
-            s_pose[1] = s_pose[1] + self.v_n*np.sin(s_pose[2])*dt
+            s_pose[0] = r_x#s_pose[0] + self.v_n*np.cos(s_pose[2])*dt
+            s_pose[1] = r_y#s_pose[1] + self.v_n*np.sin(s_pose[2])*dt
         elif config.geometry == 'line2' or config.geometry == 'line':
             angular_vel_leader = (r_yaw-s_pose[2])
-            s_pose[2] = (s_pose[2] + self.ko*angular_vel_leader*dt)
-            #s_pose[2] = r_yaw
-            s_pose[0] = s_pose[0] + self.v_n*np.cos(s_pose[2])*dt
-            s_pose[1] = s_pose[1] + self.v_n*np.sin(s_pose[2])*dt
+            #s_pose[2] = (s_pose[2] + self.ko*angular_vel_leader*dt)
+            s_pose[2] = r_yaw
+            s_pose[0] = r_x#s_pose[0] + self.v_n*np.cos(s_pose[2])*dt
+            s_pose[1] = r_y#s_pose[1] + self.v_n*np.sin(s_pose[2])*dt
         # Update the position and orientation of the follower robots
         F_coop, desired_position = self.potential_field(path, s_pose, auvs_xy, d)
         # Compute the heading according to the desired position
