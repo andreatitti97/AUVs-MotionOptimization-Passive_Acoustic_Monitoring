@@ -231,8 +231,8 @@ plt.show()
 # PLOT THE RESULT OF THE SIMULATION with OPTIMIZATION
 
 plt.plot(s_x_on,s_y_on)
-plt.plot(auv1_x_on,auv1_y_on,'k')
-plt.plot(auv2_x_on,auv2_y_on,'k')
+#plt.plot(auv1_x_on,auv1_y_on,'k')
+#plt.plot(auv2_x_on,auv2_y_on,'k')
 plt.plot(real_x,real_y,linewidth=5,color='y')
 plt.plot(est4_x_ON,est4_y_ON,'r',linewidth=3)
 plt.xlabel('x (m)',fontsize=30)

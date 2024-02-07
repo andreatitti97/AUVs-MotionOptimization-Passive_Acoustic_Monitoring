@@ -168,15 +168,25 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
     # Init classes for tracker and target
     target = Target(target_est, dt, P)
     estimator = Estimation()
-    
-    # Load Path
+
+
+     # Load Path
     path = cubicSpline.CubicSpline2D(ax, ay)#re-generate the path followed up to now
     [rx, ry, ryaw, rk, s]=utils.calc_spline_course(path,dt)
-    p_idx = len(ryaw)-1
-    
+    idx = len(ryaw)-1
+
+    tmp = []
+    for i in range(len(rx)):
+        
+        tmp.append(np.sqrt((s_pose[0]-rx[i])**2+(s_pose[1]-ry[i])**2))
+        
+    idx = tmp.index(min(tmp))
+  
     # Compute leader pose
     yaw = path.calc_yaw(d)
     s_pose = [s_pose[0],s_pose[1],yaw]
+    
+   
     
     # Compute agents pose
     geometry = config.geometry
@@ -191,19 +201,22 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
             auvs_xy[i,0] = s_pose[0] + (f[i,0]*np.cos(s_pose[2])+f[i,1]*np.sin(s_pose[2]))
             auvs_xy[i,1] = s_pose[1] - (-f[i,0]*np.sin(s_pose[2])+f[i,1]*np.cos(s_pose[2]))      
         if geometry == 'column' or geometry == 'column2':      
-            d_auv = -f[i]+d
-            x,y = path.calc_position(d_auv)
+            
+            x,y = path.calc_position(-f[i]+d)
             auvs_xy[i,0] = x
             auvs_xy[i,1] = y
-            auvs_theta[i] = path.calc_yaw(d_auv)
+            #auvs_theta[i] = path.calc_yaw(d_auv)
 
-    path, ax, ay, current_theta = update_path(ax,ay,control_input,yaw, v_n)
+    # Load Path
+
+    path, ax, ay, current_theta = update_path(ax,ay,control_input,s_pose[2], v_n)
+
     for i in range(0,scaler):
 
         [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
         # Update  AUVs and target state
         d += desired_vel*dt
-        [s_pose, auvs_xy, auvs_theta] = controller.move_agents(path, d, s_pose, dt, auvs_xy, auvs_theta, ryaw[p_idx+i],rx[p_idx+i],ry[p_idx+i], True)
+        [s_pose, auvs_xy, auvs_theta] = controller.move_agents(path, d, s_pose, dt, auvs_xy, auvs_theta, ryaw[idx+i],rx[idx+i],ry[idx+i], True)
         # Propagate target state estimation
         tmp = np.zeros((4,1))
         for j in range(4):  
@@ -219,17 +232,6 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
         elif i == (scaler-1):     
             estimator.computeState(meas_table)
         t += dt
-
-    '''[rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
-    plt.subplots(1)
-    plt.plot(ax, ay, "xb", label="Data points")
-    plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
-    for i in range(config.N_AUV):
-        plt.plot(auvs_xy[i,0],auvs_xy[i,1],'ok',label="AUV"+str(i))
-    plt.plot(rx, ry, "-r", label="Cubic spline path")
-    plt.legend()
-    plt.axis('equal')
-    plt.show() # uncomment for debugging'''
 
     return target.x, estimator.phi, estimator.y, s_pose, ax[-1], ay[-1], d
 
@@ -301,7 +303,7 @@ def main():
 
         elif geometry == 'line' or geometry == 'line2':
             for i in range(len(ay_array)):
-                length = len(ay_array)-2
+                
                 ax.append(ax_array[i])
                 ay.append(ay_array[i])
             path = cubicSpline.CubicSpline2D(ax, ay)

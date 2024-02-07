@@ -42,6 +42,7 @@ class CooperativePathFollowing:
 
 
     def initialize_path(self, f):#f=formation
+
         if self.geometry == 'column' or self.geometry == 'column2':
             d = f[0]
             ax_0 =[*range(-self.dt,  f[0]+self.DT, self.dt)]
@@ -53,12 +54,11 @@ class CooperativePathFollowing:
         for i in range(len(ax_0)):
             self.ax.append(ax_0[i])
             self.ay.append(0)
+
         path = cubicSpline.CubicSpline2D(self.ax, self.ay)
         [rx, ry, ryaw, rk, s]= self.spline_course(path,self.ds)
         int_list = [int(item) for item in rx]
-
         path_idx = int_list.index(int(d),0,len(int_list))
-        
 
         return path, path_idx, d, self.ax, self.ay
 
@@ -115,56 +115,30 @@ class CooperativePathFollowing:
 
         return error_ang
 
-    def update_path(self, waypoints, t_i, DT, ax, ay,d,s_pose):
+    def update_path(self, waypoints, t_i, DT, ax, ay,s_pose):
         self.ax = ax
         self.ay = ay
-        tmp_x = ax[-1]
-        tmp_y = ay[-1]
-        tmp0_x = np.abs(s_pose[0] - self.ax[0])
-        tmp0_y = np.abs(s_pose[1] - self.ay[0])
-        for i in range(len(ax)):
-            tmp2_x = np.abs(s_pose[0] - self.ax[i])
-            tmp2_y = np.abs(s_pose[1] - self.ay[i])
-            if self.ax[i] >= s_pose[0] and self.ay[i] >= s_pose[1]:
-                if tmp2_x<=tmp0_x:
-                    tmp_x = self.ax[i]
-                    tmp0_x = tmp2_x
-                if tmp2_y<=tmp0_y:
-                    tmp_y = self.ay[i]
-                    tmp0_y = tmp2_y
-            
-
-        idx_x = self.ax.index(int(np.floor(tmp_x)),0,len(self.ax))
-        idx_y = self.ay.index(int(np.floor(tmp_y)),0,len(self.ay))
-        if idx_x >= idx_y:
-            idx = idx_x
-        else:
-            idx = idx_y
-
         
-        for i in range(len(self.ax[idx:-1])):
+        tmp = []
+        for i in range(len(self.ax)):
+            
+            tmp.append(np.sqrt((s_pose[0]-self.ax[i])**2+(s_pose[1]-self.ay[i])**2))
+            
+        idx = tmp.index(min(tmp))
 
+        for i in range(len(self.ax[idx:len(self.ax)])):
+            
             self.ax.pop(-1)
             self.ay.pop(-1)
-
+        
         path = cubicSpline.CubicSpline2D(self.ax, self.ay)
        
-        d = path.s[-1]
-
         # Compute the distance travelled according to the new path
-        if self.geometry == 'line' or self.geometry == 'line2':
-            d_real = d#self.v_n*DT
-            a_i = [s_pose[0],s_pose[1]]
-            a_i = [self.ax[-1],self.ay[-1]]
-            
-        else:
-            d_real = d#self.v_n*DT
-            a_i = [s_pose[0],s_pose[1]]
-            a_i = [self.ax[-1],self.ay[-1]]
-        
-    
+        d_real = path.s[-1]
+        a_i = [self.ax[-1],self.ay[-1]]
+
+        # Compute new waypoints according to the given heading change
         for i in range(len(waypoints)):
-            print('-----------------------------------------------------------------------',int(DT/self.dt))
             for j in range(int(DT/self.dt)):
                 t_f = t_i+(waypoints[i]/int(DT/self.dt))
                 tmp_x = np.cos(t_f)*self.v_n*(DT/self.dt)+a_i[0]
@@ -186,24 +160,16 @@ class CooperativePathFollowing:
     def move_agents(self, path, d, s_pose, dt, auvs_xy, auvs_theta, r_yaw, r_x=0,r_y=0,bool=False):
         
         # Update Leader Position
-        if config.geometry == 'column2' or config.geometry == 'column':
-            s_pose[2] = r_yaw
-            s_pose[0] = r_x#s_pose[0] + self.v_n*np.cos(s_pose[2])*dt
-            s_pose[1] = r_y#s_pose[1] + self.v_n*np.sin(s_pose[2])*dt
-        elif config.geometry == 'line2' or config.geometry == 'line':
-            angular_vel_leader = (r_yaw-s_pose[2])
-            #s_pose[2] = (s_pose[2] + self.ko*angular_vel_leader*dt)
-            s_pose[2] = r_yaw
-            s_pose[0] = r_x#s_pose[0] + self.v_n*np.cos(s_pose[2])*dt
-            s_pose[1] = r_y#s_pose[1] + self.v_n*np.sin(s_pose[2])*dt
+
+        s_pose[2] = r_yaw
+        s_pose[0] = r_x
+        s_pose[1] = r_y
         # Update the position and orientation of the follower robots
         F_coop, desired_position = self.potential_field(path, s_pose, auvs_xy, d)
         # Compute the heading according to the desired position
         e_theta = self.compute_orientations(desired_position,auvs_xy, auvs_theta)
         for i in range(self.n_agents):
-            auvs_theta[i] = auvs_theta[i] + self.ko*e_theta[i]*dt
-            tmp1 = self.saturateVel((self.v_n*np.cos(auvs_theta[i]) + F_coop[i,0]*dt)*dt,bool)
-            tmp2 = self.saturateVel((self.v_n*np.sin(auvs_theta[i]) + F_coop[i,1]*dt)*dt,bool)          
+            auvs_theta[i] = auvs_theta[i] + self.ko*e_theta[i]*dt         
             auvs_xy[i,0] = auvs_xy[i,0] + F_coop[i,0]*dt*dt
             auvs_xy[i,1] = auvs_xy[i,1] + F_coop[i,1]*dt*dt
         if bool == True:

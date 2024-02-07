@@ -19,7 +19,7 @@ TP = 30 # regressor MAX length 40
 SIGMA_MEAS = 0.02#0.08 #(rad^2) --> 4.5° (as assumed in DAMPS and by cassino)
 
 # CHOOSE THE GEOMETRY BETWEEN THE AGENTS
-geometry = 'column2'
+geometry = 'line2'
 
 
 # Communication Paramaters
@@ -38,9 +38,9 @@ GAIN_YAW_RATE = 0.8
 
 # Optimization Parameters
 time_scaler = 5 # TIME SCALER OF THE SIMULATION INSIDE OPTIMIZATION
-u_max = 10*pi/180#20*pi/180
+u_max = 20*pi/180#
 delta_u = 3*pi/180
-MAX = 40*pi/180
+MAX = 30*pi/180
 MIN = 5*pi/180
 U = 5 #number of control choices
 M = 3 # planning horizon
@@ -82,10 +82,5 @@ Tf = 2*N_AUV*Tg #time frame TDMA
 #OPTIMIZATION_TIME_STEP = 20
 OPTIMIZATION_TIME_STEP = int(np.ceil(2*(Tm*N_AUV+np.sum(mean)))/2)#TODO
 #OPTIMIZATION_TIME_STEP = 30
-
-
-
-
-
 OPTIMIZATION_TIME_STEP = 15
 
