@@ -137,17 +137,23 @@ class CooperativePathFollowing:
         d_real = path.s[-1]
         a_i = [self.ax[-1],self.ay[-1]]
 
+        print('PREDICTED TIME',self.DT)
+        print('sample time',self.dt)
         # Compute new waypoints according to the given heading change
         for i in range(len(waypoints)):
+            print(i)
             for j in range(int(DT/self.dt)):
                 t_f = t_i+(waypoints[i]/int(DT/self.dt))
-                tmp_x = np.cos(t_f)*self.v_n*(DT/self.dt)+a_i[0]
-                tmp_y = np.sin(t_f)*self.v_n*(DT/self.dt)+a_i[1]
+                tmp_x = np.cos(t_f)*self.v_n*self.dt+a_i[0]
+                tmp_y = np.sin(t_f)*self.v_n*self.dt+a_i[1]
                 self.ax.append(int(tmp_x))
                 self.ay.append(int(tmp_y))
                 t_i = t_f
                 a_i = [tmp_x,tmp_y]
-        
+                print(a_i)
+        print('-----------------------------------------------------------self.v_n',self.v_n)
+        #time.sleep(1)
+
         if len(self.ax)>10:
             # Remove first waypoints (fixed path dimensions->computational load)
             self.ax.pop(0)
@@ -157,7 +163,7 @@ class CooperativePathFollowing:
 
         return path, d_real, self.ax, self.ay, t_i
 
-    def move_agents(self, path, d, s_pose, dt, auvs_xy, auvs_theta, r_yaw, r_x=0,r_y=0,bool=False):
+    def move_agents(self, path, d, s_pose, dt, auvs_xy, auvs_theta, r_yaw, r_x,r_y,bool=False):
         
         # Update Leader Position
 

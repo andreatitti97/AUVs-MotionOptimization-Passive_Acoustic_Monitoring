@@ -207,7 +207,8 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
         for i in range(N-1):
             if flags[i] == 0 and propagation == False:
                 delay[i] += dt
-
+ 
+ 
         for j in range(N):
             # If the delay measured is equal to the expected one the msg is arrived to AUV4
             sigma = np.random.uniform(-sigma_c[j], sigma_c[j])
@@ -256,7 +257,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
 
                 v_n = computePursuitVel(curr_est,s_pose,v_n)
                 print('PURSUIT VEL:' ,v_n)
-                v_n = 1
+                #v_n = 1
                 cpf_control.v_n = v_n 
                 
                 rospy.loginfo('SENDING DATA')
@@ -300,7 +301,19 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 path, d, ax, ay, last_cmd = cpf_control.update_path([cmds[0]],last_cmd,config.OPTIMIZATION_TIME_STEP,ax,ay,s_pose)
                 [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
     
-                idx_motion, path_idx = updatePathRoutine(rx,ry,s_pose)                    
+                idx_motion, path_idx = updatePathRoutine(rx,ry,s_pose)     
+                '''print('55555555555555555555555555555555555555555555555555555555555555555555555',len(rx))
+                plt.plot(ax, ay, "xb", label="Data points")
+                plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
+                #print(auvs_xy)
+                for i in range(config.N_AUV):
+                    
+                    plt.plot(auvs_xy[i,0],auvs_xy[i,1],'ok',label="AUV"+str(i))
+                plt.plot(rx, ry, "-r", label="Cubic spline path")
+                plt.legend()
+                plt.axis('equal')
+                plt.grid()
+                plt.show() # uncomment for debugging'''               
                 
         #################################################################################################################
         ######################################### MOVE THE ROBOTS #######################################################
@@ -308,14 +321,19 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
             
             print('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++UPDATING PATH')
 
-            path, d, ax, ay, last_cmd = cpf_control.update_path([0],last_cmd,config.OPTIMIZATION_TIME_STEP/3,ax,ay,s_pose)
+            path, d, ax, ay, last_cmd = cpf_control.update_path([0],last_cmd,config.OPTIMIZATION_TIME_STEP,ax,ay,s_pose)
 
             [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
             idx_motion, path_idx = updatePathRoutine(rx,ry,s_pose)
+
         
         else:
             d += cpf_control.v_n*dt #distance travelled on the path
-            idx_motion += 1
+  
+            if v_n >= 3:
+                idx_motion += 2
+            else:
+                idx_motion += 1
             
         [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt) # compute reference to follow
         [s_pose, auvs_xy, auvs_theta] = cpf_control.move_agents(path, d,s_pose,dt, auvs_xy, auvs_theta, ryaw[path_idx+idx_motion],rx[path_idx+idx_motion],ry[path_idx+idx_motion],False)

@@ -173,7 +173,6 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
      # Load Path
     path = cubicSpline.CubicSpline2D(ax, ay)#re-generate the path followed up to now
     [rx, ry, ryaw, rk, s]=utils.calc_spline_course(path,dt)
-    idx = len(ryaw)-1
 
     tmp = []
     for i in range(len(rx)):
@@ -185,8 +184,6 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
     # Compute leader pose
     yaw = path.calc_yaw(d)
     s_pose = [s_pose[0],s_pose[1],yaw]
-    
-   
     
     # Compute agents pose
     geometry = config.geometry
