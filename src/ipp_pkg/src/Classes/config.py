@@ -38,7 +38,7 @@ GAIN_YAW_RATE = 0.8
 
 # Optimization Parameters
 time_scaler = 5 # TIME SCALER OF THE SIMULATION INSIDE OPTIMIZATION
-u_max = 20*pi/180#
+u_max = 30*pi/180#
 delta_u = 3*pi/180
 MAX = 30*pi/180
 MIN = 5*pi/180
@@ -82,5 +82,5 @@ Tf = 2*N_AUV*Tg #time frame TDMA
 #OPTIMIZATION_TIME_STEP = 20
 OPTIMIZATION_TIME_STEP = int(np.ceil(2*(Tm*N_AUV+np.sum(mean)))/2)#TODO
 #OPTIMIZATION_TIME_STEP = 30
-OPTIMIZATION_TIME_STEP = 15
+OPTIMIZATION_TIME_STEP = 30
 

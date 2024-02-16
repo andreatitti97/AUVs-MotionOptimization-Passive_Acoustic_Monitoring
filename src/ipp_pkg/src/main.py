@@ -216,7 +216,10 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 delay[j] = 0.0
                 flags[j] = 1
                 if np.sum(delay) == 0.0 and np.sum(flags)==(N) and len(meas_table)>=config.Tf:
-                    propagation = True    
+                    if len(meas_table) > 40:
+                        propagation = True    
+                        print('READY TO ESTIMATE')
+                        
 
         # Process all the measurements and propagate the estimation
         if propagation == True:
@@ -297,7 +300,7 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 print('RECEIVED CMDS (deg) -------------------------------------------------',cmds*180/pi)
                 
                 print('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++UPDATING PATH')
-                
+                #cmds = [pi/50]
                 path, d, ax, ay, last_cmd = cpf_control.update_path([cmds[0]],last_cmd,config.OPTIMIZATION_TIME_STEP,ax,ay,s_pose)
                 [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
     
@@ -317,7 +320,9 @@ def run_simulation(target, obs, auv, pub, cpf_control, f, s_pose):
                 
         #################################################################################################################
         ######################################### MOVE THE ROBOTS #######################################################
-        if (idx_motion+path_idx) >= (len(rx)-1):#check if the path is finished, in case update with a straight line
+        print('DEBUG:',idx_motion+path_idx)
+        print('DEBUG:',len(rx)-1)
+        if (idx_motion+path_idx) >= (len(rx)-2):#check if the path is finished, in case update with a straight line
             
             print('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++UPDATING PATH')
 

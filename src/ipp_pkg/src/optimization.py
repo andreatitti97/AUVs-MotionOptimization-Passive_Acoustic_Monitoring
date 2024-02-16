@@ -40,15 +40,39 @@ cubicSpline = planner
 DT = config.OPTIMIZATION_TIME_STEP #should be equal more or less to the expected time to perform an estimation
 desired_vel = config.AUV_VEL
 
-def update_path(ax, ay, waypoint, t_i, desired_vel):
-        init_pose = [ax[-1],ay[-1]]
-        t_f = t_i+waypoint 
-        tmp_x = np.cos(t_f)*desired_vel*DT+init_pose[0]
-        tmp_y = np.sin(t_f)*desired_vel*DT+init_pose[1]
+def update_path(ax, ay, waypoint, s_pose, desired_vel):
+        
+        t_i = s_pose[2]
+        '''tmp = []
+        for i in range(len(ax)):
+            
+            tmp.append(np.sqrt((s_pose[0]-ax[i])**2+(s_pose[1]-ay[i])**2))
+            
+        idx = tmp.index(min(tmp))
+
+
+        for i in range(len(ax[idx:len(ax)])):
+            
+            ax.pop(-1)
+            ay.pop(-1)'''
+        
+        path = cubicSpline.CubicSpline2D(ax, ay)
+       
+        # Compute the distance travelled according to the new path
+        d_real = path.s[-1]
+        a_i = [ax[-1],ay[-1]]
+
+        #for i in range(3):
+        t_f = t_i+waypoint
+        tmp_x = np.cos(t_f)*desired_vel*DT+a_i[0]
+        tmp_y = np.sin(t_f)*desired_vel*DT+a_i[1]
         ax.append(tmp_x)
         ay.append(tmp_y)
+        t_i = t_f
+        a_i = [tmp_x,tmp_y]
         path = cubicSpline.CubicSpline2D(ax, ay)
-        return path, ax, ay, t_f
+
+        return path, d_real, ax, ay, t_f
 
 class Target():
     def __init__(self, init_state, dt, P=[]):
@@ -164,10 +188,12 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
     meas_table = []
     scaler = config.time_scaler
     dt = config.OPTIMIZATION_TIME_STEP/scaler
-    
+    dt = config.OPTIMIZATION_TIME_STEP
     # Init classes for tracker and target
     target = Target(target_est, dt, P)
     estimator = Estimation()
+
+
 
 
      # Load Path
@@ -180,12 +206,19 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
         tmp.append(np.sqrt((s_pose[0]-rx[i])**2+(s_pose[1]-ry[i])**2))
         
     idx = tmp.index(min(tmp))
-  
-    # Compute leader pose
-    yaw = path.calc_yaw(d)
-    s_pose = [s_pose[0],s_pose[1],yaw]
+    idx_motion = 0
+     
     
-    # Compute agents pose
+    # Load Path
+
+    path, d, ax, ay, current_theta = update_path(ax,ay,control_input,s_pose, v_n)
+
+          
+    
+
+    s_pose = [rx[-1],ry[-1],ryaw[-1]]
+
+    # Compute FINAL agents pose
     geometry = config.geometry
     f = config.formation
     auvs_xy = np.zeros((config.N_AUV,2))
@@ -202,18 +235,26 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
             x,y = path.calc_position(-f[i]+d)
             auvs_xy[i,0] = x
             auvs_xy[i,1] = y
-            #auvs_theta[i] = path.calc_yaw(d_auv)
+            auvs_theta[i] = path.calc_yaw(-f[i]+d)
 
-    # Load Path
+    # Propagate target state estimation
+    tmp = np.zeros((4,1))
+    for j in range(4):  
+        tmp[j]=target.x[j]
+    target.x = target.F*tmp
 
-    path, ax, ay, current_theta = update_path(ax,ay,control_input,s_pose[2], v_n)
+    for j in range(config.N_AUV):
+        [measure_, rel_bearing_, meas_pos] = sensor[j].measureBearing(target.x[0],target.x[1],auvs_xy[j],auvs_theta[j])
+        arr = [measure_,meas_pos[0],meas_pos[1]]
+        meas_table.append(arr)
+    estimator.computeState(meas_table)
 
-    for i in range(0,scaler):
+    '''for i in range(0,scaler):
 
         [rx, ry, ryaw, rk, s] = utils.calc_spline_course(path,dt)
         # Update  AUVs and target state
         d += desired_vel*dt
-        [s_pose, auvs_xy, auvs_theta] = controller.move_agents(path, d, s_pose, dt, auvs_xy, auvs_theta, ryaw[idx+i],rx[idx+i],ry[idx+i], True)
+        [s_pose, auvs_xy, auvs_theta] = controller.move_agents(path, d, s_pose, dt, auvs_xy, auvs_theta, ryaw[idx+idx_motion],rx[idx+idx_motion],ry[idx+idx_motion], True)
         # Propagate target state estimation
         tmp = np.zeros((4,1))
         for j in range(4):  
@@ -229,6 +270,22 @@ def simulation(control_input, target_est, s_pose, sensor, controller, ax, ay, d,
         elif i == (scaler-1):     
             estimator.computeState(meas_table)
         t += dt
+        if v_n >= 3:
+            idx_motion += 1
+        else:
+            idx_motion += 1
+    print('55AFTER ----------------------------------------------------------',len(rx))
+    plt.plot(ax, ay, "xb", label="Data points")
+    plt.plot(s_pose[0],s_pose[1],'og',label='leader position')
+    #print(auvs_xy)
+    for i in range(config.N_AUV):
+        
+        plt.plot(auvs_xy[i,0],auvs_xy[i,1],'ok',label="AUV"+str(i))
+    plt.plot(rx, ry, "-r", label="Cubic spline path")
+    plt.legend()
+    plt.axis('equal')
+    plt.grid()
+    plt.show() # uncomment for debugging''' 
 
     return target.x, estimator.phi, estimator.y, s_pose, ax[-1], ay[-1], d
 

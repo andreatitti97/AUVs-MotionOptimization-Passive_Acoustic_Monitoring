@@ -191,13 +191,13 @@ legend_elements = [Line2D([0], [0], marker='X',color='b', lw=1, label='Formation
                     Line2D([0], [0], color='k', ls='--', label='LOS AUVs')]
 
 plt.legend(handles=legend_elements,fontsize=20)
-
 plt.plot(s_x_off[0],s_y_off[0],'ob')
 plt.plot(auv1_x_off[0],auv1_y_off[0],'og',linewidth=20)
 plt.plot(auv2_x_off[0],auv2_y_off[0],'ok',linewidth=20)
 plt.plot(auv3_x_off[0],auv3_y_off[0],'ok',linewidth=20)
 plt.plot(auv4_x_off[0],auv4_y_off[0],'og',linewidth=30)
 j = 0
+
 for i in range(ranges):
     # plot LOS
     
